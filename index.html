@@ -60,7 +60,7 @@
     /* APP LAYOUT */
     #app {
       display: grid;
-      grid-template-columns: 380px 1fr;
+      grid-template-columns: 400px 1fr;
       height: 100vh;
       padding-top: 58px;
     }
@@ -69,33 +69,73 @@
       border-right: 1px solid var(--line);
       overflow-y: auto;
       display: flex; flex-direction: column;
+      scrollbar-width: thin;
+      scrollbar-color: var(--mute) var(--surface);
     }
+    #sidebar::-webkit-scrollbar { width: 8px; }
+    #sidebar::-webkit-scrollbar-thumb { background: var(--mute); border-radius: 4px; }
     #map-wrap { position: relative; }
     #map { width: 100%; height: 100%; background: var(--bg-2); }
 
+    /* SIDEBAR HEADER */
+    .side-head {
+      padding: 1rem 1.25rem 0.85rem;
+      background: var(--panel);
+      border-bottom: 1px solid var(--line);
+    }
+    .side-head-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; }
+    .side-title { font-family: 'JetBrains Mono', monospace; font-size: 0.66rem; color: var(--mute); letter-spacing: 0.2em; text-transform: uppercase; }
+    .updated-pill {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.62rem; color: var(--cyan-l);
+      background: rgba(94,234,212,0.08);
+      padding: 3px 8px; border-radius: 3px;
+      letter-spacing: 0.08em;
+    }
+    .summary { display: flex; gap: 0.4rem; margin-bottom: 0.75rem; }
+    .summary-stat {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 0.55rem 0.65rem;
+    }
+    .summary-num { font-family: 'JetBrains Mono', monospace; font-size: 1.05rem; font-weight: 600; line-height: 1; }
+    .summary-num.up { color: var(--cyan); }
+    .summary-num.down { color: var(--amber); }
+    .summary-num.total { color: var(--text); }
+    .summary-label { font-size: 0.62rem; color: var(--mute); letter-spacing: 0.14em; text-transform: uppercase; margin-top: 0.25rem; font-family: 'JetBrains Mono', monospace; }
+
+    /* SEARCH */
+    .search-wrap { position: relative; }
+    .search-input {
+      width: 100%; background: var(--surface); border: 1px solid var(--line-2);
+      color: var(--text); font-family: inherit; font-size: 0.82rem;
+      padding: 7px 10px 7px 30px; border-radius: 5px;
+      transition: border-color 0.15s;
+    }
+    .search-input:focus { outline: none; border-color: var(--cyan); }
+    .search-input::placeholder { color: var(--mute); }
+    .search-ico { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); color: var(--mute); pointer-events: none; }
+
     /* FILTER PANEL */
     .filter-panel {
-      padding: 1.25rem 1.25rem 1rem;
+      padding: 1rem 1.25rem;
       border-bottom: 1px solid var(--line);
-      background: var(--panel);
     }
-    .filter-title {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.66rem; color: var(--mute);
-      letter-spacing: 0.2em; text-transform: uppercase;
-      margin-bottom: 0.85rem;
-    }
-    .filter-group { margin-bottom: 0.9rem; }
+    .filter-group { margin-bottom: 0.85rem; }
     .filter-group:last-child { margin-bottom: 0; }
     .filter-label {
       display: block;
-      font-size: 0.72rem; color: var(--dim);
+      font-size: 0.66rem; color: var(--mute);
+      letter-spacing: 0.14em; text-transform: uppercase;
       margin-bottom: 0.4rem; font-weight: 500;
+      font-family: 'JetBrains Mono', monospace;
     }
-    .chip-row { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+    .chip-row { display: flex; flex-wrap: wrap; gap: 0.3rem; }
     .chip {
       font-size: 0.72rem; font-weight: 500;
-      padding: 5px 10px; border-radius: 4px;
+      padding: 4px 9px; border-radius: 4px;
       background: transparent; border: 1px solid var(--line-2);
       color: var(--dim); cursor: pointer;
       transition: all 0.15s;
@@ -106,25 +146,25 @@
 
     /* INSIGHT FEED */
     .feed-header {
-      padding: 1rem 1.25rem 0.6rem;
+      padding: 0.85rem 1.25rem 0.5rem;
       display: flex; justify-content: space-between; align-items: baseline;
     }
-    .feed-title { font-size: 0.72rem; font-family: 'JetBrains Mono', monospace; color: var(--mute); letter-spacing: 0.2em; text-transform: uppercase; }
+    .feed-title { font-size: 0.66rem; font-family: 'JetBrains Mono', monospace; color: var(--mute); letter-spacing: 0.2em; text-transform: uppercase; }
     .feed-count { font-size: 0.72rem; font-family: 'JetBrains Mono', monospace; color: var(--cyan-l); }
     .feed { padding: 0 1.25rem 2rem; display: flex; flex-direction: column; gap: 0.6rem; }
     .card {
       background: var(--panel);
       border: 1px solid var(--line);
       border-radius: 8px;
-      padding: 0.9rem 1rem;
+      padding: 0.85rem 1rem;
       cursor: pointer;
       transition: all 0.18s;
       position: relative;
     }
-    .card:hover { border-color: var(--cyan); transform: translateY(-1px); }
-    .card.active { border-color: var(--cyan); background: rgba(94,234,212,0.06); }
-    .card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; gap: 0.75rem; }
-    .card-route { font-size: 0.72rem; font-family: 'JetBrains Mono', monospace; color: var(--mute); letter-spacing: 0.08em; }
+    .card:hover, .card.hover { border-color: var(--cyan); transform: translateY(-1px); }
+    .card.active { border-color: var(--cyan); background: rgba(94,234,212,0.06); box-shadow: 0 0 0 1px var(--cyan) inset; }
+    .card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem; gap: 0.75rem; }
+    .card-route { font-size: 0.7rem; font-family: 'JetBrains Mono', monospace; color: var(--mute); letter-spacing: 0.06em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .card-delta {
       font-family: 'JetBrains Mono', monospace;
       font-size: 0.85rem; font-weight: 600;
@@ -133,11 +173,11 @@
     }
     .card-delta.up { color: var(--cyan); background: rgba(94,234,212,0.1); }
     .card-delta.down { color: var(--amber); background: rgba(245,158,11,0.1); }
-    .card-headline { font-size: 0.95rem; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 0.35rem; line-height: 1.35; color: var(--text); }
+    .card-headline { font-size: 0.92rem; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 0.3rem; line-height: 1.35; color: var(--text); }
     .card-reading { font-size: 0.78rem; color: var(--dim); line-height: 1.55; }
-    .card-meta { margin-top: 0.6rem; display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; }
+    .card-meta { margin-top: 0.55rem; display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
     .theme-tag {
-      font-size: 0.62rem; font-weight: 600;
+      font-size: 0.6rem; font-weight: 600;
       letter-spacing: 0.1em; text-transform: uppercase;
       padding: 2px 6px; border-radius: 3px;
     }
@@ -145,8 +185,16 @@
     .theme-tag.business { color: var(--amber-l); background: rgba(245,158,11,0.1); }
     .theme-tag.migration { color: var(--violet); background: rgba(167,139,250,0.1); }
     .theme-tag.supply-chain { color: #fda4af; background: rgba(253,164,175,0.08); }
-    .card-period { font-size: 0.66rem; color: var(--mute); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.06em; }
-    .card-conf { font-size: 0.62rem; color: var(--mute); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.1em; text-transform: uppercase; margin-left: auto; }
+    .card-period { font-size: 0.64rem; color: var(--mute); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.06em; }
+    .card-vol { font-size: 0.64rem; color: var(--mute); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.04em; margin-left: auto; }
+    .card-conf-dot {
+      display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+      margin-right: 4px;
+      vertical-align: middle;
+    }
+    .card-conf-dot.high { background: var(--cyan); box-shadow: 0 0 6px var(--cyan); }
+    .card-conf-dot.medium { background: var(--cyan-l); }
+    .card-conf-dot.low { background: var(--amber); }
     .empty { padding: 2rem 1rem; text-align: center; color: var(--mute); font-size: 0.85rem; }
 
     /* MAP OVERLAY LEGEND */
@@ -177,6 +225,7 @@
     .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--panel) !important; color: var(--text) !important; border: 1px solid var(--line-2); box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
     .leaflet-popup-content { font-size: 0.8rem; margin: 10px 12px; }
     .leaflet-popup-content strong { color: var(--cyan-l); }
+    .leaflet-interactive:focus { outline: none; }
 
     /* MOBILE */
     .mobile-toggle {
@@ -215,19 +264,23 @@
 <div id="app">
 
   <aside id="sidebar">
-    <div class="filter-panel">
-      <div class="filter-title">Filters</div>
-
-      <div class="filter-group">
-        <label class="filter-label">Granularity</label>
-        <div class="chip-row" data-filter="granularity">
-          <button class="chip active" data-value="all">All</button>
-          <button class="chip" data-value="continent">Continent</button>
-          <button class="chip" data-value="country">Country</button>
-          <button class="chip" data-value="city">City</button>
-        </div>
+    <div class="side-head">
+      <div class="side-head-top">
+        <span class="side-title">Overview</span>
+        <span class="updated-pill" id="updated-pill">—</span>
       </div>
+      <div class="summary" id="summary">
+        <div class="summary-stat"><div class="summary-num total" id="stat-total">—</div><div class="summary-label">Signals</div></div>
+        <div class="summary-stat"><div class="summary-num up"    id="stat-up">—</div><div class="summary-label">Up YoY</div></div>
+        <div class="summary-stat"><div class="summary-num down"  id="stat-down">—</div><div class="summary-label">Down YoY</div></div>
+      </div>
+      <div class="search-wrap">
+        <svg class="search-ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+        <input class="search-input" id="search" type="search" placeholder="Search country or route…" autocomplete="off">
+      </div>
+    </div>
 
+    <div class="filter-panel">
       <div class="filter-group">
         <label class="filter-label">Theme</label>
         <div class="chip-row" data-filter="theme">
@@ -245,6 +298,16 @@
           <button class="chip active" data-value="all">All</button>
           <button class="chip" data-value="up">Up YoY</button>
           <button class="chip" data-value="down">Down YoY</button>
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <label class="filter-label">Sort</label>
+        <div class="chip-row" data-filter="sort">
+          <button class="chip active" data-value="strength">Signal strength</button>
+          <button class="chip" data-value="delta">|Delta|</button>
+          <button class="chip" data-value="volume">Volume</button>
+          <button class="chip" data-value="az">A → Z</button>
         </div>
       </div>
     </div>
@@ -273,9 +336,10 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script>
+  // ---- Map setup ----
   const map = L.map('map', {
-    center: [30, 15],
-    zoom: 2,
+    center: [45, 15],
+    zoom: 3,
     minZoom: 2,
     maxZoom: 6,
     worldCopyJump: true,
@@ -284,24 +348,25 @@
   });
 
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; OpenStreetMap · &copy; CARTO',
-    subdomains: 'abcd',
-    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap · &copy; CARTO · data: Eurostat',
+    subdomains: 'abcd', maxZoom: 19,
   }).addTo(map);
 
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png', {
-    subdomains: 'abcd',
-    maxZoom: 19,
-    pane: 'shadowPane',
-    opacity: 0.45,
+    subdomains: 'abcd', maxZoom: 19,
+    pane: 'shadowPane', opacity: 0.45,
   }).addTo(map);
 
-  const filters = { granularity: 'all', theme: 'all', direction: 'all' };
+  // ---- State ----
+  const filters = { theme: 'all', direction: 'all', sort: 'strength', query: '' };
   let insights = [];
   let activeId = null;
+  let hoverId = null;
   const arcLayer = L.layerGroup().addTo(map);
   const markerLayer = L.layerGroup().addTo(map);
+  const arcById = new Map();
 
+  // ---- Helpers ----
   function greatCircle(a, b, segments = 64) {
     const pts = [];
     const dLat = b.lat - a.lat;
@@ -315,19 +380,53 @@
     return pts;
   }
 
+  function fmtInt(n) {
+    if (!Number.isFinite(n)) return '';
+    if (n >= 1e6) return (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M';
+    if (n >= 1e3) return (n / 1e3).toFixed(1).replace(/\.0$/, '') + 'k';
+    return String(n);
+  }
+
+  function strength(i) { return Math.abs(i.deltaPct || 0) * Math.log10(Math.max(i.volumeCurrent || 100, 10)); }
+
   function passesFilter(i) {
-    if (filters.granularity !== 'all' && i.origin.type !== filters.granularity && i.dest.type !== filters.granularity) return false;
     if (filters.theme !== 'all' && i.theme !== filters.theme) return false;
     if (filters.direction === 'up' && i.deltaPct <= 0) return false;
     if (filters.direction === 'down' && i.deltaPct >= 0) return false;
+    if (filters.query) {
+      const q = filters.query.toLowerCase();
+      const hay = `${i.origin.name} ${i.dest.name} ${i.origin.code} ${i.dest.code} ${i.headline}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
     return true;
+  }
+
+  function sortInsights(list) {
+    const s = filters.sort;
+    const out = list.slice();
+    if (s === 'strength') out.sort((a, b) => strength(b) - strength(a));
+    else if (s === 'delta') out.sort((a, b) => Math.abs(b.deltaPct) - Math.abs(a.deltaPct));
+    else if (s === 'volume') out.sort((a, b) => (b.volumeCurrent || 0) - (a.volumeCurrent || 0));
+    else if (s === 'az') out.sort((a, b) => (a.origin.name + a.dest.name).localeCompare(b.origin.name + b.dest.name));
+    return out;
+  }
+
+  function updateSummary(all) {
+    const total = all.length;
+    const up = all.filter(i => i.deltaPct > 0).length;
+    const down = all.filter(i => i.deltaPct < 0).length;
+    document.getElementById('stat-total').textContent = String(total).padStart(2, '0');
+    document.getElementById('stat-up').textContent = String(up).padStart(2, '0');
+    document.getElementById('stat-down').textContent = String(down).padStart(2, '0');
   }
 
   function render() {
     arcLayer.clearLayers();
     markerLayer.clearLayers();
+    arcById.clear();
 
-    const visible = insights.filter(passesFilter);
+    let visible = insights.filter(passesFilter);
+    visible = sortInsights(visible);
     document.getElementById('feed-count').textContent = String(visible.length).padStart(2, '0');
 
     const feed = document.getElementById('feed');
@@ -337,43 +436,55 @@
       feed.innerHTML = visible.map(cardHtml).join('');
       feed.querySelectorAll('.card').forEach(el => {
         el.addEventListener('click', () => selectInsight(el.dataset.id));
+        el.addEventListener('mouseenter', () => setHover(el.dataset.id));
+        el.addEventListener('mouseleave', () => setHover(null));
       });
     }
 
     visible.forEach(drawInsight);
+    applyHighlight();
   }
 
   function cardHtml(i) {
     const up = i.deltaPct >= 0;
     const sign = up ? '+' : '';
-    const conf = i.confidence ? `<span class="card-conf">${i.confidence}</span>` : '';
+    const conf = (i.confidence || '').toLowerCase();
+    const vol = i.volumeCurrent ? `<span class="card-vol">${fmtInt(i.volumeCurrent)} pax</span>` : '';
     return `
       <div class="card ${i.id === activeId ? 'active' : ''}" data-id="${i.id}">
         <div class="card-top">
-          <span class="card-route">${i.origin.name.toUpperCase()} → ${i.dest.name.toUpperCase()}</span>
-          <span class="card-delta ${up ? 'up' : 'down'}">${sign}${i.deltaPct.toFixed(1)}%</span>
+          <span class="card-route">${i.origin.name.toUpperCase()} ↔ ${i.dest.name.toUpperCase()}</span>
+          <span class="card-delta ${up ? 'up' : 'down'}">${sign}${(+i.deltaPct).toFixed(1)}%</span>
         </div>
-        <div class="card-headline">${i.headline}</div>
-        <div class="card-reading">${i.reading}</div>
+        <div class="card-headline">${escapeHtml(i.headline || '')}</div>
+        <div class="card-reading">${escapeHtml(i.reading || '')}</div>
         <div class="card-meta">
-          <span class="theme-tag ${i.theme}">${i.theme.replace('-', ' ')}</span>
-          <span class="card-period">${i.period}</span>
-          ${conf}
+          <span class="theme-tag ${i.theme || 'business'}">${(i.theme || 'business').replace('-', ' ')}</span>
+          <span class="card-period">${escapeHtml(i.period || '')}</span>
+          ${conf ? `<span class="card-period"><span class="card-conf-dot ${conf}"></span>${conf}</span>` : ''}
+          ${vol}
         </div>
       </div>
     `;
   }
 
+  function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
   function drawInsight(i) {
     const up = i.deltaPct >= 0;
     const color = up ? '#5eead4' : '#f59e0b';
     const weight = Math.min(1 + Math.abs(i.deltaPct) * 0.4, 5);
-    const opacity = i.id === activeId ? 0.95 : 0.55;
 
-    L.polyline(greatCircle(i.origin, i.dest), {
-      color, weight, opacity,
+    const line = L.polyline(greatCircle(i.origin, i.dest), {
+      color, weight, opacity: 0.55,
       lineCap: 'round',
-    }).addTo(arcLayer);
+      className: 'route-arc',
+    });
+    line.on('mouseover', () => setHover(i.id));
+    line.on('mouseout', () => setHover(null));
+    line.on('click', () => selectInsight(i.id));
+    line.addTo(arcLayer);
+    arcById.set(i.id, { line, color, baseWeight: weight });
 
     [i.origin, i.dest].forEach((p, idx) => {
       const isDest = idx === 1;
@@ -383,10 +494,30 @@
         fillColor: isDest ? color : 'transparent',
         fillOpacity: isDest ? 0.9 : 0,
       }).bindPopup(`
-        <strong>${i.origin.name} → ${i.dest.name}</strong><br>
-        ${up ? '+' : ''}${i.deltaPct.toFixed(1)}% · ${i.period}<br>
-        <span style="color:#8a97b3">${i.headline}</span>
+        <strong>${i.origin.name} ↔ ${i.dest.name}</strong><br>
+        ${up ? '+' : ''}${(+i.deltaPct).toFixed(1)}% · ${i.period || ''}<br>
+        <span style="color:#8a97b3">${escapeHtml(i.headline || '')}</span>
       `).addTo(markerLayer);
+    });
+  }
+
+  function setHover(id) {
+    if (hoverId === id) return;
+    hoverId = id;
+    applyHighlight();
+  }
+
+  function applyHighlight() {
+    document.querySelectorAll('.card').forEach(el => {
+      el.classList.toggle('hover', el.dataset.id === hoverId && hoverId !== activeId);
+    });
+    arcById.forEach((rec, id) => {
+      const isActive = id === activeId;
+      const isHover  = id === hoverId;
+      rec.line.setStyle({
+        opacity: isActive ? 0.95 : (isHover ? 0.85 : (hoverId || activeId ? 0.2 : 0.55)),
+        weight:  isActive || isHover ? rec.baseWeight + 1.5 : rec.baseWeight,
+      });
     });
   }
 
@@ -401,6 +532,7 @@
     }
   }
 
+  // ---- Filter bindings ----
   document.querySelectorAll('.chip-row').forEach(row => {
     const key = row.dataset.filter;
     row.addEventListener('click', e => {
@@ -413,14 +545,42 @@
     });
   });
 
+  document.getElementById('search').addEventListener('input', e => {
+    filters.query = e.target.value.trim();
+    render();
+  });
+
   document.getElementById('mobile-toggle').addEventListener('click', () => {
     document.body.classList.toggle('sidebar-open');
   });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && activeId) selectInsight(activeId);
+    if (e.key === '/' && document.activeElement.tagName !== 'INPUT') {
+      e.preventDefault();
+      document.getElementById('search').focus();
+    }
+  });
+
+  // ---- Data load ----
+  function formatUpdated(iso) {
+    if (!iso) return '—';
+    try {
+      const d = new Date(iso);
+      if (isNaN(d)) return iso;
+      const days = Math.floor((Date.now() - d.getTime()) / 86400000);
+      if (days <= 0) return 'updated today';
+      if (days === 1) return 'updated 1d ago';
+      return `updated ${days}d ago`;
+    } catch { return iso; }
+  }
 
   fetch('data/insights.json')
     .then(r => r.json())
     .then(json => {
       insights = json.insights || [];
+      document.getElementById('updated-pill').textContent = formatUpdated(json.meta && json.meta.updated);
+      updateSummary(insights);
       render();
     })
     .catch(err => {
