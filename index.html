@@ -227,6 +227,180 @@
     .leaflet-popup-content strong { color: var(--cyan-l); }
     .leaflet-interactive:focus { outline: none; }
 
+    /* ACTIONS ROW (above feed) */
+    .actions-row {
+      padding: 0 1.25rem 0.5rem;
+      display: flex; gap: 0.4rem; flex-wrap: wrap;
+    }
+    .action-btn {
+      font-family: inherit; font-size: 0.7rem; font-weight: 500;
+      color: var(--dim); background: transparent;
+      border: 1px solid var(--line-2); border-radius: 4px;
+      padding: 4px 9px; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 5px;
+      transition: all 0.15s;
+    }
+    .action-btn:hover { border-color: var(--cyan); color: var(--cyan-l); }
+    .action-btn svg { width: 12px; height: 12px; }
+
+    /* WATCH STAR ON CARDS */
+    .card-star {
+      position: absolute; top: 8px; right: 8px;
+      width: 24px; height: 24px; border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+      background: transparent; border: none; color: var(--mute);
+      cursor: pointer; transition: color 0.15s, transform 0.15s;
+      opacity: 0;
+    }
+    .card:hover .card-star, .card-star.on { opacity: 1; }
+    .card-star:hover { color: var(--amber-l); transform: scale(1.15); }
+    .card-star.on { color: var(--amber); }
+    .card-star svg { width: 14px; height: 14px; }
+    /* keep delta from being covered by the star */
+    .card-top { padding-right: 22px; }
+
+    /* DETAIL DRAWER */
+    .drawer-backdrop {
+      position: fixed; inset: 58px 0 0 0;
+      background: rgba(5,9,18,0.55);
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.25s;
+      z-index: 700;
+    }
+    .drawer-backdrop.open { opacity: 1; pointer-events: auto; }
+    .drawer {
+      position: fixed; top: 58px; right: 0; bottom: 0;
+      width: min(460px, 95vw);
+      background: var(--surface);
+      border-left: 1px solid var(--line);
+      transform: translateX(100%);
+      transition: transform 0.28s cubic-bezier(0.4, 0.2, 0.2, 1);
+      z-index: 750;
+      display: flex; flex-direction: column;
+      box-shadow: -12px 0 40px rgba(0,0,0,0.5);
+    }
+    .drawer.open { transform: translateX(0); }
+    .drawer-head {
+      padding: 1.25rem 1.5rem 1rem;
+      border-bottom: 1px solid var(--line);
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem;
+    }
+    .drawer-eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 0.66rem; color: var(--mute); letter-spacing: 0.16em; text-transform: uppercase; margin-bottom: 0.5rem; }
+    .drawer-title { font-size: 1.35rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; }
+    .drawer-close {
+      background: transparent; border: 1px solid var(--line-2); color: var(--dim);
+      width: 30px; height: 30px; border-radius: 6px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; transition: all 0.15s;
+    }
+    .drawer-close:hover { color: var(--cyan-l); border-color: var(--cyan); }
+    .drawer-body { flex: 1; overflow-y: auto; padding: 1.25rem 1.5rem 2rem; }
+    .drawer-body::-webkit-scrollbar { width: 8px; }
+    .drawer-body::-webkit-scrollbar-thumb { background: var(--mute); border-radius: 4px; }
+
+    .drawer-hero {
+      background: var(--panel); border: 1px solid var(--line);
+      border-radius: 10px; padding: 1rem 1.1rem; margin-bottom: 1.25rem;
+    }
+    .drawer-hero-delta { font-family: 'JetBrains Mono', monospace; font-size: 2rem; font-weight: 600; line-height: 1; letter-spacing: -0.02em; }
+    .drawer-hero-delta.up { color: var(--cyan); }
+    .drawer-hero-delta.down { color: var(--amber); }
+    .drawer-hero-sub { font-size: 0.75rem; color: var(--mute); margin-top: 0.35rem; font-family: 'JetBrains Mono', monospace; letter-spacing: 0.06em; }
+
+    .vol-compare { margin-top: 1rem; display: flex; flex-direction: column; gap: 0.55rem; }
+    .vol-row { display: flex; align-items: center; gap: 0.65rem; font-size: 0.75rem; }
+    .vol-row-label { width: 70px; color: var(--mute); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.06em; }
+    .vol-bar-outer { flex: 1; height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden; }
+    .vol-bar-fill { height: 100%; border-radius: 3px; }
+    .vol-bar-fill.current { background: var(--cyan); box-shadow: 0 0 6px rgba(94,234,212,0.4); }
+    .vol-bar-fill.prior   { background: var(--mute); }
+    .vol-row-num { width: 62px; text-align: right; font-family: 'JetBrains Mono', monospace; color: var(--text); font-variant-numeric: tabular-nums; }
+
+    .drawer-section { margin-bottom: 1.5rem; }
+    .drawer-section h3 {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.66rem; color: var(--mute);
+      letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 0.6rem;
+    }
+    .drawer-reading { font-size: 0.92rem; color: var(--text); line-height: 1.65; }
+    .drawer-meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem 1rem; }
+    .drawer-meta-cell .k { font-size: 0.66rem; color: var(--mute); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 0.25rem; }
+    .drawer-meta-cell .v { font-size: 0.88rem; color: var(--text); }
+    .drawer-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; }
+    .drawer-btn {
+      font-family: inherit; font-size: 0.78rem; font-weight: 600;
+      padding: 8px 14px; border-radius: 5px; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 6px;
+      transition: all 0.15s;
+    }
+    .drawer-btn.primary { background: var(--cyan); color: var(--bg); border: 1px solid var(--cyan); }
+    .drawer-btn.primary:hover { background: var(--cyan-l); border-color: var(--cyan-l); }
+    .drawer-btn.ghost { background: transparent; color: var(--dim); border: 1px solid var(--line-2); }
+    .drawer-btn.ghost:hover { color: var(--cyan-l); border-color: var(--cyan); }
+    .drawer-btn.ok { color: var(--cyan); border-color: var(--cyan); }
+    .drawer-btn svg { width: 13px; height: 13px; }
+
+    .country-chip {
+      display: inline-block;
+      font-family: 'JetBrains Mono', monospace; font-size: 0.7rem;
+      color: var(--cyan-l); background: rgba(94,234,212,0.08);
+      padding: 3px 7px; border-radius: 3px; margin: 0 2px;
+      cursor: pointer; letter-spacing: 0.04em;
+      border: 1px solid transparent; transition: all 0.15s;
+    }
+    .country-chip:hover { border-color: var(--cyan); }
+
+    /* COUNTRY PICKER */
+    .picker-row { display: grid; grid-template-columns: 1fr; gap: 0.5rem; }
+    .picker-field { position: relative; }
+    .picker-field label {
+      display: block; font-size: 0.62rem; color: var(--mute);
+      letter-spacing: 0.14em; text-transform: uppercase;
+      margin-bottom: 0.25rem; font-family: 'JetBrains Mono', monospace;
+    }
+    .picker-input {
+      width: 100%; background: var(--surface); border: 1px solid var(--line-2);
+      color: var(--text); font-family: inherit; font-size: 0.9rem;
+      padding: 8px 30px 8px 10px; border-radius: 5px;
+      transition: border-color 0.15s;
+    }
+    .picker-input:focus { outline: none; border-color: var(--cyan); }
+    .picker-input::placeholder { color: var(--mute); }
+    .picker-clear {
+      position: absolute; right: 6px; top: 50%; transform: translateY(4px);
+      background: transparent; border: none; color: var(--mute); cursor: pointer;
+      padding: 4px; border-radius: 3px; display: flex; align-items: center;
+    }
+    .picker-clear:hover { color: var(--amber-l); }
+    .picker-hint { font-size: 0.7rem; color: var(--mute); margin-top: 0.5rem; line-height: 1.5; }
+
+    /* MAP LANDING PROMPT */
+    .map-prompt {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(11,18,32,0.88);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid var(--line-2);
+      border-radius: 10px;
+      padding: 1.5rem 1.75rem;
+      max-width: 380px; text-align: center;
+      z-index: 380;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+    .map-prompt.hidden { opacity: 0; }
+    .map-prompt-eye { font-family: 'JetBrains Mono', monospace; font-size: 0.66rem; color: var(--cyan-l); letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 0.75rem; }
+    .map-prompt h2 { font-size: 1.1rem; font-weight: 600; letter-spacing: -0.01em; color: var(--text); margin-bottom: 0.5rem; }
+    .map-prompt p { font-size: 0.82rem; color: var(--dim); line-height: 1.55; }
+
+    /* LANDING STATE IN FEED */
+    .feed-landing {
+      padding: 1.5rem 0.5rem;
+      color: var(--dim); font-size: 0.85rem; line-height: 1.6;
+      text-align: center;
+    }
+    .feed-landing .big { color: var(--text); font-weight: 600; margin-bottom: 0.35rem; display: block; font-size: 0.95rem; }
+
     /* MOBILE */
     .mobile-toggle {
       display: none;
@@ -298,6 +472,7 @@
           <button class="chip active" data-value="all">All</button>
           <button class="chip" data-value="up">Up YoY</button>
           <button class="chip" data-value="down">Down YoY</button>
+          <button class="chip" data-value="watched">★ Watched</button>
         </div>
       </div>
 
@@ -316,6 +491,16 @@
       <span class="feed-title">Signals</span>
       <span class="feed-count" id="feed-count">—</span>
     </div>
+    <div class="actions-row">
+      <button class="action-btn" id="btn-export" title="Export currently visible signals as CSV">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Export CSV
+      </button>
+      <button class="action-btn" id="btn-clear-watch" title="Clear all watched signals">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        Clear watched
+      </button>
+    </div>
     <div class="feed" id="feed">
       <div class="empty">Loading signals…</div>
     </div>
@@ -331,6 +516,20 @@
   </div>
 
 </div>
+
+<div class="drawer-backdrop" id="drawer-backdrop"></div>
+<aside class="drawer" id="drawer" aria-hidden="true">
+  <div class="drawer-head">
+    <div>
+      <div class="drawer-eyebrow" id="drawer-route">—</div>
+      <div class="drawer-title" id="drawer-headline">—</div>
+    </div>
+    <button class="drawer-close" id="drawer-close" aria-label="Close">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="drawer-body" id="drawer-body"></div>
+</aside>
 
 <button class="mobile-toggle" id="mobile-toggle">Signals</button>
 
@@ -362,9 +561,27 @@
   let insights = [];
   let activeId = null;
   let hoverId = null;
+  let meta = {};
   const arcLayer = L.layerGroup().addTo(map);
   const markerLayer = L.layerGroup().addTo(map);
   const arcById = new Map();
+
+  // ---- Watchlist (per-viewer, browser storage) ----
+  const WATCH_KEY = 'flightmacro.watched.v1';
+  let watched = new Set();
+  try {
+    const raw = localStorage.getItem(WATCH_KEY);
+    if (raw) watched = new Set(JSON.parse(raw));
+  } catch { /* private mode etc. */ }
+  function saveWatched() {
+    try { localStorage.setItem(WATCH_KEY, JSON.stringify([...watched])); } catch {}
+  }
+  function toggleWatch(id) {
+    if (watched.has(id)) watched.delete(id); else watched.add(id);
+    saveWatched();
+    render();
+    if (activeId === id) openDrawer(id); // refresh drawer star
+  }
 
   // ---- Helpers ----
   function greatCircle(a, b, segments = 64) {
@@ -393,6 +610,7 @@
     if (filters.theme !== 'all' && i.theme !== filters.theme) return false;
     if (filters.direction === 'up' && i.deltaPct <= 0) return false;
     if (filters.direction === 'down' && i.deltaPct >= 0) return false;
+    if (filters.direction === 'watched' && !watched.has(i.id)) return false;
     if (filters.query) {
       const q = filters.query.toLowerCase();
       const hay = `${i.origin.name} ${i.dest.name} ${i.origin.code} ${i.dest.code} ${i.headline}`.toLowerCase();
@@ -435,9 +653,15 @@
     } else {
       feed.innerHTML = visible.map(cardHtml).join('');
       feed.querySelectorAll('.card').forEach(el => {
-        el.addEventListener('click', () => selectInsight(el.dataset.id));
+        el.addEventListener('click', e => {
+          if (e.target.closest('.card-star')) return;
+          selectInsight(el.dataset.id);
+        });
         el.addEventListener('mouseenter', () => setHover(el.dataset.id));
         el.addEventListener('mouseleave', () => setHover(null));
+      });
+      feed.querySelectorAll('.card-star').forEach(el => {
+        el.addEventListener('click', e => { e.stopPropagation(); toggleWatch(el.dataset.id); });
       });
     }
 
@@ -450,8 +674,13 @@
     const sign = up ? '+' : '';
     const conf = (i.confidence || '').toLowerCase();
     const vol = i.volumeCurrent ? `<span class="card-vol">${fmtInt(i.volumeCurrent)} pax</span>` : '';
+    const isWatched = watched.has(i.id);
+    const star = `<button class="card-star ${isWatched ? 'on' : ''}" data-id="${i.id}" title="${isWatched ? 'Remove from watched' : 'Add to watched'}" aria-label="Watch">
+      <svg viewBox="0 0 24 24" fill="${isWatched ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+    </button>`;
     return `
       <div class="card ${i.id === activeId ? 'active' : ''}" data-id="${i.id}">
+        ${star}
         <div class="card-top">
           <span class="card-route">${i.origin.name.toUpperCase()} ↔ ${i.dest.name.toUpperCase()}</span>
           <span class="card-delta ${up ? 'up' : 'down'}">${sign}${(+i.deltaPct).toFixed(1)}%</span>
@@ -529,8 +758,190 @@
       const bounds = L.latLngBounds([[i.origin.lat, i.origin.lng], [i.dest.lat, i.dest.lng]]);
       map.flyToBounds(bounds.pad(0.5), { duration: 0.9, maxZoom: 4 });
       if (window.innerWidth <= 780) document.body.classList.remove('sidebar-open');
+      openDrawer(id);
+    } else {
+      closeDrawer();
     }
   }
+
+  // ---- Drawer ----
+  const drawer = document.getElementById('drawer');
+  const drawerBackdrop = document.getElementById('drawer-backdrop');
+
+  function openDrawer(id) {
+    const i = insights.find(x => x.id === id);
+    if (!i) return;
+    renderDrawer(i);
+    drawer.classList.add('open');
+    drawer.setAttribute('aria-hidden', 'false');
+    drawerBackdrop.classList.add('open');
+  }
+  function closeDrawer() {
+    drawer.classList.remove('open');
+    drawer.setAttribute('aria-hidden', 'true');
+    drawerBackdrop.classList.remove('open');
+    if (activeId) { activeId = null; render(); }
+  }
+  document.getElementById('drawer-close').addEventListener('click', closeDrawer);
+  drawerBackdrop.addEventListener('click', closeDrawer);
+
+  function renderDrawer(i) {
+    const up = i.deltaPct >= 0;
+    const sign = up ? '+' : '';
+    const isWatched = watched.has(i.id);
+    document.getElementById('drawer-route').textContent =
+      `${i.origin.name} ↔ ${i.dest.name}${i.period ? ' · ' + i.period : ''}`;
+    document.getElementById('drawer-headline').textContent = i.headline || '—';
+
+    const vc = i.volumeCurrent || 0;
+    const vp = i.volumePrior || 0;
+    const maxV = Math.max(vc, vp, 1);
+    const barsHtml = (vc || vp) ? `
+      <div class="vol-compare">
+        <div class="vol-row">
+          <span class="vol-row-label">current</span>
+          <div class="vol-bar-outer"><div class="vol-bar-fill current" style="width:${(vc/maxV*100).toFixed(1)}%"></div></div>
+          <span class="vol-row-num">${fmtInt(vc)}</span>
+        </div>
+        <div class="vol-row">
+          <span class="vol-row-label">prior yr</span>
+          <div class="vol-bar-outer"><div class="vol-bar-fill prior" style="width:${(vp/maxV*100).toFixed(1)}%"></div></div>
+          <span class="vol-row-num">${fmtInt(vp)}</span>
+        </div>
+      </div>` : '';
+
+    const body = document.getElementById('drawer-body');
+    body.innerHTML = `
+      <div class="drawer-hero">
+        <div class="drawer-hero-delta ${up ? 'up' : 'down'}">${sign}${(+i.deltaPct).toFixed(1)}%</div>
+        <div class="drawer-hero-sub">${escapeHtml(i.period || '')} · ${(i.theme || 'business').replace('-', ' ')}${i.confidence ? ' · ' + i.confidence + ' confidence' : ''}</div>
+        ${barsHtml}
+      </div>
+
+      <div class="drawer-section">
+        <h3>Reading</h3>
+        <div class="drawer-reading">${escapeHtml(i.reading || 'No reading available.')}</div>
+      </div>
+
+      <div class="drawer-section">
+        <h3>Corridor</h3>
+        <div class="drawer-meta-grid">
+          <div class="drawer-meta-cell"><div class="k">Origin</div><div class="v"><span class="country-chip" data-country="${escapeHtml(i.origin.name)}">${escapeHtml(i.origin.name)}</span></div></div>
+          <div class="drawer-meta-cell"><div class="k">Destination</div><div class="v"><span class="country-chip" data-country="${escapeHtml(i.dest.name)}">${escapeHtml(i.dest.name)}</span></div></div>
+          <div class="drawer-meta-cell"><div class="k">Volume (curr)</div><div class="v">${vc ? vc.toLocaleString() + ' pax' : '—'}</div></div>
+          <div class="drawer-meta-cell"><div class="k">Volume (prior)</div><div class="v">${vp ? vp.toLocaleString() + ' pax' : '—'}</div></div>
+          <div class="drawer-meta-cell"><div class="k">Source</div><div class="v">${escapeHtml(meta.source || 'Eurostat')}</div></div>
+          <div class="drawer-meta-cell"><div class="k">Coverage</div><div class="v" style="font-size:0.78rem">${escapeHtml(meta.coverage || 'EU reporters')}</div></div>
+        </div>
+      </div>
+
+      <div class="drawer-section">
+        <h3>Actions</h3>
+        <div class="drawer-actions">
+          <button class="drawer-btn ${isWatched ? 'ok' : 'ghost'}" id="dw-watch">
+            <svg viewBox="0 0 24 24" fill="${isWatched ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            ${isWatched ? 'Watched' : 'Watch'}
+          </button>
+          <button class="drawer-btn ghost" id="dw-copy">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Copy for note
+          </button>
+          <button class="drawer-btn ghost" id="dw-export-one">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export row
+          </button>
+        </div>
+        <div style="font-size:0.7rem;color:var(--mute);margin-top:0.6rem;line-height:1.5">
+          "Copy for note" produces a citation-ready sentence with source attribution and retrieval date.
+        </div>
+      </div>
+
+      <div class="drawer-section">
+        <h3>Related</h3>
+        ${relatedCorridorsHtml(i)}
+      </div>
+    `;
+
+    document.getElementById('dw-watch').addEventListener('click', () => toggleWatch(i.id));
+    document.getElementById('dw-copy').addEventListener('click', e => copyCitation(i, e.currentTarget));
+    document.getElementById('dw-export-one').addEventListener('click', () => exportCsv([i], `flightmacro_${i.id}.csv`));
+    body.querySelectorAll('.country-chip').forEach(el => {
+      el.addEventListener('click', () => filterToCountry(el.dataset.country));
+    });
+    body.querySelectorAll('[data-related-id]').forEach(el => {
+      el.addEventListener('click', () => selectInsight(el.dataset.relatedId));
+    });
+  }
+
+  function relatedCorridorsHtml(i) {
+    const related = insights
+      .filter(x => x.id !== i.id && (x.origin.code === i.origin.code || x.dest.code === i.origin.code || x.origin.code === i.dest.code || x.dest.code === i.dest.code))
+      .slice(0, 4);
+    if (!related.length) return '<div style="font-size:0.8rem;color:var(--mute)">No overlapping corridors in current dataset.</div>';
+    return related.map(r => {
+      const up = r.deltaPct >= 0;
+      return `<div data-related-id="${r.id}" style="display:flex;justify-content:space-between;padding:0.5rem 0;border-bottom:1px solid var(--line);cursor:pointer;font-size:0.82rem;gap:0.5rem">
+        <span style="color:var(--dim)">${escapeHtml(r.origin.name)} ↔ ${escapeHtml(r.dest.name)}</span>
+        <span style="color:${up ? 'var(--cyan)' : 'var(--amber)'};font-family:'JetBrains Mono',monospace">${up ? '+' : ''}${(+r.deltaPct).toFixed(1)}%</span>
+      </div>`;
+    }).join('');
+  }
+
+  function filterToCountry(name) {
+    document.getElementById('search').value = name;
+    filters.query = name;
+    render();
+    closeDrawer();
+  }
+
+  // ---- Citation + CSV ----
+  function copyCitation(i, btn) {
+    const now = new Date().toISOString().slice(0, 10);
+    const vol = i.volumeCurrent ? `${i.volumeCurrent.toLocaleString()} passengers` : 'material volume';
+    const text = `Flight Macro: ${i.origin.name} ↔ ${i.dest.name} ${i.deltaPct >= 0 ? 'up' : 'down'} ${Math.abs(i.deltaPct).toFixed(1)}% YoY (${i.period}, ${vol}). ${i.reading || ''} Source: ${meta.source || 'Eurostat'} via Flight Macro, retrieved ${now}.`;
+    (navigator.clipboard && navigator.clipboard.writeText
+      ? navigator.clipboard.writeText(text)
+      : Promise.reject('no clipboard')
+    ).then(() => {
+      const orig = btn.innerHTML;
+      btn.innerHTML = '✓ Copied';
+      btn.classList.add('ok');
+      setTimeout(() => { btn.innerHTML = orig; btn.classList.remove('ok'); }, 1600);
+    }).catch(() => alert(text));
+  }
+
+  function exportCsv(rows, filename = 'flightmacro_signals.csv') {
+    if (!rows.length) return;
+    const cols = ['id','origin_name','origin_code','dest_name','dest_code','period','delta_pct','volume_current','volume_prior','theme','confidence','headline','reading'];
+    const esc = v => {
+      if (v == null) return '';
+      const s = String(v);
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const body = rows.map(r => [
+      r.id, r.origin.name, r.origin.code, r.dest.name, r.dest.code,
+      r.period, r.deltaPct, r.volumeCurrent ?? '', r.volumePrior ?? '',
+      r.theme, r.confidence, r.headline, r.reading,
+    ].map(esc).join(','));
+    const csv = [cols.join(','), ...body].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 100);
+  }
+
+  document.getElementById('btn-export').addEventListener('click', () => {
+    const visible = sortInsights(insights.filter(passesFilter));
+    exportCsv(visible, `flightmacro_${new Date().toISOString().slice(0,10)}.csv`);
+  });
+  document.getElementById('btn-clear-watch').addEventListener('click', () => {
+    if (!watched.size) return;
+    if (confirm(`Clear ${watched.size} watched signal(s)?`)) {
+      watched.clear(); saveWatched(); render();
+    }
+  });
 
   // ---- Filter bindings ----
   document.querySelectorAll('.chip-row').forEach(row => {
@@ -555,7 +966,10 @@
   });
 
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && activeId) selectInsight(activeId);
+    if (e.key === 'Escape') {
+      if (drawer.classList.contains('open')) { closeDrawer(); return; }
+      if (activeId) selectInsight(activeId);
+    }
     if (e.key === '/' && document.activeElement.tagName !== 'INPUT') {
       e.preventDefault();
       document.getElementById('search').focus();
@@ -579,7 +993,8 @@
     .then(r => r.json())
     .then(json => {
       insights = json.insights || [];
-      document.getElementById('updated-pill').textContent = formatUpdated(json.meta && json.meta.updated);
+      meta = json.meta || {};
+      document.getElementById('updated-pill').textContent = formatUpdated(meta.updated);
       updateSummary(insights);
       render();
     })
