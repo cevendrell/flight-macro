@@ -44,6 +44,16 @@ class MonthlyPair:
     passengers: int
 
 
+@dataclass
+class MonthlyAirportPair:
+    reporter_country: str    # ISO2 of the reporting country
+    reporter_airport: str    # ICAO of the reporting airport (e.g. "EDDF")
+    partner_country: str     # ISO2 of the partner country
+    partner_airport: str     # ICAO of the partner airport, or "" for country-level rollup
+    month: str
+    passengers: int
+
+
 def _cache_path(dataset: str, params_key: str) -> Path:
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     return CACHE_DIR / f"{dataset}__{params_key}.json"
@@ -177,6 +187,56 @@ def fetch_all(months_current: list[str], months_prior: list[str], polite_delay: 
     for r in REPORTING:
         rows = fetch_country_pairs(r, months_current + months_prior)
         print(f"[eurostat] {r}: {len(rows)} country-pair rows")
+        out.extend(rows)
+        time.sleep(polite_delay)
+    return out
+
+
+def fetch_airport_pairs(
+    reporter: str,
+    months: list[str],
+    unit: str = "PAS",
+    tra_meas: str = "PAS_CRD",
+) -> list[MonthlyAirportPair]:
+    """Same fetch as fetch_country_pairs, but preserves the airport codes on both sides."""
+    dataset = f"avia_par_{reporter.lower()}"
+    params = {"freq": "M", "unit": unit, "tra_meas": tra_meas}
+    query = {**params, "time": months}
+    try:
+        payload = _fetch(dataset, query)
+    except requests.HTTPError as e:
+        print(f"[eurostat] {dataset} failed: {e}")
+        return []
+
+    out: list[MonthlyAirportPair] = []
+    for coords, value in _decode_jsonstat(payload):
+        # For avia_par_*, the reporter airport is fixed via `airp_hz` (some datasets)
+        # or implied by `geo` (which is the reporter country) — we only have partner in `airp_pr`.
+        # Rows here are (reporter_country → partner_airport_or_country).
+        partner_code = coords.get("airp_pr", "")
+        partner_country = _partner_country(partner_code)
+        if not partner_country:
+            continue
+        partner_airport = partner_code if "_" in partner_code else ""
+        # Reporter airport isn't broken out in the country-partner dataset — we'll
+        # assign it later using the alternative `airp_hz_XX` datasets if we ever add them.
+        out.append(MonthlyAirportPair(
+            reporter_country=reporter,
+            reporter_airport="",   # unknown from this dataset alone
+            partner_country=partner_country,
+            partner_airport=partner_airport.split("_", 1)[1] if partner_airport else "",
+            month=coords.get("time", ""),
+            passengers=int(value),
+        ))
+    return out
+
+
+def fetch_all_airport(months: list[str], polite_delay: float = 0.5) -> list[MonthlyAirportPair]:
+    """Iterate all reporting countries; return airport-level rows for city-pair aggregation."""
+    out: list[MonthlyAirportPair] = []
+    for r in REPORTING:
+        rows = fetch_airport_pairs(r, months)
+        print(f"[eurostat] {r}: {len(rows)} airport-level rows")
         out.extend(rows)
         time.sleep(polite_delay)
     return out

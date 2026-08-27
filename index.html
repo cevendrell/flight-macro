@@ -12,7 +12,6 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
   <style>
     :root {
       /* Ground — deep midnight navy, warm enough not to feel like vacuum */
@@ -233,16 +232,36 @@
     .legend-swatch.up { background: var(--up); box-shadow: 0 0 6px rgba(127,168,140,0.5); }
     .legend-swatch.down { background: var(--down); box-shadow: 0 0 6px rgba(184,120,87,0.5); }
 
-    /* LEAFLET DARK OVERRIDES */
-    .leaflet-container { background: var(--bg-2) !important; font-family: 'Inter', sans-serif; }
-    .leaflet-control-attribution { background: rgba(5,9,18,0.7) !important; color: var(--mute) !important; font-size: 10px !important; }
-    .leaflet-control-attribution a { color: var(--dim) !important; }
-    .leaflet-control-zoom a { background: var(--panel) !important; color: var(--dim) !important; border: 1px solid var(--line) !important; }
-    .leaflet-control-zoom a:hover { background: var(--surface) !important; color: var(--brass-l) !important; }
-    .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--panel) !important; color: var(--text) !important; border: 1px solid var(--line-2); box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
-    .leaflet-popup-content { font-size: 0.8rem; margin: 10px 12px; }
-    .leaflet-popup-content strong { color: var(--brass-l); }
-    .leaflet-interactive:focus { outline: none; }
+    /* GLOBE */
+    #map canvas { display: block; outline: none; }
+    #map { cursor: grab; }
+    #map:active { cursor: grabbing; }
+    #map .scene-tooltip {
+      font-family: 'JetBrains Mono', monospace !important;
+      background: rgba(24,32,46,0.94) !important;
+      color: var(--text) !important;
+      border: 1px solid var(--line-2) !important;
+      font-size: 0.72rem !important;
+      padding: 5px 9px !important;
+      border-radius: 5px !important;
+      letter-spacing: 0.05em !important;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.5) !important;
+    }
+    .globe-loading {
+      position: absolute; inset: 0; z-index: 350;
+      background: var(--bg-2);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 0.9rem;
+      transition: opacity 0.4s;
+    }
+    .globe-loading.done { opacity: 0; pointer-events: none; }
+    .globe-loading .spinner {
+      width: 22px; height: 22px; border-radius: 50%;
+      border: 2px solid var(--line-2); border-top-color: var(--brass);
+      animation: spin 0.9s linear infinite;
+    }
+    .globe-loading p { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: var(--mute); letter-spacing: 0.16em; text-transform: uppercase; }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
     /* ACTIONS ROW (above feed) */
     .actions-row {
@@ -477,7 +496,7 @@
           </button>
         </div>
       </div>
-      <div class="picker-hint" id="picker-hint">Pick a country to see its corridors. Add a second country to focus on a specific pair.</div>
+      <div class="picker-hint" id="picker-hint">Click a country on the globe, or type here. City-level corridors (e.g. Frankfurt, Madrid) appear once a country is picked.</div>
     </div>
 
     <div class="filter-panel">
@@ -534,10 +553,14 @@
 
   <div id="map-wrap">
     <div id="map"></div>
+    <div class="globe-loading" id="globe-loading">
+      <div class="spinner"></div>
+      <p>Loading globe</p>
+    </div>
     <div class="map-prompt" id="map-prompt">
       <div class="map-prompt-eye">Start here</div>
-      <h2>Pick a country to explore</h2>
-      <p>Corridors are computed on demand. Use the panel on the left — enter one country to see all of its corridors, or two to focus on a specific pair.</p>
+      <h2>Click a country on the globe</h2>
+      <p>Or type into the panel. Pick one country to see all its corridors, two to focus on a specific pair. Corridors are computed on demand — you'd never look at all of them at once.</p>
     </div>
     <div class="map-legend">
       <div class="legend-title">Route flow YoY</div>
@@ -564,28 +587,86 @@
 
 <button class="mobile-toggle" id="mobile-toggle">Signals</button>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="https://unpkg.com/three@0.155.0/build/three.min.js"></script>
+<script src="https://unpkg.com/globe.gl@2.27.2/dist/globe.gl.min.js"></script>
+<script src="https://unpkg.com/topojson-client@3/dist/topojson-client.min.js"></script>
 <script>
-  // ---- Map setup ----
-  const map = L.map('map', {
-    center: [45, 15],
-    zoom: 3,
-    minZoom: 2,
-    maxZoom: 6,
-    worldCopyJump: true,
-    zoomControl: true,
-    attributionControl: true,
-  });
+  // ---- Globe setup ----
+  const mapEl = document.getElementById('map');
+  const globe = Globe()(mapEl)
+    .backgroundColor('rgba(0,0,0,0)')
+    .globeImageUrl('https://unpkg.com/three-globe@2.31.0/example/img/earth-dark.jpg')
+    .bumpImageUrl('https://unpkg.com/three-globe@2.31.0/example/img/earth-topology.png')
+    .showAtmosphere(true)
+    .atmosphereColor('#8fa8c8')
+    .atmosphereAltitude(0.14)
+    .polygonAltitude(0.006)
+    .polygonCapColor(() => 'rgba(201,168,106,0)')
+    .polygonSideColor(() => 'rgba(201,168,106,0)')
+    .polygonStrokeColor(() => 'rgba(154,148,132,0.35)')
+    .polygonsTransitionDuration(180)
+    .arcColor('color')
+    .arcAltitudeAutoScale(0.4)
+    .arcStroke(a => a.stroke)
+    .arcDashLength(1)
+    .arcDashGap(0)
+    .arcsTransitionDuration(300)
+    .pointsData([])
+    .pointAltitude(0.008)
+    .pointColor('color')
+    .pointRadius(0.35);
 
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; OpenStreetMap · &copy; CARTO · data: Eurostat',
-    subdomains: 'abcd', maxZoom: 19,
-  }).addTo(map);
+  // ── Auto-fit to container, respond to resize ──
+  function resizeGlobe() {
+    const w = mapEl.clientWidth || window.innerWidth;
+    const h = mapEl.clientHeight || window.innerHeight;
+    globe.width(w).height(h);
+  }
+  resizeGlobe();
+  window.addEventListener('resize', resizeGlobe);
 
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png', {
-    subdomains: 'abcd', maxZoom: 19,
-    pane: 'shadowPane', opacity: 0.45,
-  }).addTo(map);
+  // ── Controls: slower auto-rotate before any pick; disable after ──
+  globe.controls().autoRotate = true;
+  globe.controls().autoRotateSpeed = 0.35;
+  globe.controls().enableZoom = true;
+  globe.controls().minDistance = 180;
+  globe.controls().maxDistance = 600;
+
+  // ── Fetch countries GeoJSON (via topojson from unpkg) and wire polygons ──
+  fetch('https://unpkg.com/world-atlas@2.0.2/countries-110m.json')
+    .then(r => r.json())
+    .then(topo => {
+      const countries = topojson.feature(topo, topo.objects.countries).features
+        .filter(f => f.properties && f.properties.name !== 'Antarctica');
+      globe.polygonsData(countries)
+        .polygonLabel(d => `<div class="scene-tooltip">${(d.properties && d.properties.name) || ''}</div>`)
+        .onPolygonHover(hovered => {
+          hoveredCountryFeature = hovered || null;
+          globe
+            .polygonAltitude(d => d === hovered ? 0.02 : 0.006)
+            .polygonCapColor(d => d === hovered ? 'rgba(201,168,106,0.28)' : 'rgba(201,168,106,0)')
+            .polygonStrokeColor(d => d === hovered ? 'rgba(220,194,150,0.9)' : 'rgba(154,148,132,0.35)');
+          mapEl.style.cursor = hovered ? 'pointer' : 'grab';
+        })
+        .onPolygonClick(feat => {
+          const name = feat && feat.properties && feat.properties.name;
+          if (name) handleCountryClickFromMap(name);
+        });
+      document.getElementById('globe-loading').classList.add('done');
+    })
+    .catch(err => {
+      console.warn('World atlas failed:', err);
+      document.getElementById('globe-loading').classList.add('done');
+    });
+
+  // ── When user picks a country by clicking the globe ──
+  function handleCountryClickFromMap(name) {
+    globe.controls().autoRotate = false;
+    if (!pickA.value) { pickA.value = name; }
+    else if (!pickB.value && normName(pickA.value) !== normName(name)) { pickB.value = name; }
+    else { pickA.value = name; pickB.value = ''; }
+    onPickerChange();
+  }
 
   // ---- State ----
   const filters = { theme: 'all', direction: 'all', sort: 'strength', countryA: '', countryB: '' };
@@ -593,8 +674,7 @@
   let activeId = null;
   let hoverId = null;
   let meta = {};
-  const arcLayer = L.layerGroup().addTo(map);
-  const markerLayer = L.layerGroup().addTo(map);
+  let hoveredCountryFeature = null;
   const arcById = new Map();
 
   // ---- Watchlist (per-viewer, browser storage) ----
@@ -615,19 +695,6 @@
   }
 
   // ---- Helpers ----
-  function greatCircle(a, b, segments = 64) {
-    const pts = [];
-    const dLat = b.lat - a.lat;
-    const dLng = b.lng - a.lng;
-    for (let i = 0; i <= segments; i++) {
-      const t = i / segments;
-      const lat = a.lat + dLat * t + Math.sin(Math.PI * t) * Math.abs(dLng) * 0.12;
-      const lng = a.lng + dLng * t;
-      pts.push([lat, lng]);
-    }
-    return pts;
-  }
-
   function fmtInt(n) {
     if (!Number.isFinite(n)) return '';
     if (n >= 1e6) return (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M';
@@ -642,8 +709,9 @@
   function matchesCountry(i, name) {
     const n = normName(name);
     if (!n) return true;
-    return normName(i.origin.name) === n || normName(i.dest.name) === n
-        || normName(i.origin.code) === n || normName(i.dest.code) === n;
+    return normName(i.origin.name)    === n || normName(i.dest.name)    === n
+        || normName(i.origin.code)    === n || normName(i.dest.code)    === n
+        || normName(i.origin.country) === n || normName(i.dest.country) === n;
   }
 
   function corridorSelectionActive() {
@@ -672,8 +740,6 @@
   }
 
   function render() {
-    arcLayer.clearLayers();
-    markerLayer.clearLayers();
     arcById.clear();
 
     const selectionActive = corridorSelectionActive();
@@ -713,10 +779,10 @@
       });
     }
 
-    visible.forEach(drawInsight);
+    drawArcs(visible);
     applyHighlight();
 
-    // Only fly the map when the country selection itself changed — not on sort/theme tweaks.
+    // Only fly the globe when the country selection itself changed — not on sort/theme tweaks.
     const selKey = `${normName(filters.countryA)}|${normName(filters.countryB)}`;
     if (selectionActive && visible.length > 0 && selKey !== lastFlownKey) {
       flyToSelection(visible);
@@ -728,15 +794,21 @@
   let lastFlownKey = '';
 
   function flyToSelection(visible) {
-    // Prefer flying to the covered corridors; fall back to picked-country centroid via first hit.
-    const pts = [];
+    // Centroid of all endpoints; altitude based on max span so both endpoints stay in view.
+    let sumLat = 0, sumLng = 0, n = 0;
+    let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
     visible.forEach(i => {
-      pts.push([i.origin.lat, i.origin.lng]);
-      pts.push([i.dest.lat, i.dest.lng]);
+      [i.origin, i.dest].forEach(p => {
+        sumLat += p.lat; sumLng += p.lng; n++;
+        minLat = Math.min(minLat, p.lat); maxLat = Math.max(maxLat, p.lat);
+        minLng = Math.min(minLng, p.lng); maxLng = Math.max(maxLng, p.lng);
+      });
     });
-    if (!pts.length) return;
-    const bounds = L.latLngBounds(pts);
-    map.flyToBounds(bounds.pad(0.35), { duration: 0.7, maxZoom: 5 });
+    if (!n) return;
+    const span = Math.max(maxLat - minLat, maxLng - minLng);
+    const altitude = Math.min(2.6, Math.max(0.9, span / 40 + 0.9));
+    globe.controls().autoRotate = false;
+    globe.pointOfView({ lat: sumLat / n, lng: sumLng / n, altitude }, 900);
   }
 
   function cardHtml(i) {
@@ -769,35 +841,31 @@
 
   function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
-  function drawInsight(i) {
-    const up = i.deltaPct >= 0;
-    const color = up ? '#7fa88c' : '#b87857';
-    const weight = Math.min(1 + Math.abs(i.deltaPct) * 0.4, 5);
-
-    const line = L.polyline(greatCircle(i.origin, i.dest), {
-      color, weight, opacity: 0.55,
-      lineCap: 'round',
-      className: 'route-arc',
+  function drawArcs(visible) {
+    const arcs = visible.map(i => {
+      const up = i.deltaPct >= 0;
+      const baseHex = up ? '#7fa88c' : '#b87857';
+      const stroke = Math.min(0.35 + Math.abs(i.deltaPct) * 0.06, 1.4);
+      const rec = {
+        id: i.id,
+        startLat: i.origin.lat, startLng: i.origin.lng,
+        endLat:   i.dest.lat,   endLng:   i.dest.lng,
+        color: [baseHex, baseHex],   // gradient array (start,end) supported by globe.gl
+        stroke, baseStroke: stroke, baseColor: baseHex,
+      };
+      arcById.set(i.id, rec);
+      return rec;
     });
-    line.on('mouseover', () => setHover(i.id));
-    line.on('mouseout', () => setHover(null));
-    line.on('click', () => selectInsight(i.id));
-    line.addTo(arcLayer);
-    arcById.set(i.id, { line, color, baseWeight: weight });
+    globe.arcsData(arcs);
 
-    [i.origin, i.dest].forEach((p, idx) => {
-      const isDest = idx === 1;
-      L.circleMarker([p.lat, p.lng], {
-        radius: isDest ? 5 : 4,
-        color, weight: 2,
-        fillColor: isDest ? color : 'transparent',
-        fillOpacity: isDest ? 0.9 : 0,
-      }).bindPopup(`
-        <strong>${i.origin.name} ↔ ${i.dest.name}</strong><br>
-        ${up ? '+' : ''}${(+i.deltaPct).toFixed(1)}% · ${i.period || ''}<br>
-        <span style="color:#9a9484">${escapeHtml(i.headline || '')}</span>
-      `).addTo(markerLayer);
+    // Endpoint pin dots so users can see where the corridor sits on the globe.
+    const points = [];
+    visible.forEach(i => {
+      const color = i.deltaPct >= 0 ? '#a3c1ac' : '#cf9578';
+      points.push({ lat: i.origin.lat, lng: i.origin.lng, color, id: i.id });
+      points.push({ lat: i.dest.lat,   lng: i.dest.lng,   color, id: i.id });
     });
+    globe.pointsData(points).pointRadius(0.4);
   }
 
   function setHover(id) {
@@ -810,14 +878,28 @@
     document.querySelectorAll('.card').forEach(el => {
       el.classList.toggle('hover', el.dataset.id === hoverId && hoverId !== activeId);
     });
-    arcById.forEach((rec, id) => {
-      const isActive = id === activeId;
-      const isHover  = id === hoverId;
-      rec.line.setStyle({
-        opacity: isActive ? 0.95 : (isHover ? 0.85 : (hoverId || activeId ? 0.2 : 0.55)),
-        weight:  isActive || isHover ? rec.baseWeight + 1.5 : rec.baseWeight,
+    if (!arcById.size) return;
+    const anyFocus = !!(hoverId || activeId);
+    globe
+      .arcColor(a => {
+        const rec = arcById.get(a.id) || a;
+        const isFocus = a.id === activeId || a.id === hoverId;
+        const alpha = a.id === activeId ? 1.0 : (a.id === hoverId ? 0.9 : (anyFocus ? 0.18 : 0.65));
+        return withAlpha(rec.baseColor || '#7fa88c', alpha);
+      })
+      .arcStroke(a => {
+        const rec = arcById.get(a.id) || a;
+        const boost = (a.id === activeId || a.id === hoverId) ? 0.6 : 0;
+        return (rec.baseStroke || 0.5) + boost;
       });
-    });
+  }
+
+  function withAlpha(hex, alpha) {
+    const h = hex.replace('#', '');
+    const r = parseInt(h.slice(0, 2), 16);
+    const g = parseInt(h.slice(2, 4), 16);
+    const b = parseInt(h.slice(4, 6), 16);
+    return `rgba(${r},${g},${b},${alpha})`;
   }
 
   function selectInsight(id) {
@@ -825,8 +907,12 @@
     render();
     const i = insights.find(x => x.id === id);
     if (i && activeId) {
-      const bounds = L.latLngBounds([[i.origin.lat, i.origin.lng], [i.dest.lat, i.dest.lng]]);
-      map.flyToBounds(bounds.pad(0.5), { duration: 0.9, maxZoom: 4 });
+      globe.controls().autoRotate = false;
+      const midLat = (i.origin.lat + i.dest.lat) / 2;
+      const midLng = (i.origin.lng + i.dest.lng) / 2;
+      const span = Math.max(Math.abs(i.origin.lat - i.dest.lat), Math.abs(i.origin.lng - i.dest.lng));
+      const altitude = Math.min(2.2, Math.max(0.8, span / 40 + 0.8));
+      globe.pointOfView({ lat: midLat, lng: midLng, altitude }, 900);
       if (window.innerWidth <= 780) document.body.classList.remove('sidebar-open');
       openDrawer(id);
     } else {
@@ -1056,10 +1142,21 @@
   clearB.addEventListener('click', () => { pickB.value = ''; onPickerChange(); pickB.focus(); });
 
   function populateCountryOptions() {
-    const set = new Set();
-    insights.forEach(i => { set.add(i.origin.name); set.add(i.dest.name); });
+    // Prefer country names for autocomplete — cities appear as suggestions too
+    // via origin/dest names, but country selection is the primary flow.
+    const countries = new Set();
+    const cities = new Set();
+    insights.forEach(i => {
+      if (i.origin.country) countries.add(i.origin.country);
+      if (i.dest.country)   countries.add(i.dest.country);
+      countries.add(i.origin.name);
+      countries.add(i.dest.name);
+      if (i.origin.type === 'city') cities.add(i.origin.name);
+      if (i.dest.type   === 'city') cities.add(i.dest.name);
+    });
     const dl = document.getElementById('country-options');
-    dl.innerHTML = [...set].sort().map(n => `<option value="${escapeHtml(n)}">`).join('');
+    dl.innerHTML = [...countries].sort()
+      .map(n => `<option value="${escapeHtml(n)}">`).join('');
   }
 
   document.getElementById('mobile-toggle').addEventListener('click', () => {

@@ -27,15 +27,23 @@ except ImportError:
     print("Install deps: pip install -r scripts/requirements.txt", file=sys.stderr)
     sys.exit(1)
 
+from airports import lookup_icao
 from country_coords import lookup as country_lookup
-from eurostat_client import MonthlyPair, fetch_all
+from eurostat_client import MonthlyAirportPair, MonthlyPair, fetch_all, fetch_all_airport
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 OUT_PATH = REPO_ROOT / "data" / "insights.json"
 
-TOP_N = 25              # how many anomalies to enrich
-VOLUME_FLOOR = 5_000    # min monthly passengers to qualify as material
-DELTA_FLOOR_PCT = 4.0   # min |YoY %| to qualify as anomalous
+# Country-level: broader picture, higher volume floor.
+TOP_N_COUNTRY = 40
+VOLUME_FLOOR_COUNTRY = 5_000
+
+# City-level: many more signals, lower floor. Users pick a country and get a
+# feed of specific city-pair anomalies rather than one aggregate number.
+TOP_N_CITY = 120
+VOLUME_FLOOR_CITY = 1_500
+
+DELTA_FLOOR_PCT = 4.0   # min |YoY %| to qualify as anomalous (both levels)
 
 MODEL = "claude-opus-4-5"
 
@@ -138,16 +146,61 @@ def _pretty_month(yyyymm: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# STEP 1b — INGEST (city-level)
+# ---------------------------------------------------------------------------
+
+def build_city_corridors(rows: list[MonthlyAirportPair], current_month: str, prior_month: str) -> list[Corridor]:
+    """City-pair corridors keyed on (reporter_country, partner_airport_ICAO)."""
+    # (reporter_country, partner_airport_icao) -> {month: passengers}
+    grid: dict[tuple[str, str], dict[str, int]] = {}
+    for r in rows:
+        if not r.partner_airport:
+            continue
+        key = (r.reporter_country, r.partner_airport)
+        months_map = grid.setdefault(key, {})
+        months_map[r.month] = months_map.get(r.month, 0) + r.passengers
+
+    period_label = f"{_pretty_month(current_month)} vs {_pretty_month(prior_month)}"
+    out: list[Corridor] = []
+
+    for (reporter, partner_icao), months in grid.items():
+        vc = months.get(current_month, 0)
+        vp = months.get(prior_month, 0)
+        if vc == 0 or vp == 0:
+            continue
+        partner_ap = lookup_icao(partner_icao)
+        rep_country = country_lookup(reporter)
+        if not partner_ap or not rep_country:
+            continue
+
+        out.append(Corridor(
+            origin_code=reporter, dest_code=partner_ap["country"],
+            origin_name=rep_country["name"],
+            dest_name=f"{partner_ap['city']} ({partner_ap['iata']})",
+            origin_lat=rep_country["lat"], origin_lng=rep_country["lng"],
+            dest_lat=partner_ap["lat"], dest_lng=partner_ap["lng"],
+            period=period_label,
+            volume_current=vc, volume_prior=vp,
+            granularity="city",
+        ))
+    return out
+
+
+# ---------------------------------------------------------------------------
 # STEP 2/3 — FILTER + RANK
 # ---------------------------------------------------------------------------
 
-def rank_anomalies(corridors: list[Corridor]) -> list[Corridor]:
+def rank_anomalies(
+    corridors: list[Corridor],
+    top_n: int,
+    volume_floor: int,
+) -> list[Corridor]:
     filtered = [
         c for c in corridors
-        if c.volume_current >= VOLUME_FLOOR and abs(c.delta_pct) >= DELTA_FLOOR_PCT
+        if c.volume_current >= volume_floor and abs(c.delta_pct) >= DELTA_FLOOR_PCT
     ]
     filtered.sort(key=lambda c: c.signal_strength, reverse=True)
-    return filtered[:TOP_N]
+    return filtered[:top_n]
 
 
 # ---------------------------------------------------------------------------
@@ -195,15 +248,19 @@ def enrich(client: Anthropic, c: Corridor) -> dict:
 # ---------------------------------------------------------------------------
 
 def to_insight(c: Corridor, enrichment: dict) -> dict:
-    slug = f"{c.origin_code.lower()}-{c.dest_code.lower()}-{c.period.replace(' ', '').lower()}"
+    slug = f"{c.origin_code.lower()}-{c.dest_code.lower()}-{c.granularity}-{c.period.replace(' ', '').lower()}"
+    dest_country_name = (country_lookup(c.dest_code) or {}).get("name", c.dest_name)
+    origin_country_name = (country_lookup(c.origin_code) or {}).get("name", c.origin_name)
     return {
         "id": slug,
         "origin": {
             "name": c.origin_name, "code": c.origin_code,
+            "country": origin_country_name,
             "lat": c.origin_lat, "lng": c.origin_lng, "type": c.granularity,
         },
         "dest": {
             "name": c.dest_name, "code": c.dest_code,
+            "country": dest_country_name,
             "lat": c.dest_lat, "lng": c.dest_lng, "type": c.granularity,
         },
         "period": c.period,
@@ -234,14 +291,25 @@ def main() -> int:
     print(f"[cfg] current={current_m}  prior={prior_m}  top_n={TOP_N}  floor={VOLUME_FLOOR:,}")
 
     rows = fetch_all([current_m], [prior_m])
-    print(f"[fetch] {len(rows)} monthly reporter/partner rows")
+    print(f"[fetch] {len(rows)} country-level rows")
 
     corridors = build_corridors(rows, current_m, prior_m)
     print(f"[build] {len(corridors)} unique country-pair corridors")
 
-    ranked = rank_anomalies(corridors)
-    print(f"[rank] {len(ranked)} corridors above threshold")
+    ranked_country = rank_anomalies(corridors, TOP_N_COUNTRY, VOLUME_FLOOR_COUNTRY)
+    print(f"[rank] country: {len(ranked_country)} above threshold")
 
+    # City-level uses the same raw response family (same cache), but keeps airport codes.
+    city_rows = fetch_all_airport([current_m, prior_m])
+    print(f"[fetch] {len(city_rows)} airport-level rows")
+
+    city_corridors = build_city_corridors(city_rows, current_m, prior_m)
+    print(f"[build] {len(city_corridors)} city-pair corridors (partner side known)")
+
+    ranked_city = rank_anomalies(city_corridors, TOP_N_CITY, VOLUME_FLOOR_CITY)
+    print(f"[rank] city: {len(ranked_city)} above threshold")
+
+    ranked = ranked_country + ranked_city
     if not ranked:
         print("[rank] Nothing to publish. Leaving data/insights.json untouched.")
         return 0
