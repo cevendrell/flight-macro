@@ -1,0 +1,96 @@
+{
+  "meta": {
+    "updated": "2026-08-27",
+    "note": "Mock data used for prototype UI. Route deltas are illustrative — the pipeline will overwrite this file daily."
+  },
+  "insights": [
+    {
+      "id": "cn-se-2607",
+      "origin": { "name": "China",    "code": "CN", "lat": 35.86, "lng": 104.20, "type": "country" },
+      "dest":   { "name": "Sweden",   "code": "SE", "lat": 60.13, "lng": 18.64,  "type": "country" },
+      "period": "Jul 2026 vs Jul 2025",
+      "deltaPct": 4.0,
+      "theme": "tourism",
+      "headline": "China → Sweden up 4% YoY",
+      "reading": "Rising middle-class purchasing power in coastal Chinese cities is spilling into Nordic winter destinations. Lapland tour operators report record pre-bookings.",
+      "confidence": "medium"
+    },
+    {
+      "id": "in-ae-2608",
+      "origin": { "name": "India",    "code": "IN", "lat": 20.59, "lng": 78.96,  "type": "country" },
+      "dest":   { "name": "UAE",      "code": "AE", "lat": 23.42, "lng": 53.85,  "type": "country" },
+      "period": "Aug 2026 vs Aug 2025",
+      "deltaPct": 11.2,
+      "theme": "business",
+      "headline": "India → UAE up 11.2% YoY",
+      "reading": "Corridor keeps expanding as Gulf financial centers absorb Indian tech and services capital. Business-class share is climbing faster than leisure.",
+      "confidence": "high"
+    },
+    {
+      "id": "de-us-2607",
+      "origin": { "name": "Germany",  "code": "DE", "lat": 51.16, "lng": 10.45,  "type": "country" },
+      "dest":   { "name": "United States", "code": "US", "lat": 39.82, "lng": -98.58, "type": "country" },
+      "period": "Jul 2026 vs Jul 2025",
+      "deltaPct": -6.4,
+      "theme": "business",
+      "headline": "Germany → US down 6.4% YoY",
+      "reading": "Softer transatlantic business travel tracks the industrial slowdown in German manufacturing. Frankfurt–ORD frequencies cut for winter schedule.",
+      "confidence": "medium"
+    },
+    {
+      "id": "br-pt-2608",
+      "origin": { "name": "Brazil",   "code": "BR", "lat": -14.24, "lng": -51.93, "type": "country" },
+      "dest":   { "name": "Portugal", "code": "PT", "lat": 39.40,  "lng": -8.22,  "type": "country" },
+      "period": "Aug 2026 vs Aug 2025",
+      "deltaPct": 8.7,
+      "theme": "migration",
+      "headline": "Brazil → Portugal up 8.7% YoY",
+      "reading": "Continuing skilled-migration corridor. One-way ticket share and average stay length both rising — consistent with relocation, not tourism.",
+      "confidence": "high"
+    },
+    {
+      "id": "ru-tr-2607",
+      "origin": { "name": "Russia",   "code": "RU", "lat": 61.52, "lng": 105.32, "type": "country" },
+      "dest":   { "name": "Turkey",   "code": "TR", "lat": 38.96, "lng": 35.24,  "type": "country" },
+      "period": "Jul 2026 vs Jul 2025",
+      "deltaPct": -3.1,
+      "theme": "tourism",
+      "headline": "Russia → Turkey down 3.1% YoY",
+      "reading": "First YoY dip in three years. Ruble weakness compressing outbound tourism budgets; Antalya operators pivoting to Gulf and Central Asian markets.",
+      "confidence": "medium"
+    },
+    {
+      "id": "mx-us-2608",
+      "origin": { "name": "Mexico",   "code": "MX", "lat": 23.63, "lng": -102.55, "type": "country" },
+      "dest":   { "name": "United States", "code": "US", "lat": 39.82, "lng": -98.58, "type": "country" },
+      "period": "Aug 2026 vs Aug 2025",
+      "deltaPct": 5.6,
+      "theme": "supply-chain",
+      "headline": "Mexico → US up 5.6% YoY",
+      "reading": "Nearshoring corridor. Growth is concentrated in Monterrey–Detroit and Guadalajara–Dallas — industrial hubs, not leisure destinations.",
+      "confidence": "high"
+    },
+    {
+      "id": "jp-au-2607",
+      "origin": { "name": "Japan",    "code": "JP", "lat": 36.20, "lng": 138.25, "type": "country" },
+      "dest":   { "name": "Australia","code": "AU", "lat": -25.27, "lng": 133.77, "type": "country" },
+      "period": "Jul 2026 vs Jul 2025",
+      "deltaPct": 2.3,
+      "theme": "tourism",
+      "headline": "Japan → Australia up 2.3% YoY",
+      "reading": "Modest expansion as the yen recovers. Ski-season pre-bookings from Tokyo up sharply — a proxy for consumer-confidence recovery.",
+      "confidence": "low"
+    },
+    {
+      "id": "ng-gb-2608",
+      "origin": { "name": "Nigeria",  "code": "NG", "lat": 9.08,  "lng": 8.68,   "type": "country" },
+      "dest":   { "name": "United Kingdom", "code": "GB", "lat": 55.38, "lng": -3.44, "type": "country" },
+      "period": "Aug 2026 vs Aug 2025",
+      "deltaPct": 7.9,
+      "theme": "migration",
+      "headline": "Nigeria → UK up 7.9% YoY",
+      "reading": "Lagos–London corridor continuing to grow despite tightened UK visa rules. Student-visa share of tickets remains the dominant driver.",
+      "confidence": "medium"
+    }
+  ]
+}
