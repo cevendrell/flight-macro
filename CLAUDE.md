@@ -32,19 +32,28 @@ Insights are filtered by:
 - **Time comparison**: month vs same month last year (default), YoY, QoQ
 - **Theme**: tourism, business, migration, supply chain
 
-## Design tokens — aeronautical chart palette
-- `--bg: #050912` (deep navy, near-black)
-- `--bg-2: #080e1a`
-- `--surface: #0b1220`
-- `--panel: #101a2e`
-- `--cyan: #5eead4` (primary accent, "up" trend — pale cockpit teal)
-- `--cyan-l: #99f6e4`
-- `--amber: #f59e0b` (secondary accent, "down" trend — warning amber)
-- `--amber-l: #fbbf24`
-- `--text: #e8ecf5`
-- `--dim: #8a97b3`
-- `--mute: #4a5878`
-- `--line: rgba(255,255,255,0.07)`
+## Design tokens — refined finance-terminal palette
+Warm midnight-navy ground, brass/teak (LayOvr family) as primary accent, sage
+green for up trends, burnt sienna for down. Parchment text (not blue-white) for
+a Bloomberg-terminal-under-a-brass-lamp feel.
+
+- `--bg: #0a1119`   (deep midnight navy, slightly warm)
+- `--bg-2: #0d1420`
+- `--surface: #121a26`
+- `--panel: #18202e`
+- `--brass: #c9a86a`   (primary accent — matches LayOvr teak)
+- `--brass-l: #dcc296`
+- `--brass-d: #8f7748`
+- `--up: #7fa88c`      (sage — ledger up, not neon)
+- `--up-l: #a3c1ac`
+- `--down: #b87857`    (burnt sienna — down)
+- `--down-l: #cf9578`
+- `--steel: #6b8caf`   (subtle aeronautical blue — secondary accent)
+- `--steel-l: #9ab2cc`
+- `--text: #e8dfd0`    (warm parchment)
+- `--dim: #9a9484`
+- `--mute: #5e5a4e`
+- `--line: rgba(201,180,140,0.08)`   (warm hairlines, not white alpha)
 
 Fonts: Inter (UI), JetBrains Mono (numbers, eyebrows, coordinates)
 

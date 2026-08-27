@@ -8,35 +8,52 @@
   <meta property="og:title" content="Flight Macro">
   <meta property="og:description" content="Global macro trends, read through flight data.">
   <title>Flight Macro</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23050912'/%3E%3Cpath d='M6 22 L26 10 M6 10 L26 22' stroke='%235eead4' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230a1119'/%3E%3Cpath d='M6 22 L26 10 M6 10 L26 22' stroke='%23c9a86a' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
   <style>
     :root {
-      --bg:      #050912;
-      --bg-2:    #080e1a;
-      --surface: #0b1220;
-      --panel:   #101a2e;
-      --cyan:    #5eead4;
-      --cyan-d:  #2dd4bf;
-      --cyan-l:  #99f6e4;
-      --amber:   #f59e0b;
-      --amber-l: #fbbf24;
-      --violet:  #a78bfa;
-      --text:    #e8ecf5;
-      --dim:     #8a97b3;
-      --mute:    #4a5878;
-      --line:    rgba(255,255,255,0.07);
-      --line-2:  rgba(255,255,255,0.12);
+      /* Ground — deep midnight navy, warm enough not to feel like vacuum */
+      --bg:      #0a1119;
+      --bg-2:    #0d1420;
+      --surface: #121a26;
+      --panel:   #18202e;
+
+      /* Structure — warm lines instead of pure white alpha */
+      --line:    rgba(201, 180, 140, 0.08);
+      --line-2:  rgba(201, 180, 140, 0.16);
+
+      /* Text — warm parchment, not blue-white */
+      --text:    #e8dfd0;
+      --dim:     #9a9484;
+      --mute:    #5e5a4e;
+
+      /* Primary accent — brass/teak (LayOvr family) */
+      --brass:   #c9a86a;
+      --brass-l: #dcc296;
+      --brass-d: #8f7748;
+
+      /* Trend colors — sage up, burnt sienna down. Muted, ledger-like. */
+      --up:      #7fa88c;
+      --up-l:    #a3c1ac;
+      --down:    #b87857;
+      --down-l:  #cf9578;
+
+      /* Secondary — subtle aeronautical steel blue */
+      --steel:   #6b8caf;
+      --steel-l: #9ab2cc;
+
+      /* Category accents — restrained */
+      --violet:  #9086b8;
     }
 
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { height: 100%; }
     body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); overflow: hidden; -webkit-font-smoothing: antialiased; }
     a { text-decoration: none; color: inherit; }
-    ::selection { background: var(--cyan); color: var(--bg); }
+    ::selection { background: var(--brass); color: var(--bg); }
 
     /* NAV */
     nav {
@@ -49,12 +66,12 @@
       border-bottom: 1px solid var(--line);
     }
     .nav-logo { display: flex; align-items: center; gap: 0.6rem; font-size: 0.95rem; font-weight: 700; letter-spacing: -0.01em; }
-    .nav-mark { width: 26px; height: 26px; border-radius: 6px; background: var(--panel); border: 1px solid var(--cyan); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .nav-mark { width: 26px; height: 26px; border-radius: 6px; background: var(--panel); border: 1px solid var(--brass); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .nav-mark svg { width: 16px; height: 16px; }
     .nav-title-sub { font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; color: var(--mute); letter-spacing: 0.14em; text-transform: uppercase; margin-left: 0.5rem; }
     .nav-links { display: flex; gap: 1.75rem; list-style: none; }
     .nav-links a { font-size: 0.82rem; font-weight: 500; color: var(--dim); transition: color 0.2s; }
-    .nav-links a:hover { color: var(--cyan-l); }
+    .nav-links a:hover { color: var(--brass-l); }
     @media (max-width: 720px) { .nav-title-sub { display: none; } .nav-links { gap: 1rem; } }
 
     /* APP LAYOUT */
@@ -87,8 +104,8 @@
     .side-title { font-family: 'JetBrains Mono', monospace; font-size: 0.66rem; color: var(--mute); letter-spacing: 0.2em; text-transform: uppercase; }
     .updated-pill {
       font-family: 'JetBrains Mono', monospace;
-      font-size: 0.62rem; color: var(--cyan-l);
-      background: rgba(94,234,212,0.08);
+      font-size: 0.62rem; color: var(--brass-l);
+      background: rgba(201,168,106,0.10);
       padding: 3px 8px; border-radius: 3px;
       letter-spacing: 0.08em;
     }
@@ -101,8 +118,8 @@
       padding: 0.55rem 0.65rem;
     }
     .summary-num { font-family: 'JetBrains Mono', monospace; font-size: 1.05rem; font-weight: 600; line-height: 1; }
-    .summary-num.up { color: var(--cyan); }
-    .summary-num.down { color: var(--amber); }
+    .summary-num.up { color: var(--up); }
+    .summary-num.down { color: var(--down); }
     .summary-num.total { color: var(--text); }
     .summary-label { font-size: 0.62rem; color: var(--mute); letter-spacing: 0.14em; text-transform: uppercase; margin-top: 0.25rem; font-family: 'JetBrains Mono', monospace; }
 
@@ -114,7 +131,7 @@
       padding: 7px 10px 7px 30px; border-radius: 5px;
       transition: border-color 0.15s;
     }
-    .search-input:focus { outline: none; border-color: var(--cyan); }
+    .search-input:focus { outline: none; border-color: var(--brass); }
     .search-input::placeholder { color: var(--mute); }
     .search-ico { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); color: var(--mute); pointer-events: none; }
 
@@ -141,8 +158,8 @@
       transition: all 0.15s;
       font-family: inherit;
     }
-    .chip:hover { border-color: var(--cyan); color: var(--cyan-l); }
-    .chip.active { background: var(--cyan); border-color: var(--cyan); color: var(--bg); font-weight: 600; }
+    .chip:hover { border-color: var(--brass); color: var(--brass-l); }
+    .chip.active { background: var(--brass); border-color: var(--brass); color: var(--bg); font-weight: 600; }
 
     /* INSIGHT FEED */
     .feed-header {
@@ -150,7 +167,7 @@
       display: flex; justify-content: space-between; align-items: baseline;
     }
     .feed-title { font-size: 0.66rem; font-family: 'JetBrains Mono', monospace; color: var(--mute); letter-spacing: 0.2em; text-transform: uppercase; }
-    .feed-count { font-size: 0.72rem; font-family: 'JetBrains Mono', monospace; color: var(--cyan-l); }
+    .feed-count { font-size: 0.72rem; font-family: 'JetBrains Mono', monospace; color: var(--brass-l); }
     .feed { padding: 0 1.25rem 2rem; display: flex; flex-direction: column; gap: 0.6rem; }
     .card {
       background: var(--panel);
@@ -161,8 +178,8 @@
       transition: all 0.18s;
       position: relative;
     }
-    .card:hover, .card.hover { border-color: var(--cyan); transform: translateY(-1px); }
-    .card.active { border-color: var(--cyan); background: rgba(94,234,212,0.06); box-shadow: 0 0 0 1px var(--cyan) inset; }
+    .card:hover, .card.hover { border-color: var(--brass); transform: translateY(-1px); }
+    .card.active { border-color: var(--brass); background: rgba(201,168,106,0.07); box-shadow: 0 0 0 1px var(--brass) inset; }
     .card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem; gap: 0.75rem; }
     .card-route { font-size: 0.7rem; font-family: 'JetBrains Mono', monospace; color: var(--mute); letter-spacing: 0.06em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .card-delta {
@@ -171,8 +188,8 @@
       padding: 2px 8px; border-radius: 4px;
       white-space: nowrap;
     }
-    .card-delta.up { color: var(--cyan); background: rgba(94,234,212,0.1); }
-    .card-delta.down { color: var(--amber); background: rgba(245,158,11,0.1); }
+    .card-delta.up { color: var(--up-l); background: rgba(127,168,140,0.12); }
+    .card-delta.down { color: var(--down-l); background: rgba(184,120,87,0.14); }
     .card-headline { font-size: 0.92rem; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 0.3rem; line-height: 1.35; color: var(--text); }
     .card-reading { font-size: 0.78rem; color: var(--dim); line-height: 1.55; }
     .card-meta { margin-top: 0.55rem; display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
@@ -181,10 +198,10 @@
       letter-spacing: 0.1em; text-transform: uppercase;
       padding: 2px 6px; border-radius: 3px;
     }
-    .theme-tag.tourism { color: var(--cyan-l); background: rgba(94,234,212,0.08); }
-    .theme-tag.business { color: var(--amber-l); background: rgba(245,158,11,0.1); }
-    .theme-tag.migration { color: var(--violet); background: rgba(167,139,250,0.1); }
-    .theme-tag.supply-chain { color: #fda4af; background: rgba(253,164,175,0.08); }
+    .theme-tag.tourism      { color: var(--brass-l); background: rgba(201,168,106,0.10); }
+    .theme-tag.business     { color: var(--steel-l); background: rgba(107,140,175,0.14); }
+    .theme-tag.migration    { color: #b8afd6;       background: rgba(144,134,184,0.14); }
+    .theme-tag.supply-chain { color: var(--up-l);   background: rgba(127,168,140,0.10); }
     .card-period { font-size: 0.64rem; color: var(--mute); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.06em; }
     .card-vol { font-size: 0.64rem; color: var(--mute); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.04em; margin-left: auto; }
     .card-conf-dot {
@@ -192,9 +209,9 @@
       margin-right: 4px;
       vertical-align: middle;
     }
-    .card-conf-dot.high { background: var(--cyan); box-shadow: 0 0 6px var(--cyan); }
-    .card-conf-dot.medium { background: var(--cyan-l); }
-    .card-conf-dot.low { background: var(--amber); }
+    .card-conf-dot.high { background: var(--brass); box-shadow: 0 0 6px var(--brass); }
+    .card-conf-dot.medium { background: var(--brass-l); }
+    .card-conf-dot.low { background: var(--down); }
     .empty { padding: 2rem 1rem; text-align: center; color: var(--mute); font-size: 0.85rem; }
 
     /* MAP OVERLAY LEGEND */
@@ -213,18 +230,18 @@
     .legend-title { font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; color: var(--mute); letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 0.5rem; }
     .legend-row { display: flex; align-items: center; gap: 0.5rem; color: var(--dim); margin: 0.3rem 0; font-size: 0.72rem; }
     .legend-swatch { width: 24px; height: 3px; border-radius: 2px; }
-    .legend-swatch.up { background: var(--cyan); box-shadow: 0 0 6px rgba(94,234,212,0.7); }
-    .legend-swatch.down { background: var(--amber); box-shadow: 0 0 6px rgba(245,158,11,0.7); }
+    .legend-swatch.up { background: var(--up); box-shadow: 0 0 6px rgba(127,168,140,0.5); }
+    .legend-swatch.down { background: var(--down); box-shadow: 0 0 6px rgba(184,120,87,0.5); }
 
     /* LEAFLET DARK OVERRIDES */
     .leaflet-container { background: var(--bg-2) !important; font-family: 'Inter', sans-serif; }
     .leaflet-control-attribution { background: rgba(5,9,18,0.7) !important; color: var(--mute) !important; font-size: 10px !important; }
     .leaflet-control-attribution a { color: var(--dim) !important; }
     .leaflet-control-zoom a { background: var(--panel) !important; color: var(--dim) !important; border: 1px solid var(--line) !important; }
-    .leaflet-control-zoom a:hover { background: var(--surface) !important; color: var(--cyan-l) !important; }
+    .leaflet-control-zoom a:hover { background: var(--surface) !important; color: var(--brass-l) !important; }
     .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--panel) !important; color: var(--text) !important; border: 1px solid var(--line-2); box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
     .leaflet-popup-content { font-size: 0.8rem; margin: 10px 12px; }
-    .leaflet-popup-content strong { color: var(--cyan-l); }
+    .leaflet-popup-content strong { color: var(--brass-l); }
     .leaflet-interactive:focus { outline: none; }
 
     /* ACTIONS ROW (above feed) */
@@ -240,7 +257,7 @@
       display: inline-flex; align-items: center; gap: 5px;
       transition: all 0.15s;
     }
-    .action-btn:hover { border-color: var(--cyan); color: var(--cyan-l); }
+    .action-btn:hover { border-color: var(--brass); color: var(--brass-l); }
     .action-btn svg { width: 12px; height: 12px; }
 
     /* WATCH STAR ON CARDS */
@@ -253,8 +270,8 @@
       opacity: 0;
     }
     .card:hover .card-star, .card-star.on { opacity: 1; }
-    .card-star:hover { color: var(--amber-l); transform: scale(1.15); }
-    .card-star.on { color: var(--amber); }
+    .card-star:hover { color: var(--down-l); transform: scale(1.15); }
+    .card-star.on { color: var(--down); }
     .card-star svg { width: 14px; height: 14px; }
     /* keep delta from being covered by the star */
     .card-top { padding-right: 22px; }
@@ -293,7 +310,7 @@
       display: flex; align-items: center; justify-content: center;
       flex-shrink: 0; transition: all 0.15s;
     }
-    .drawer-close:hover { color: var(--cyan-l); border-color: var(--cyan); }
+    .drawer-close:hover { color: var(--brass-l); border-color: var(--brass); }
     .drawer-body { flex: 1; overflow-y: auto; padding: 1.25rem 1.5rem 2rem; }
     .drawer-body::-webkit-scrollbar { width: 8px; }
     .drawer-body::-webkit-scrollbar-thumb { background: var(--mute); border-radius: 4px; }
@@ -303,8 +320,8 @@
       border-radius: 10px; padding: 1rem 1.1rem; margin-bottom: 1.25rem;
     }
     .drawer-hero-delta { font-family: 'JetBrains Mono', monospace; font-size: 2rem; font-weight: 600; line-height: 1; letter-spacing: -0.02em; }
-    .drawer-hero-delta.up { color: var(--cyan); }
-    .drawer-hero-delta.down { color: var(--amber); }
+    .drawer-hero-delta.up { color: var(--up-l); }
+    .drawer-hero-delta.down { color: var(--down-l); }
     .drawer-hero-sub { font-size: 0.75rem; color: var(--mute); margin-top: 0.35rem; font-family: 'JetBrains Mono', monospace; letter-spacing: 0.06em; }
 
     .vol-compare { margin-top: 1rem; display: flex; flex-direction: column; gap: 0.55rem; }
@@ -312,7 +329,7 @@
     .vol-row-label { width: 70px; color: var(--mute); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.06em; }
     .vol-bar-outer { flex: 1; height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden; }
     .vol-bar-fill { height: 100%; border-radius: 3px; }
-    .vol-bar-fill.current { background: var(--cyan); box-shadow: 0 0 6px rgba(94,234,212,0.4); }
+    .vol-bar-fill.current { background: var(--brass); box-shadow: 0 0 6px rgba(201,168,106,0.35); }
     .vol-bar-fill.prior   { background: var(--mute); }
     .vol-row-num { width: 62px; text-align: right; font-family: 'JetBrains Mono', monospace; color: var(--text); font-variant-numeric: tabular-nums; }
 
@@ -332,22 +349,22 @@
       display: inline-flex; align-items: center; gap: 6px;
       transition: all 0.15s;
     }
-    .drawer-btn.primary { background: var(--cyan); color: var(--bg); border: 1px solid var(--cyan); }
-    .drawer-btn.primary:hover { background: var(--cyan-l); border-color: var(--cyan-l); }
+    .drawer-btn.primary { background: var(--brass); color: var(--bg); border: 1px solid var(--brass); }
+    .drawer-btn.primary:hover { background: var(--brass-l); border-color: var(--brass-l); }
     .drawer-btn.ghost { background: transparent; color: var(--dim); border: 1px solid var(--line-2); }
-    .drawer-btn.ghost:hover { color: var(--cyan-l); border-color: var(--cyan); }
-    .drawer-btn.ok { color: var(--cyan); border-color: var(--cyan); }
+    .drawer-btn.ghost:hover { color: var(--brass-l); border-color: var(--brass); }
+    .drawer-btn.ok { color: var(--brass); border-color: var(--brass); }
     .drawer-btn svg { width: 13px; height: 13px; }
 
     .country-chip {
       display: inline-block;
       font-family: 'JetBrains Mono', monospace; font-size: 0.7rem;
-      color: var(--cyan-l); background: rgba(94,234,212,0.08);
+      color: var(--brass-l); background: rgba(201,168,106,0.10);
       padding: 3px 7px; border-radius: 3px; margin: 0 2px;
       cursor: pointer; letter-spacing: 0.04em;
       border: 1px solid transparent; transition: all 0.15s;
     }
-    .country-chip:hover { border-color: var(--cyan); }
+    .country-chip:hover { border-color: var(--brass); }
 
     /* COUNTRY PICKER */
     .picker-row { display: grid; grid-template-columns: 1fr; gap: 0.5rem; }
@@ -363,14 +380,14 @@
       padding: 8px 30px 8px 10px; border-radius: 5px;
       transition: border-color 0.15s;
     }
-    .picker-input:focus { outline: none; border-color: var(--cyan); }
+    .picker-input:focus { outline: none; border-color: var(--brass); }
     .picker-input::placeholder { color: var(--mute); }
     .picker-clear {
       position: absolute; right: 6px; top: 50%; transform: translateY(4px);
       background: transparent; border: none; color: var(--mute); cursor: pointer;
       padding: 4px; border-radius: 3px; display: flex; align-items: center;
     }
-    .picker-clear:hover { color: var(--amber-l); }
+    .picker-clear:hover { color: var(--down-l); }
     .picker-hint { font-size: 0.7rem; color: var(--mute); margin-top: 0.5rem; line-height: 1.5; }
 
     /* MAP LANDING PROMPT */
@@ -389,7 +406,7 @@
       transition: opacity 0.2s;
     }
     .map-prompt.hidden { opacity: 0; }
-    .map-prompt-eye { font-family: 'JetBrains Mono', monospace; font-size: 0.66rem; color: var(--cyan-l); letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 0.75rem; }
+    .map-prompt-eye { font-family: 'JetBrains Mono', monospace; font-size: 0.66rem; color: var(--brass-l); letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 0.75rem; }
     .map-prompt h2 { font-size: 1.1rem; font-weight: 600; letter-spacing: -0.01em; color: var(--text); margin-bottom: 0.5rem; }
     .map-prompt p { font-size: 0.82rem; color: var(--dim); line-height: 1.55; }
 
@@ -405,10 +422,10 @@
     .mobile-toggle {
       display: none;
       position: fixed; bottom: 20px; right: 20px; z-index: 600;
-      background: var(--cyan); color: var(--bg); border: none;
+      background: var(--brass); color: var(--bg); border: none;
       padding: 10px 16px; border-radius: 40px;
       font-family: inherit; font-size: 0.8rem; font-weight: 700;
-      box-shadow: 0 6px 20px rgba(94,234,212,0.35);
+      box-shadow: 0 6px 20px rgba(201,168,106,0.28);
       cursor: pointer;
     }
     @media (max-width: 780px) {
@@ -424,7 +441,7 @@
 <nav>
   <a href="index.html" class="nav-logo">
     <div class="nav-mark">
-      <svg viewBox="0 0 32 32"><path d="M6 22 L26 10 M6 10 L26 22" stroke="#5eead4" stroke-width="2.4" stroke-linecap="round" fill="none"/></svg>
+      <svg viewBox="0 0 32 32"><path d="M6 22 L26 10 M6 10 L26 22" stroke="#c9a86a" stroke-width="2.4" stroke-linecap="round" fill="none"/></svg>
     </div>
     Flight Macro
     <span class="nav-title-sub">macro trends · flight data</span>
@@ -440,18 +457,27 @@
   <aside id="sidebar">
     <div class="side-head">
       <div class="side-head-top">
-        <span class="side-title">Overview</span>
+        <span class="side-title">Explore corridors</span>
         <span class="updated-pill" id="updated-pill">—</span>
       </div>
-      <div class="summary" id="summary">
-        <div class="summary-stat"><div class="summary-num total" id="stat-total">—</div><div class="summary-label">Signals</div></div>
-        <div class="summary-stat"><div class="summary-num up"    id="stat-up">—</div><div class="summary-label">Up YoY</div></div>
-        <div class="summary-stat"><div class="summary-num down"  id="stat-down">—</div><div class="summary-label">Down YoY</div></div>
+      <datalist id="country-options"></datalist>
+      <div class="picker-row">
+        <div class="picker-field">
+          <label>Country A</label>
+          <input class="picker-input" id="pick-a" list="country-options" type="text" placeholder="e.g. Germany" autocomplete="off">
+          <button class="picker-clear" id="clear-a" title="Clear" hidden>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="picker-field">
+          <label>Country B (optional)</label>
+          <input class="picker-input" id="pick-b" list="country-options" type="text" placeholder="e.g. Spain" autocomplete="off">
+          <button class="picker-clear" id="clear-b" title="Clear" hidden>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
       </div>
-      <div class="search-wrap">
-        <svg class="search-ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
-        <input class="search-input" id="search" type="search" placeholder="Search country or route…" autocomplete="off">
-      </div>
+      <div class="picker-hint" id="picker-hint">Pick a country to see its corridors. Add a second country to focus on a specific pair.</div>
     </div>
 
     <div class="filter-panel">
@@ -508,6 +534,11 @@
 
   <div id="map-wrap">
     <div id="map"></div>
+    <div class="map-prompt" id="map-prompt">
+      <div class="map-prompt-eye">Start here</div>
+      <h2>Pick a country to explore</h2>
+      <p>Corridors are computed on demand. Use the panel on the left — enter one country to see all of its corridors, or two to focus on a specific pair.</p>
+    </div>
     <div class="map-legend">
       <div class="legend-title">Route flow YoY</div>
       <div class="legend-row"><div class="legend-swatch up"></div> Increasing</div>
@@ -557,7 +588,7 @@
   }).addTo(map);
 
   // ---- State ----
-  const filters = { theme: 'all', direction: 'all', sort: 'strength', query: '' };
+  const filters = { theme: 'all', direction: 'all', sort: 'strength', countryA: '', countryB: '' };
   let insights = [];
   let activeId = null;
   let hoverId = null;
@@ -606,16 +637,27 @@
 
   function strength(i) { return Math.abs(i.deltaPct || 0) * Math.log10(Math.max(i.volumeCurrent || 100, 10)); }
 
+  function normName(s) { return String(s || '').trim().toLowerCase(); }
+
+  function matchesCountry(i, name) {
+    const n = normName(name);
+    if (!n) return true;
+    return normName(i.origin.name) === n || normName(i.dest.name) === n
+        || normName(i.origin.code) === n || normName(i.dest.code) === n;
+  }
+
+  function corridorSelectionActive() {
+    return !!(filters.countryA || filters.countryB);
+  }
+
   function passesFilter(i) {
+    if (!corridorSelectionActive()) return false;         // country-first: nothing until picked
+    if (!matchesCountry(i, filters.countryA)) return false;
+    if (!matchesCountry(i, filters.countryB)) return false;
     if (filters.theme !== 'all' && i.theme !== filters.theme) return false;
     if (filters.direction === 'up' && i.deltaPct <= 0) return false;
     if (filters.direction === 'down' && i.deltaPct >= 0) return false;
     if (filters.direction === 'watched' && !watched.has(i.id)) return false;
-    if (filters.query) {
-      const q = filters.query.toLowerCase();
-      const hay = `${i.origin.name} ${i.dest.name} ${i.origin.code} ${i.dest.code} ${i.headline}`.toLowerCase();
-      if (!hay.includes(q)) return false;
-    }
     return true;
   }
 
@@ -629,27 +671,33 @@
     return out;
   }
 
-  function updateSummary(all) {
-    const total = all.length;
-    const up = all.filter(i => i.deltaPct > 0).length;
-    const down = all.filter(i => i.deltaPct < 0).length;
-    document.getElementById('stat-total').textContent = String(total).padStart(2, '0');
-    document.getElementById('stat-up').textContent = String(up).padStart(2, '0');
-    document.getElementById('stat-down').textContent = String(down).padStart(2, '0');
-  }
-
   function render() {
     arcLayer.clearLayers();
     markerLayer.clearLayers();
     arcById.clear();
 
+    const selectionActive = corridorSelectionActive();
+    document.getElementById('map-prompt').classList.toggle('hidden', selectionActive);
+
     let visible = insights.filter(passesFilter);
     visible = sortInsights(visible);
-    document.getElementById('feed-count').textContent = String(visible.length).padStart(2, '0');
+    document.getElementById('feed-count').textContent = selectionActive ? String(visible.length).padStart(2, '0') : '—';
 
     const feed = document.getElementById('feed');
-    if (visible.length === 0) {
-      feed.innerHTML = '<div class="empty">No signals match these filters.</div>';
+    if (!selectionActive) {
+      feed.innerHTML = `
+        <div class="feed-landing">
+          <span class="big">No corridor selected</span>
+          Pick <strong style="color:var(--brass-l)">Country A</strong> above to load its corridors.<br>
+          Add <strong style="color:var(--brass-l)">Country B</strong> to focus on a specific pair.
+        </div>`;
+    } else if (visible.length === 0) {
+      feed.innerHTML = `
+        <div class="feed-landing">
+          <span class="big">No signal computed for this selection</span>
+          The current dataset doesn't have a material anomaly on this corridor.<br>
+          Try a different pair, remove Country B to widen, or check back after the next daily update.
+        </div>`;
     } else {
       feed.innerHTML = visible.map(cardHtml).join('');
       feed.querySelectorAll('.card').forEach(el => {
@@ -667,6 +715,28 @@
 
     visible.forEach(drawInsight);
     applyHighlight();
+
+    // Only fly the map when the country selection itself changed — not on sort/theme tweaks.
+    const selKey = `${normName(filters.countryA)}|${normName(filters.countryB)}`;
+    if (selectionActive && visible.length > 0 && selKey !== lastFlownKey) {
+      flyToSelection(visible);
+      lastFlownKey = selKey;
+    } else if (!selectionActive) {
+      lastFlownKey = '';
+    }
+  }
+  let lastFlownKey = '';
+
+  function flyToSelection(visible) {
+    // Prefer flying to the covered corridors; fall back to picked-country centroid via first hit.
+    const pts = [];
+    visible.forEach(i => {
+      pts.push([i.origin.lat, i.origin.lng]);
+      pts.push([i.dest.lat, i.dest.lng]);
+    });
+    if (!pts.length) return;
+    const bounds = L.latLngBounds(pts);
+    map.flyToBounds(bounds.pad(0.35), { duration: 0.7, maxZoom: 5 });
   }
 
   function cardHtml(i) {
@@ -701,7 +771,7 @@
 
   function drawInsight(i) {
     const up = i.deltaPct >= 0;
-    const color = up ? '#5eead4' : '#f59e0b';
+    const color = up ? '#7fa88c' : '#b87857';
     const weight = Math.min(1 + Math.abs(i.deltaPct) * 0.4, 5);
 
     const line = L.polyline(greatCircle(i.origin, i.dest), {
@@ -725,7 +795,7 @@
       }).bindPopup(`
         <strong>${i.origin.name} ↔ ${i.dest.name}</strong><br>
         ${up ? '+' : ''}${(+i.deltaPct).toFixed(1)}% · ${i.period || ''}<br>
-        <span style="color:#8a97b3">${escapeHtml(i.headline || '')}</span>
+        <span style="color:#9a9484">${escapeHtml(i.headline || '')}</span>
       `).addTo(markerLayer);
     });
   }
@@ -882,15 +952,19 @@
       const up = r.deltaPct >= 0;
       return `<div data-related-id="${r.id}" style="display:flex;justify-content:space-between;padding:0.5rem 0;border-bottom:1px solid var(--line);cursor:pointer;font-size:0.82rem;gap:0.5rem">
         <span style="color:var(--dim)">${escapeHtml(r.origin.name)} ↔ ${escapeHtml(r.dest.name)}</span>
-        <span style="color:${up ? 'var(--cyan)' : 'var(--amber)'};font-family:'JetBrains Mono',monospace">${up ? '+' : ''}${(+r.deltaPct).toFixed(1)}%</span>
+        <span style="color:${up ? 'var(--brass)' : 'var(--down)'};font-family:'JetBrains Mono',monospace">${up ? '+' : ''}${(+r.deltaPct).toFixed(1)}%</span>
       </div>`;
     }).join('');
   }
 
   function filterToCountry(name) {
-    document.getElementById('search').value = name;
-    filters.query = name;
-    render();
+    // Set as Country A; if A is already this country, promote to Country B.
+    if (normName(pickA.value) === normName(name)) {
+      pickB.value = name;
+    } else {
+      pickA.value = name;
+    }
+    onPickerChange();
     closeDrawer();
   }
 
@@ -956,10 +1030,37 @@
     });
   });
 
-  document.getElementById('search').addEventListener('input', e => {
-    filters.query = e.target.value.trim();
+  // ---- Country pickers ----
+  const pickA = document.getElementById('pick-a');
+  const pickB = document.getElementById('pick-b');
+  const clearA = document.getElementById('clear-a');
+  const clearB = document.getElementById('clear-b');
+
+  function updatePickerClearButtons() {
+    clearA.hidden = !pickA.value;
+    clearB.hidden = !pickB.value;
+  }
+
+  function onPickerChange() {
+    filters.countryA = pickA.value.trim();
+    filters.countryB = pickB.value.trim();
+    updatePickerClearButtons();
     render();
-  });
+  }
+
+  pickA.addEventListener('input', onPickerChange);
+  pickB.addEventListener('input', onPickerChange);
+  pickA.addEventListener('change', onPickerChange);
+  pickB.addEventListener('change', onPickerChange);
+  clearA.addEventListener('click', () => { pickA.value = ''; onPickerChange(); pickA.focus(); });
+  clearB.addEventListener('click', () => { pickB.value = ''; onPickerChange(); pickB.focus(); });
+
+  function populateCountryOptions() {
+    const set = new Set();
+    insights.forEach(i => { set.add(i.origin.name); set.add(i.dest.name); });
+    const dl = document.getElementById('country-options');
+    dl.innerHTML = [...set].sort().map(n => `<option value="${escapeHtml(n)}">`).join('');
+  }
 
   document.getElementById('mobile-toggle').addEventListener('click', () => {
     document.body.classList.toggle('sidebar-open');
@@ -972,7 +1073,7 @@
     }
     if (e.key === '/' && document.activeElement.tagName !== 'INPUT') {
       e.preventDefault();
-      document.getElementById('search').focus();
+      pickA.focus();
     }
   });
 
@@ -995,7 +1096,7 @@
       insights = json.insights || [];
       meta = json.meta || {};
       document.getElementById('updated-pill').textContent = formatUpdated(meta.updated);
-      updateSummary(insights);
+      populateCountryOptions();
       render();
     })
     .catch(err => {

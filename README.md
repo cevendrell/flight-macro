@@ -11,7 +11,7 @@ A map-first dashboard that reads global flight-route data as a lens on macroecon
 - `.github/workflows/update-insights.yml` — daily cron that runs the pipeline
 
 ## Aesthetic
-Aeronautical-chart palette: deep navy background, pale cyan for up-trends, warm amber for down-trends. Inter + JetBrains Mono.
+Refined finance-terminal palette: warm midnight-navy ground, brass/teak (LayOvr family) as primary accent, sage green for up trends, burnt sienna for down. Parchment text on cool dark ground. Inter + JetBrains Mono.
 
 ## Data pipeline (daily)
 1. Fetch route-level flight volumes (OpenSky, BTS T-100, Eurocontrol)
