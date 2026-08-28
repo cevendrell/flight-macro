@@ -71,17 +71,100 @@
     .nav-links { display: flex; gap: 1.75rem; list-style: none; }
     .nav-links a { font-size: 0.82rem; font-weight: 500; color: var(--dim); transition: color 0.2s; }
     .nav-links a:hover { color: var(--brass-l); }
+    .nav-fav {
+      display: inline-flex; align-items: center;
+      background: transparent; border: 1px solid var(--line-2);
+      color: var(--brass-l); font-family: inherit; font-size: 0.78rem; font-weight: 500;
+      padding: 6px 12px; border-radius: 5px; cursor: pointer;
+      transition: all 0.15s;
+    }
+    .nav-fav:hover { border-color: var(--brass); background: rgba(201,168,106,0.08); }
+    .nav-fav.open { border-color: var(--brass); background: rgba(201,168,106,0.12); }
+    .nav-fav svg { color: var(--brass); }
+    .nav-fav-count {
+      margin-left: 6px; background: var(--brass); color: var(--bg);
+      font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; font-weight: 700;
+      padding: 1px 6px; border-radius: 8px; letter-spacing: 0;
+    }
+
+    /* Favorites floating panel */
+    .fav-panel {
+      position: fixed; top: 62px; right: 16px; z-index: 900;
+      background: var(--panel);
+      border: 1px solid var(--line-2);
+      border-radius: 8px;
+      width: min(340px, 90vw);
+      max-height: calc(100vh - 100px);
+      display: flex; flex-direction: column;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.55);
+      overflow: hidden;
+    }
+    .fav-panel[hidden] { display: none; }
+    .fav-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--line);
+      font-family: 'JetBrains Mono', monospace; font-size: 0.7rem;
+      color: var(--brass-l); letter-spacing: 0.16em; text-transform: uppercase;
+    }
+    .fav-clear {
+      background: transparent; border: none; color: var(--mute); cursor: pointer;
+      font-family: inherit; font-size: 0.65rem; letter-spacing: 0.08em;
+      padding: 2px 6px; border-radius: 3px; text-transform: uppercase;
+    }
+    .fav-clear:hover { color: var(--down-l); }
+    .fav-body { overflow-y: auto; padding: 4px 0 8px; }
+    .fav-group-title {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.6rem;
+      color: var(--mute); letter-spacing: 0.16em; text-transform: uppercase;
+      padding: 10px 14px 4px;
+    }
+    .fav-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 14px;
+      cursor: pointer; transition: background 0.12s;
+      font-size: 0.85rem; color: var(--text);
+    }
+    .fav-item:hover { background: rgba(201,168,106,0.08); color: var(--brass-l); }
+    .fav-item .fav-remove {
+      background: transparent; border: none; color: var(--mute); cursor: pointer;
+      padding: 2px 4px; border-radius: 3px; opacity: 0;
+      display: flex; align-items: center;
+    }
+    .fav-item:hover .fav-remove { opacity: 1; }
+    .fav-item .fav-remove:hover { color: var(--down-l); }
+    .fav-item .fav-meta {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.66rem;
+      color: var(--mute); letter-spacing: 0.04em;
+    }
+    .fav-empty {
+      padding: 22px 18px; text-align: center; color: var(--mute);
+      font-size: 0.82rem; line-height: 1.5;
+    }
+
+    /* Hero star button — appears on country / region nodes to favorite them */
+    .hero-star {
+      background: transparent; border: 1px solid var(--line-2); color: var(--mute);
+      font-family: inherit; cursor: pointer;
+      padding: 4px 10px; border-radius: 5px;
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 0.72rem; letter-spacing: 0.04em;
+      transition: all 0.15s;
+      margin-top: 0.5rem;
+    }
+    .hero-star:hover { color: var(--brass-l); border-color: var(--brass); }
+    .hero-star.on { color: var(--brass); border-color: var(--brass); background: rgba(201,168,106,0.10); }
+    .hero-star svg { width: 12px; height: 12px; }
     @media (max-width: 720px) { .nav-title-sub { display: none; } .nav-links { gap: 1rem; } }
 
-    /* APP LAYOUT — 3-column grid, drawer collapses when closed so globe fills the rest */
+    /* APP LAYOUT — 2-column grid; drawer overlays the left of the globe when open */
     #app {
       display: grid;
-      grid-template-columns: 400px 0px 1fr;
+      grid-template-columns: 400px 1fr;
       height: 100vh;
       padding-top: 58px;
-      transition: grid-template-columns 0.28s cubic-bezier(0.4, 0.2, 0.2, 1);
+      position: relative;
     }
-    body.drawer-open #app { grid-template-columns: 400px 440px 1fr; }
 
     #sidebar {
       background: var(--surface);
@@ -473,16 +556,22 @@
     /* keep delta from being covered by the star */
     .card-top { padding-right: 22px; }
 
-    /* DETAIL DRAWER — grid child between sidebar and map, globe stays navigable */
+    /* DETAIL DRAWER — floats over the left edge of the globe area; globe stays put */
     .drawer {
+      position: absolute;
+      top: 0; bottom: 0; left: 400px;
+      width: 440px; max-width: calc(100vw - 400px);
       background: var(--surface);
       border-right: 1px solid var(--line);
+      box-shadow: 6px 0 24px rgba(0,0,0,0.35);
       overflow: hidden;
       display: flex; flex-direction: column;
-      opacity: 0;
-      transition: opacity 0.18s ease 0.06s;
+      transform: translateX(-8px);
+      opacity: 0; pointer-events: none;
+      transition: transform 0.22s ease, opacity 0.18s ease;
+      z-index: 40;
     }
-    body.drawer-open .drawer { opacity: 1; }
+    body.drawer-open .drawer { opacity: 1; pointer-events: auto; transform: translateX(0); }
     .drawer-head {
       padding: 1.25rem 1.5rem 1rem;
       border-bottom: 1px solid var(--line);
@@ -716,7 +805,12 @@
     <span class="nav-title-sub">macro trends · flight data</span>
   </a>
   <ul class="nav-links">
-    <li><a href="pages/methodology/index.html">Methodology</a></li>
+    <li>
+      <button class="nav-fav" id="nav-fav" title="Your favorites">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        Favorites <span class="nav-fav-count" id="nav-fav-count" hidden></span>
+      </button>
+    </li>
     <li><a href="pages/about/index.html">About</a></li>
   </ul>
 </nav>
@@ -811,6 +905,14 @@
 
 </div>
 
+<div class="fav-panel" id="fav-panel" hidden>
+  <div class="fav-head">
+    <span>Favorites</span>
+    <button class="fav-clear" id="fav-clear" title="Remove all">Clear all</button>
+  </div>
+  <div class="fav-body" id="fav-body"></div>
+</div>
+
 <button class="mobile-toggle" id="mobile-toggle">Signals</button>
 
 <script src="https://unpkg.com/three@0.155.0/build/three.min.js"></script>
@@ -826,10 +928,10 @@
     .showAtmosphere(true)
     .atmosphereColor('#a4b1c6')             // slightly warmer than pure cool blue
     .atmosphereAltitude(0.18)               // bigger halo — helps the "lamp-lit" feel
-    .polygonAltitude(0.006)
+    .polygonAltitude(0.001)
     .polygonCapColor(() => 'rgba(201,168,106,0)')
     .polygonSideColor(() => 'rgba(201,168,106,0)')
-    .polygonStrokeColor(() => 'rgba(154,148,132,0.35)')
+    .polygonStrokeColor(() => 'rgba(154,148,132,0.22)')
     .polygonsTransitionDuration(180)
     // Two-layer arcs: solid faded base + flowing dashed overlay (IEA-style)
     .arcColor('color')
@@ -872,20 +974,20 @@
       window._countryFeatures = countries;   // stash so we can repaint after data loads
       globe.polygonsData(countries)
         .polygonLabel(d => countryHoverLabel(d))
-        .polygonAltitude(0.003)              // baseline — closer to the surface
+        .polygonAltitude(0.001)              // painted right on the surface
         .polygonCapColor(d => countryCapColor(d))
-        .polygonStrokeColor(() => 'rgba(154,148,132,0.25)')
+        .polygonStrokeColor(() => 'rgba(154,148,132,0.22)')
         .onPolygonHover(hovered => {
           hoveredCountryFeature = hovered || null;
           globe
-            // Hover lifts only a hair — was 0.02, now 0.009. Much less "floating".
-            .polygonAltitude(d => d === hovered ? 0.009 : 0.003)
+            // No perceptible lift on hover — brighter tint + bright stroke do the work.
+            .polygonAltitude(d => d === hovered ? 0.002 : 0.001)
             .polygonCapColor(d => d === hovered
               ? mixHoverColor(countryCapColor(d))
               : countryCapColor(d))
             .polygonStrokeColor(d => d === hovered
-              ? 'rgba(220,194,150,0.75)'
-              : 'rgba(154,148,132,0.25)');
+              ? 'rgba(220,194,150,0.9)'
+              : 'rgba(154,148,132,0.22)');
           mapEl.style.cursor = hovered ? 'pointer' : 'grab';
         })
         .onPolygonClick(feat => {
@@ -1024,21 +1126,59 @@
     'Oceania':           { members: ['AU','NZ'] },
   };
 
-  // ---- Watchlist (per-viewer, browser storage) ----
-  const WATCH_KEY = 'ovrhead.watched.v1';
-  let watched = new Set();
+  // ---- Favorites (unified: countries + regions + corridors) ----
+  const FAV_KEY = 'ovrhead.favorites.v1';
+  const LEGACY_WATCH_KEY = 'ovrhead.watched.v1';
+  const favorites = { countries: new Set(), regions: new Set(), corridors: new Set() };
   try {
-    const raw = localStorage.getItem(WATCH_KEY);
-    if (raw) watched = new Set(JSON.parse(raw));
+    const raw = localStorage.getItem(FAV_KEY);
+    if (raw) {
+      const j = JSON.parse(raw);
+      if (Array.isArray(j.countries)) j.countries.forEach(x => favorites.countries.add(x));
+      if (Array.isArray(j.regions))   j.regions.forEach(x   => favorites.regions.add(x));
+      if (Array.isArray(j.corridors)) j.corridors.forEach(x => favorites.corridors.add(x));
+    } else {
+      // migrate legacy watched-key (corridor ids only)
+      const legacy = localStorage.getItem(LEGACY_WATCH_KEY);
+      if (legacy) JSON.parse(legacy).forEach(x => favorites.corridors.add(x));
+    }
   } catch { /* private mode etc. */ }
-  function saveWatched() {
-    try { localStorage.setItem(WATCH_KEY, JSON.stringify([...watched])); } catch {}
+  function saveFavorites() {
+    try {
+      localStorage.setItem(FAV_KEY, JSON.stringify({
+        countries: [...favorites.countries],
+        regions:   [...favorites.regions],
+        corridors: [...favorites.corridors],
+      }));
+    } catch {}
   }
+  function favCount() {
+    return favorites.countries.size + favorites.regions.size + favorites.corridors.size;
+  }
+  function updateFavBadge() {
+    const el = document.getElementById('nav-fav-count');
+    if (!el) return;
+    const n = favCount();
+    el.textContent = n ? String(n) : '';
+    el.hidden = n === 0;
+  }
+
+  // Legacy alias — the corridor thesis cards still call toggleWatch(id).
+  const watched = favorites.corridors;
   function toggleWatch(id) {
-    if (watched.has(id)) watched.delete(id); else watched.add(id);
-    saveWatched();
+    if (favorites.corridors.has(id)) favorites.corridors.delete(id); else favorites.corridors.add(id);
+    saveFavorites();
+    updateFavBadge();
     render();
     if (activeId === id) openDrawer(id); // refresh drawer star
+  }
+  function toggleFavCountry(name) {
+    if (favorites.countries.has(name)) favorites.countries.delete(name); else favorites.countries.add(name);
+    saveFavorites(); updateFavBadge(); render();
+  }
+  function toggleFavRegion(name) {
+    if (favorites.regions.has(name)) favorites.regions.delete(name); else favorites.regions.add(name);
+    saveFavorites(); updateFavBadge(); render();
   }
 
   // ---- Helpers ----
@@ -1263,13 +1403,31 @@
       return;
     }
     const agg = aggregate(scoped);
+    // Star button only for country/region — corridors get their own star on the card.
+    const starrable = node.kind === 'country' || node.kind === 'region';
+    const isStarred = starrable && (
+      (node.kind === 'country' && favorites.countries.has(node.name)) ||
+      (node.kind === 'region'  && favorites.regions.has(node.name))
+    );
+    const starBtn = starrable ? `
+      <button class="hero-star ${isStarred ? 'on' : ''}" id="hero-star" title="${isStarred ? 'Remove from favorites' : 'Save to favorites'}">
+        <svg viewBox="0 0 24 24" fill="${isStarred ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        ${isStarred ? 'Favorited' : 'Save to favorites'}
+      </button>` : '';
+
     hero.innerHTML = `
       <div class="hero-eyebrow">${kindLabel} · ${escapeHtml(node.name)} · ${escapeHtml((meta && meta.period) || '')}</div>
       <div class="hero-num ${agg.netUp ? 'up' : 'down'}">${agg.netUp ? '+' : ''}${agg.netPct.toFixed(1)}%</div>
       <div class="hero-sub">
         Net across <strong>${agg.total} corridor${agg.total===1?'':'s'}</strong> · <strong>${agg.up}</strong> up, <strong>${agg.down}</strong> down.
       </div>
+      ${starBtn}
     `;
+    if (starrable) {
+      document.getElementById('hero-star').addEventListener('click', () => {
+        node.kind === 'country' ? toggleFavCountry(node.name) : toggleFavRegion(node.name);
+      });
+    }
 
     // Direction chips: All / Outbound / Inbound. Only meaningful for country + region.
     if (node.kind !== 'airport') {
@@ -1951,6 +2109,97 @@
   });
   focusClear.addEventListener('click', () => { clearFocus(); focusInput.focus(); });
 
+  // ── Favorites panel ─────────────────────────────────────────────────────
+  const favBtn   = document.getElementById('nav-fav');
+  const favPanel = document.getElementById('fav-panel');
+  const favBody  = document.getElementById('fav-body');
+  const favClearBtn = document.getElementById('fav-clear');
+
+  function toggleFavPanel(show) {
+    const willShow = show ?? favPanel.hidden;
+    favPanel.hidden = !willShow;
+    favBtn.classList.toggle('open', willShow);
+    if (willShow) renderFavPanel();
+  }
+  favBtn.addEventListener('click', e => { e.stopPropagation(); toggleFavPanel(); });
+  document.addEventListener('click', e => {
+    if (favPanel.hidden) return;
+    if (favPanel.contains(e.target) || favBtn.contains(e.target)) return;
+    toggleFavPanel(false);
+  });
+  favClearBtn.addEventListener('click', () => {
+    if (!favCount()) return;
+    if (!confirm(`Clear all ${favCount()} favorites?`)) return;
+    favorites.countries.clear(); favorites.regions.clear(); favorites.corridors.clear();
+    saveFavorites(); updateFavBadge(); renderFavPanel(); render();
+  });
+
+  function renderFavPanel() {
+    const sections = [];
+    if (favorites.countries.size) {
+      const items = [...favorites.countries].sort().map(n => {
+        const sig = countrySignals.get(n);
+        const meta = sig ? `${sig.netPct >= 0 ? '+' : ''}${sig.netPct.toFixed(1)}% · ${sig.count} corr.` : '';
+        return favItemHtml('country', n, n, meta);
+      }).join('');
+      sections.push(`<div class="fav-group-title">Countries</div>${items}`);
+    }
+    if (favorites.regions.size) {
+      const items = [...favorites.regions].sort().map(n =>
+        favItemHtml('region', n, n, `${(REGIONS[n]?.members || []).length} countries`)
+      ).join('');
+      sections.push(`<div class="fav-group-title">Regions</div>${items}`);
+    }
+    if (favorites.corridors.size) {
+      const rows = [...favorites.corridors].map(id => insights.find(i => i.id === id)).filter(Boolean);
+      const items = rows.map(i => {
+        const label = `${i.origin.name} → ${i.dest.name}`;
+        const sign = i.deltaPct >= 0 ? '+' : '';
+        return favItemHtml('corridor', i.id, label, `${sign}${i.deltaPct.toFixed(1)}%`);
+      }).join('');
+      const orphans = favorites.corridors.size - rows.length;
+      const orphanNote = orphans ? `<div class="fav-empty" style="padding:6px 14px;text-align:left;font-size:0.7rem">${orphans} corridor${orphans===1?'':'s'} not in current dataset</div>` : '';
+      sections.push(`<div class="fav-group-title">Corridors</div>${items}${orphanNote}`);
+    }
+    favBody.innerHTML = sections.length
+      ? sections.join('')
+      : `<div class="fav-empty">No favorites yet.<br>Star a country, region, or corridor to save it here.</div>`;
+
+    // wire
+    favBody.querySelectorAll('.fav-item').forEach(el => {
+      el.addEventListener('click', e => {
+        if (e.target.closest('.fav-remove')) return;
+        const kind = el.dataset.kind;
+        const id   = el.dataset.id;
+        if (kind === 'country') focusOn({ kind: 'country', id, name: id });
+        else if (kind === 'region') focusOn({ kind: 'region',  id, name: id });
+        else if (kind === 'corridor') { selectInsight(id); }
+        toggleFavPanel(false);
+      });
+    });
+    favBody.querySelectorAll('.fav-remove').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const kind = btn.dataset.kind, id = btn.dataset.id;
+        if (kind === 'country')  favorites.countries.delete(id);
+        if (kind === 'region')   favorites.regions.delete(id);
+        if (kind === 'corridor') favorites.corridors.delete(id);
+        saveFavorites(); updateFavBadge(); renderFavPanel(); render();
+      });
+    });
+  }
+  function favItemHtml(kind, id, label, meta) {
+    return `<div class="fav-item" data-kind="${kind}" data-id="${escapeHtml(id)}">
+      <span>${escapeHtml(label)}</span>
+      <span style="display:flex;align-items:center;gap:8px">
+        ${meta ? `<span class="fav-meta">${escapeHtml(meta)}</span>` : ''}
+        <button class="fav-remove" data-kind="${kind}" data-id="${escapeHtml(id)}" title="Remove">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </span>
+    </div>`;
+  }
+
   document.getElementById('mobile-toggle').addEventListener('click', () => {
     document.body.classList.toggle('sidebar-open');
   });
@@ -1987,6 +2236,7 @@
       meta = json.meta || {};
       countrySignals = computeCountrySignals();
       document.getElementById('updated-pill').textContent = formatUpdated(meta.updated);
+      updateFavBadge();
       repaintCountries();
       render();
     })
