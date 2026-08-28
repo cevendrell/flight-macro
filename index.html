@@ -605,9 +605,10 @@
       <p>Type one to read its full corridor picture. Add a second to focus on a specific pair.</p>
     </div>
     <div class="map-legend">
-      <div class="legend-title">Route flow YoY</div>
-      <div class="legend-row"><div class="legend-swatch up"></div> Increasing</div>
-      <div class="legend-row"><div class="legend-swatch down"></div> Decreasing</div>
+      <div class="legend-title">Flow YoY</div>
+      <div class="legend-row"><div class="legend-swatch up"></div> Corridor growing</div>
+      <div class="legend-row"><div class="legend-swatch down"></div> Corridor shrinking</div>
+      <div class="legend-row" style="opacity:0.7"><div class="legend-swatch" style="background:linear-gradient(90deg,var(--brass-l),transparent)"></div> Flow speed ∝ traffic</div>
     </div>
   </div>
 
@@ -647,12 +648,15 @@
     .polygonSideColor(() => 'rgba(201,168,106,0)')
     .polygonStrokeColor(() => 'rgba(154,148,132,0.35)')
     .polygonsTransitionDuration(180)
+    // Two-layer arcs: solid faded base + flowing dashed overlay (IEA-style)
     .arcColor('color')
-    .arcAltitudeAutoScale(0.4)
+    .arcAltitudeAutoScale(0.42)
     .arcStroke(a => a.stroke)
-    .arcDashLength(1)
-    .arcDashGap(0)
-    .arcsTransitionDuration(300)
+    .arcDashLength(a => a.dashLen ?? 1)
+    .arcDashGap(a => a.dashGap ?? 0)
+    .arcDashInitialGap(a => a.initGap ?? 0)
+    .arcDashAnimateTime(a => a.animMs ?? 0)
+    .arcsTransitionDuration(400)
     .pointsData([])
     .pointAltitude(0.008)
     .pointColor('color')
@@ -1048,30 +1052,58 @@
   function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
   function drawArcs(visible) {
-    const arcs = visible.map(i => {
+    // Two arcs per corridor: a solid faint base + an animated flowing overlay.
+    // The overlay's dash speed is inversely proportional to volume — bigger
+    // corridors "flow" faster, mimicking IEA-style energy flow maps.
+    const arcs = [];
+
+    visible.forEach(i => {
       const up = i.deltaPct >= 0;
       const baseHex = up ? '#7fa88c' : '#b87857';
-      const stroke = Math.min(0.35 + Math.abs(i.deltaPct) * 0.06, 1.4);
-      const rec = {
-        id: i.id,
+      const stroke = Math.min(0.35 + Math.abs(i.deltaPct) * 0.05, 1.3);
+
+      // Faded base trace — shows the whole corridor path always.
+      arcs.push({
+        id: i.id, layer: 'base',
         startLat: i.origin.lat, startLng: i.origin.lng,
         endLat:   i.dest.lat,   endLng:   i.dest.lng,
-        color: [baseHex, baseHex],   // gradient array (start,end) supported by globe.gl
+        color: [withAlpha(baseHex, 0.22), withAlpha(baseHex, 0.22)],
+        stroke: stroke * 0.85, baseStroke: stroke, baseColor: baseHex,
+        dashLen: 1, dashGap: 0, animMs: 0,
+      });
+
+      // Flowing overlay — animated dashes traveling origin → destination.
+      // Speed keyed to volume so busy corridors visibly pulse faster.
+      const vol = i.volumeCurrent || 100000;
+      const animMs = Math.max(1200, Math.min(4500, 6_000_000 / vol));
+      arcs.push({
+        id: i.id, layer: 'flow',
+        startLat: i.origin.lat, startLng: i.origin.lng,
+        endLat:   i.dest.lat,   endLng:   i.dest.lng,
+        color: [withAlpha(baseHex, 0.9), withAlpha(baseHex, 0.15)],
         stroke, baseStroke: stroke, baseColor: baseHex,
-      };
-      arcById.set(i.id, rec);
-      return rec;
+        dashLen: 0.22, dashGap: 0.78,
+        initGap: Math.random(),
+        animMs,
+      });
+
+      arcById.set(i.id, { baseColor: baseHex, baseStroke: stroke });
     });
+
     globe.arcsData(arcs);
 
-    // Endpoint pin dots so users can see where the corridor sits on the globe.
+    // Bright dot at destination end — reads as the "head" of the flow.
     const points = [];
     visible.forEach(i => {
       const color = i.deltaPct >= 0 ? '#a3c1ac' : '#cf9578';
-      points.push({ lat: i.origin.lat, lng: i.origin.lng, color, id: i.id });
-      points.push({ lat: i.dest.lat,   lng: i.dest.lng,   color, id: i.id });
+      points.push({ lat: i.origin.lat, lng: i.origin.lng, color, id: i.id, kind: 'origin' });
+      points.push({ lat: i.dest.lat,   lng: i.dest.lng,   color, id: i.id, kind: 'dest' });
     });
-    globe.pointsData(points).pointRadius(0.4);
+    globe
+      .pointsData(points)
+      .pointAltitude(p => p.kind === 'dest' ? 0.012 : 0.006)
+      .pointRadius(p => p.kind === 'dest' ? 0.45 : 0.28)
+      .pointColor('color');
   }
 
   function setHover(id) {
@@ -1088,15 +1120,24 @@
     const anyFocus = !!(hoverId || activeId);
     globe
       .arcColor(a => {
-        const rec = arcById.get(a.id) || a;
-        const isFocus = a.id === activeId || a.id === hoverId;
-        const alpha = a.id === activeId ? 1.0 : (a.id === hoverId ? 0.9 : (anyFocus ? 0.18 : 0.65));
-        return withAlpha(rec.baseColor || '#7fa88c', alpha);
+        const rec  = arcById.get(a.id);
+        const base = (rec && rec.baseColor) || '#7fa88c';
+        const isActive = a.id === activeId;
+        const isHover  = a.id === hoverId;
+        // On the base layer, colors stay faint. On the flow layer, they go bright.
+        if (a.layer === 'base') {
+          const alpha = isActive ? 0.4 : (isHover ? 0.35 : (anyFocus ? 0.08 : 0.22));
+          return [withAlpha(base, alpha), withAlpha(base, alpha)];
+        }
+        const startA = isActive ? 1.0 : (isHover ? 0.95 : (anyFocus ? 0.15 : 0.9));
+        const endA   = isActive ? 0.4 : (isHover ? 0.35 : (anyFocus ? 0.04 : 0.15));
+        return [withAlpha(base, startA), withAlpha(base, endA)];
       })
       .arcStroke(a => {
-        const rec = arcById.get(a.id) || a;
+        const rec  = arcById.get(a.id);
+        const base = (rec && rec.baseStroke) || 0.5;
         const boost = (a.id === activeId || a.id === hoverId) ? 0.6 : 0;
-        return (rec.baseStroke || 0.5) + boost;
+        return (a.layer === 'base' ? base * 0.85 : base) + boost;
       });
   }
 

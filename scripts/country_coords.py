@@ -4,6 +4,7 @@ ISO 3166-1 alpha-2 → country name + approximate centroid.
 Kept small on purpose: coverage focuses on Europe (Eurostat reporting countries),
 plus major worldwide partners that show up in flight corridors. Extend as needed.
 """
+from __future__ import annotations
 
 COUNTRIES: dict[str, dict] = {
     # EU reporting countries

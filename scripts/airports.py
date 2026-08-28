@@ -8,6 +8,7 @@ those codes into human-readable city names and coordinates for city-pair signals
 Coverage focuses on the top ~100 airports by international traffic in Europe,
 plus major partner hubs. Extend as the pipeline surfaces new codes.
 """
+from __future__ import annotations
 
 # ICAO → (city, IATA, country_iso2, lat, lng)
 AIRPORTS: dict[str, dict] = {
