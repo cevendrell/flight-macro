@@ -8,14 +8,14 @@
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230a1119'/%3E%3Cpath d='M6 22 L26 10 M6 10 L26 22' stroke='%23c9a86a' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg:#0a1119; --surface:#121a26; --panel:#18202e;
-      --brass:#c9a86a; --brass-l:#dcc296; --brass-d:#8f7748;
+      --bg:#080e17; --surface:#101929; --panel:#16202f;
+      --brass:#c9a86a; --brass-l:#e0c79c; --brass-d:#8f7748;
       --up:#7fa88c; --down:#b87857;
-      --text:#e8dfd0; --dim:#9a9484; --mute:#5e5a4e;
-      --line:rgba(201,180,140,0.08);
+      --text:#ece4d6; --dim:#b9b3a6; --mute:#5a5648;
+      --line:rgba(201,180,140,0.09);
     }
     *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
     body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;}
@@ -29,9 +29,9 @@
     .nav-links a:hover{color:var(--brass-l);}
     main{max-width:720px;margin:0 auto;padding:8rem 1.5rem 5rem;}
     .kicker{font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--mute);letter-spacing:0.16em;text-transform:uppercase;margin-bottom:1.5rem;}
-    h1{font-size:clamp(2.4rem,5vw,3.6rem);font-weight:800;letter-spacing:-0.04em;line-height:1.05;margin-bottom:1.75rem;}
-    h1 .accent{color:var(--brass);}
-    h2{font-size:1.2rem;font-weight:700;letter-spacing:-0.02em;margin:2.5rem 0 0.75rem;color:var(--text);}
+    h1{font-family:'Instrument Serif',Georgia,serif;font-size:clamp(2.6rem,5.5vw,4rem);font-weight:400;letter-spacing:-0.015em;line-height:1.04;margin-bottom:1.75rem;}
+    h1 .accent{color:var(--brass);font-style:italic;}
+    h2{font-family:'Instrument Serif',Georgia,serif;font-size:1.5rem;font-weight:400;letter-spacing:-0.02em;margin:2.5rem 0 0.75rem;color:var(--text);}
     p{font-size:1rem;line-height:1.75;color:var(--dim);margin-bottom:1rem;}
     p strong{color:var(--text);font-weight:600;}
     p a{color:var(--brass-l);}
@@ -45,7 +45,7 @@
 <nav>
   <a href="../../index.html" class="nav-logo">
     <div class="nav-mark"><svg viewBox="0 0 32 32"><path d="M6 22 L26 10 M6 10 L26 22" stroke="#c9a86a" stroke-width="2.4" stroke-linecap="round" fill="none"/></svg></div>
-    OvrHead
+    <span style="font-family:'Instrument Serif',Georgia,serif;font-size:1.3rem">Ovr<em style="font-style:italic;color:var(--brass)">Head</em></span>
   </a>
   <ul class="nav-links">
     <li><a href="../methodology/index.html">Methodology</a></li>
