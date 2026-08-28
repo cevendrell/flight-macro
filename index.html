@@ -545,29 +545,109 @@
     }
     .country-chip:hover { border-color: var(--brass); }
 
-    /* COUNTRY PICKER */
-    .picker-row { display: grid; grid-template-columns: 1fr; gap: 0.5rem; }
-    .picker-field { position: relative; }
-    .picker-field label {
-      display: block; font-size: 0.62rem; color: var(--mute);
-      letter-spacing: 0.14em; text-transform: uppercase;
-      margin-bottom: 0.25rem; font-family: 'JetBrains Mono', monospace;
-    }
-    .picker-input {
+    /* FOCUS INPUT — single search bar with autocomplete over nodes */
+    .focus-wrap { position: relative; }
+    .focus-input {
       width: 100%; background: var(--surface); border: 1px solid var(--line-2);
-      color: var(--text); font-family: inherit; font-size: 0.9rem;
-      padding: 8px 30px 8px 10px; border-radius: 5px;
-      transition: border-color 0.15s;
+      color: var(--text); font-family: inherit; font-size: 0.95rem;
+      padding: 10px 34px 10px 34px; border-radius: 6px;
+      transition: border-color 0.15s, box-shadow 0.15s;
     }
-    .picker-input:focus { outline: none; border-color: var(--brass); }
-    .picker-input::placeholder { color: var(--mute); }
-    .picker-clear {
-      position: absolute; right: 6px; top: 50%; transform: translateY(4px);
+    .focus-input:focus {
+      outline: none; border-color: var(--brass);
+      box-shadow: 0 0 0 3px rgba(201,168,106,0.12);
+    }
+    .focus-input::placeholder { color: var(--mute); }
+    .focus-ico {
+      position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+      color: var(--mute); pointer-events: none;
+    }
+    .focus-clear {
+      position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
       background: transparent; border: none; color: var(--mute); cursor: pointer;
-      padding: 4px; border-radius: 3px; display: flex; align-items: center;
+      padding: 4px; border-radius: 3px; display: flex;
     }
-    .picker-clear:hover { color: var(--down-l); }
-    .picker-hint { font-size: 0.7rem; color: var(--mute); margin-top: 0.5rem; line-height: 1.5; }
+    .focus-clear:hover { color: var(--down-l); }
+    .focus-suggest {
+      position: absolute; top: 100%; left: 0; right: 0;
+      background: var(--panel); border: 1px solid var(--line-2);
+      border-top: none; border-radius: 0 0 6px 6px;
+      max-height: 340px; overflow-y: auto;
+      z-index: 50;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.4);
+    }
+    .focus-suggest[hidden] { display: none; }
+    .fs-group {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.6rem;
+      color: var(--mute); letter-spacing: 0.16em; text-transform: uppercase;
+      padding: 8px 12px 4px;
+    }
+    .fs-option {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 7px 12px; cursor: pointer; font-size: 0.85rem; color: var(--text);
+      transition: background 0.1s;
+      gap: 8px;
+    }
+    .fs-option:hover, .fs-option.active { background: rgba(201,168,106,0.10); color: var(--brass-l); }
+    .fs-option .fs-kind {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.6rem;
+      color: var(--mute); letter-spacing: 0.08em;
+      padding: 2px 6px; border-radius: 3px; background: var(--surface);
+    }
+    .fs-empty {
+      padding: 12px; text-align: center; font-size: 0.78rem; color: var(--mute);
+    }
+
+    /* BREADCRUMBS — small navigation trail */
+    .crumbs {
+      display: flex; align-items: center; gap: 0.4rem;
+      padding: 0.5rem 1.25rem;
+      border-bottom: 1px solid var(--line);
+      font-size: 0.7rem;
+      background: var(--surface);
+      overflow-x: auto; white-space: nowrap;
+    }
+    .crumbs[hidden] { display: none; }
+    .crumb-back {
+      background: transparent; border: 1px solid var(--line-2); color: var(--dim);
+      font-family: inherit; font-size: 0.68rem;
+      padding: 3px 8px; border-radius: 4px; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 4px;
+      flex-shrink: 0;
+    }
+    .crumb-back:hover { color: var(--brass-l); border-color: var(--brass); }
+    .crumb-sep { color: var(--mute); }
+    .crumb-item {
+      color: var(--dim); cursor: pointer;
+      font-family: 'JetBrains Mono', monospace; font-size: 0.66rem;
+      letter-spacing: 0.04em;
+    }
+    .crumb-item:hover { color: var(--brass-l); }
+    .crumb-item.current { color: var(--text); cursor: default; font-weight: 500; }
+
+    /* Clickable endpoints inside cards */
+    .clickable-node {
+      cursor: pointer;
+      text-decoration: none;
+      border-bottom: 1px dotted var(--mute);
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .clickable-node:hover { color: var(--brass-l); border-bottom-color: var(--brass-l); }
+
+    /* IN / OUT layout in node dashboard */
+    .direction-tab {
+      display: flex; gap: 0.4rem;
+      padding: 0 1.25rem 0.5rem;
+    }
+    .dir-chip {
+      font-size: 0.72rem; font-weight: 500;
+      padding: 5px 12px; border-radius: 4px;
+      background: transparent; border: 1px solid var(--line-2);
+      color: var(--dim); cursor: pointer; font-family: inherit;
+      transition: all 0.15s;
+    }
+    .dir-chip:hover { border-color: var(--brass); color: var(--brass-l); }
+    .dir-chip.active { background: var(--brass); border-color: var(--brass); color: var(--bg); font-weight: 600; }
 
     /* MAP LANDING PROMPT — small top-left hint, not a modal */
     .map-prompt {
@@ -639,30 +719,22 @@
   <aside id="sidebar">
     <div class="side-head">
       <div class="side-head-top">
-        <span class="side-title">Ask the map</span>
+        <span class="side-title">Focus</span>
         <span class="updated-pill" id="updated-pill">—</span>
       </div>
-      <datalist id="country-options"></datalist>
-      <div class="picker-row">
-        <div class="picker-field">
-          <label>Country A</label>
-          <input class="picker-input" id="pick-a" list="country-options" type="text" placeholder="e.g. Germany" autocomplete="off">
-          <button class="picker-clear" id="clear-a" title="Clear" hidden>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-        </div>
-        <div class="picker-field">
-          <label>Country B (optional)</label>
-          <input class="picker-input" id="pick-b" list="country-options" type="text" placeholder="e.g. Spain" autocomplete="off">
-          <button class="picker-clear" id="clear-b" title="Clear" hidden>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-        </div>
+      <div class="focus-wrap">
+        <svg class="focus-ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+        <input class="focus-input" id="focus-input" type="text" placeholder="Country, region, or airport…" autocomplete="off" spellcheck="false">
+        <button class="focus-clear" id="focus-clear" title="Clear focus (Esc)" hidden>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+        <div class="focus-suggest" id="focus-suggest" hidden></div>
       </div>
     </div>
 
+    <div class="crumbs" id="crumbs" hidden></div>
     <div class="hero-block" id="hero-block"></div>
-
+    <div class="direction-tab" id="direction-tab" hidden></div>
     <div class="feed" id="feed"></div>
 
     <details class="advanced" id="advanced">
@@ -811,22 +883,51 @@
     });
 
   // ── When user picks a country by clicking the globe ──
+  // If already focused on a country, promote to a pair (drill into that specific corridor).
+  // Otherwise, focus on this country as a fresh node.
   function handleCountryClickFromMap(name) {
     globe.controls().autoRotate = false;
-    if (!pickA.value) { pickA.value = name; }
-    else if (!pickB.value && normName(pickA.value) !== normName(name)) { pickB.value = name; }
-    else { pickA.value = name; pickB.value = ''; }
-    onPickerChange();
+    const cur = currentFocus();
+    if (cur && cur.kind === 'country' && normName(cur.name) !== normName(name)) {
+      focusOn({ kind: 'pair', id: `${cur.name}::${name}`, name: `${cur.name} ↔ ${name}`, pair: [cur.name, name] });
+    } else {
+      focusOn({ kind: 'country', id: name, name });
+    }
   }
 
   // ---- State ----
-  const filters = { theme: 'all', direction: 'all', sort: 'strength', countryA: '', countryB: '' };
+  // The "focus" is a single node the user is exploring: a country, a region, or an airport.
+  // Direction: 'both' (default), 'out' (from focus), 'in' (to focus).
+  const filters = { theme: 'all', direction: 'all', sort: 'strength', dirRel: 'both' };
   let insights = [];
   let activeId = null;
   let hoverId = null;
   let meta = {};
   let hoveredCountryFeature = null;
   const arcById = new Map();
+
+  /** Focus stack — most-recent node last. Empty stack = landing. */
+  const focusStack = [];   // items: { kind: 'country'|'region'|'airport'|'pair', id, name }
+  function currentFocus() { return focusStack.length ? focusStack[focusStack.length - 1] : null; }
+
+  // ── Region definitions — expand freely ──────────────────────────────────
+  const REGIONS = {
+    'Nordics':           { members: ['SE','NO','DK','FI','IS'] },
+    'Iberia':            { members: ['ES','PT'] },
+    'Benelux':           { members: ['NL','BE','LU'] },
+    'DACH':              { members: ['DE','AT','CH'] },
+    'British Isles':     { members: ['GB','IE'] },
+    'Baltics':           { members: ['EE','LV','LT'] },
+    'Central Europe':    { members: ['PL','CZ','SK','HU'] },
+    'Balkans':           { members: ['HR','RS','BA','ME','MK','AL','XK','SI'] },
+    'Mediterranean EU':  { members: ['ES','IT','EL','PT','FR','HR','CY','MT'] },
+    'EU':                { members: ['AT','BE','BG','CY','CZ','DE','DK','EE','EL','ES','FI','FR','HR','HU','IE','IT','LT','LU','LV','MT','NL','PL','PT','RO','SE','SI','SK'] },
+    'MENA':              { members: ['MA','TN','EG','AE','QA','SA','JO','LB','IL'] },
+    'East Asia':         { members: ['CN','JP','KR','HK','TW'] },
+    'Southeast Asia':    { members: ['SG','TH','VN','ID','MY','PH'] },
+    'North America':     { members: ['US','CA','MX'] },
+    'Oceania':           { members: ['AU','NZ'] },
+  };
 
   // ---- Watchlist (per-viewer, browser storage) ----
   const WATCH_KEY = 'ovrhead.watched.v1';
@@ -857,22 +958,45 @@
 
   function normName(s) { return String(s || '').trim().toLowerCase(); }
 
-  function matchesCountry(i, name) {
-    const n = normName(name);
-    if (!n) return true;
-    return normName(i.origin.name)    === n || normName(i.dest.name)    === n
-        || normName(i.origin.code)    === n || normName(i.dest.code)    === n
-        || normName(i.origin.country) === n || normName(i.dest.country) === n;
+  /** Does an insight touch this country (by code or name)? Direction 'both'|'out'|'in'. */
+  function insightTouchesCountry(i, code, name, dir = 'both') {
+    const cLower = normName(code), nLower = normName(name);
+    const oMatch = normName(i.origin.code) === cLower || normName(i.origin.name) === nLower || normName(i.origin.country) === nLower;
+    const dMatch = normName(i.dest.code)   === cLower || normName(i.dest.name)   === nLower || normName(i.dest.country)   === nLower;
+    if (dir === 'out') return oMatch;
+    if (dir === 'in')  return dMatch;
+    return oMatch || dMatch;
   }
 
-  function corridorSelectionActive() {
-    return !!(filters.countryA || filters.countryB);
+  /** Does an insight belong to the currently-focused node? */
+  function insightInFocus(i, node) {
+    if (!node) return false;
+    const dir = filters.dirRel || 'both';
+    if (node.kind === 'country') {
+      return insightTouchesCountry(i, node.id, node.name, dir);
+    }
+    if (node.kind === 'region') {
+      const members = REGIONS[node.id]?.members || [];
+      // "out": origin is a member country; "in": destination is a member country
+      return members.some(code => insightTouchesCountry(i, code, '', dir));
+    }
+    if (node.kind === 'airport') {
+      const iata = node.iataOrIcao;
+      const endpointIsAirport = (i.origin.type === 'city' && i.origin.name.includes(`(${iata})`))
+                              || (i.dest.type   === 'city' && i.dest.name.includes(`(${iata})`));
+      return endpointIsAirport;
+    }
+    if (node.kind === 'pair') {
+      const [a, b] = node.pair;
+      return (insightTouchesCountry(i, a, a) && insightTouchesCountry(i, b, b));
+    }
+    return false;
   }
 
   function passesFilter(i) {
-    if (!corridorSelectionActive()) return false;         // country-first: nothing until picked
-    if (!matchesCountry(i, filters.countryA)) return false;
-    if (!matchesCountry(i, filters.countryB)) return false;
+    const node = currentFocus();
+    if (!node) return false;                     // landing shows top-N separately, not via this path
+    if (!insightInFocus(i, node)) return false;
     if (filters.theme !== 'all' && i.theme !== filters.theme) return false;
     if (filters.direction === 'up' && i.deltaPct <= 0) return false;
     if (filters.direction === 'down' && i.deltaPct >= 0) return false;
@@ -890,58 +1014,110 @@
     return out;
   }
 
-  // How many signals show in the short list under the hero. Busy user cap.
-  const SHORT_LIST_MAX = 5;
-
-  function selectionMode() {
-    const hasA = !!filters.countryA;
-    const hasB = !!filters.countryB;
-    if (hasA && hasB) return 'pair';
-    if (hasA) return 'country';
-    return 'landing';
-  }
+  // How many signals show in the short list. Busy user cap.
+  const SHORT_LIST_MAX = 6;
 
   function scopedInsights() {
-    // Insights matching the current country selection (before theme/dir filters).
-    return insights.filter(i => matchesCountry(i, filters.countryA) && matchesCountry(i, filters.countryB));
+    const node = currentFocus();
+    if (!node) return [];
+    return insights.filter(i => insightInFocus(i, node));
   }
 
   function filteredInsights() {
-    // scoped + user filters (theme/direction) + sort
     return sortInsights(insights.filter(passesFilter));
   }
 
   function render() {
     arcById.clear();
-    const mode = selectionMode();
-    document.getElementById('map-prompt').classList.toggle('hidden', mode !== 'landing');
+    const node = currentFocus();
+    document.getElementById('map-prompt').classList.toggle('hidden', !!node);
+    renderCrumbs();
 
     const hero = document.getElementById('hero-block');
     const feed = document.getElementById('feed');
+    const dirTab = document.getElementById('direction-tab');
 
-    if (mode === 'landing') {
+    if (!node) {
+      dirTab.hidden = true;
       renderLanding(hero, feed);
-      drawArcs([]);            // no arcs until a country is picked
-    } else if (mode === 'country') {
-      renderCountryMode(hero, feed);
-    } else {
+    } else if (node.kind === 'pair') {
+      dirTab.hidden = true;
       renderPairMode(hero, feed);
+    } else {
+      renderNodeDashboard(hero, feed, node, dirTab);
     }
 
     applyHighlight();
-    wireCards(feed);
 
-    // Fly only when the country selection changes — not on sort/filter tweaks.
-    const selKey = `${normName(filters.countryA)}|${normName(filters.countryB)}`;
-    if (mode !== 'landing' && selKey !== lastFlownKey) {
+    // Fly only when the focus itself changes — not on sort/filter tweaks.
+    const focusKey = node ? `${node.kind}:${node.id}` : '';
+    if (node && focusKey !== lastFlownKey) {
       const arcTargets = filteredInsights();
       if (arcTargets.length) flyToSelection(arcTargets);
-      lastFlownKey = selKey;
-    } else if (mode === 'landing') {
+      lastFlownKey = focusKey;
+    } else if (!node) {
       lastFlownKey = '';
     }
   }
   let lastFlownKey = '';
+
+  // ── Navigation ──────────────────────────────────────────────────────────
+  function focusOn(node, { push = true } = {}) {
+    if (push) {
+      // Collapse identical consecutive entries
+      const cur = currentFocus();
+      if (!cur || cur.kind !== node.kind || cur.id !== node.id) {
+        focusStack.push(node);
+      }
+    }
+    filters.dirRel = 'both';
+    updateFocusInputValue();
+    render();
+  }
+  function goBack() {
+    focusStack.pop();
+    updateFocusInputValue();
+    render();
+  }
+  function clearFocus() {
+    focusStack.length = 0;
+    updateFocusInputValue();
+    render();
+  }
+  function updateFocusInputValue() {
+    const node = currentFocus();
+    const el = document.getElementById('focus-input');
+    if (el) el.value = node ? node.name : '';
+    const cx = document.getElementById('focus-clear');
+    if (cx) cx.hidden = !node;
+  }
+
+  function renderCrumbs() {
+    const el = document.getElementById('crumbs');
+    if (focusStack.length === 0) { el.hidden = true; el.innerHTML = ''; return; }
+    el.hidden = false;
+    const parts = [`<button class="crumb-back" id="crumb-back">${focusStack.length > 1 ? '← back' : '× clear'}</button>`];
+    parts.push(`<span class="crumb-item" data-idx="-1">Board</span>`);
+    focusStack.forEach((node, idx) => {
+      parts.push(`<span class="crumb-sep">›</span>`);
+      const isLast = idx === focusStack.length - 1;
+      parts.push(`<span class="crumb-item ${isLast ? 'current' : ''}" data-idx="${idx}">${escapeHtml(node.name)}</span>`);
+    });
+    el.innerHTML = parts.join(' ');
+    el.querySelector('#crumb-back').addEventListener('click', () => {
+      focusStack.length > 1 ? goBack() : clearFocus();
+    });
+    el.querySelectorAll('.crumb-item').forEach(c => {
+      c.addEventListener('click', () => {
+        const idx = Number(c.dataset.idx);
+        if (idx === -1) return clearFocus();
+        if (idx === focusStack.length - 1) return;   // already there
+        focusStack.length = idx + 1;
+        updateFocusInputValue();
+        render();
+      });
+    });
+  }
 
   function wireCards(container) {
     container.querySelectorAll('.card').forEach(el => {
@@ -957,93 +1133,105 @@
     });
   }
 
-  // ---- LANDING: no country picked → thesis board of top 8 worldwide ----
+  // ---- LANDING: no focus → thesis board of top 8 worldwide ----
   function renderLanding(hero, feed) {
     const top = sortInsights(insights.slice()).slice(0, 8);
-    hero.innerHTML = '';   // hero slot empty on landing — the board IS the content
+    hero.innerHTML = `
+      <div class="hero-eyebrow">Today · ${escapeHtml((meta && meta.period) || '')}</div>
+      <div class="hero-title">Thesis <span class="accent">Board</span></div>
+      <div class="hero-sub">The strongest ${top.length} macro signals across the network. Click any endpoint to focus on it, any card to open its reasoning.</div>
+    `;
     if (!top.length) {
       feed.innerHTML = `<div class="feed-landing">Loading signals…</div>`;
       drawArcs([]);
       return;
     }
-    feed.innerHTML = `
-      <div class="board-heading">
-        <h3>Today's Thesis Board</h3>
-        <span class="sub">${top.length} signals · ranked by strength</span>
-      </div>
-      ${top.map(i => thesisCardHtml(i, insights)).join('')}
-    `;
+    feed.innerHTML = top.map(i => thesisCardHtml(i, insights)).join('');
     wireThesisCards(feed, insights);
     drawArcs(top);
   }
 
-  // ---- COUNTRY: one country picked, show top thesis cards for it ----
-  function renderCountryMode(hero, feed) {
-    const scoped = scopedInsights();
-    const shown = filteredInsights();
-    if (!shown.length) {
+  // ---- NODE DASHBOARD — country, region, or airport ----
+  function renderNodeDashboard(hero, feed, node, dirTab) {
+    const scoped = scopedInsights();     // all insights matching this node (any theme, any dir per current dirRel)
+    const shown  = filteredInsights();
+    const kindLabel = node.kind === 'region' ? 'REGION' : node.kind === 'airport' ? 'AIRPORT' : 'COUNTRY';
+    if (!scoped.length) {
       hero.innerHTML = `
-        <div class="hero-eyebrow">${escapeHtml(filters.countryA)}</div>
-        <div class="hero-title">No material anomaly this period</div>
-        <div class="hero-sub">The current dataset shows no corridor above the significance threshold for <strong>${escapeHtml(filters.countryA)}</strong>. Try another country, add a second one to check a specific pair, or check back after the next daily update.</div>
+        <div class="hero-eyebrow">${kindLabel} · ${escapeHtml(node.name)}</div>
+        <div class="hero-title">No signals yet</div>
+        <div class="hero-sub">The current dataset doesn't have material anomalies touching <strong>${escapeHtml(node.name)}</strong>. Try another node, or check back after the next update.</div>
       `;
+      dirTab.hidden = true;
       feed.innerHTML = '';
       drawArcs([]);
       return;
     }
     const agg = aggregate(scoped);
     hero.innerHTML = `
-      <div class="hero-eyebrow">${escapeHtml(filters.countryA)} · ${escapeHtml(shown[0].period || '')}</div>
+      <div class="hero-eyebrow">${kindLabel} · ${escapeHtml(node.name)} · ${escapeHtml((meta && meta.period) || '')}</div>
       <div class="hero-num ${agg.netUp ? 'up' : 'down'}">${agg.netUp ? '+' : ''}${agg.netPct.toFixed(1)}%</div>
       <div class="hero-sub">
         Net across <strong>${agg.total} corridor${agg.total===1?'':'s'}</strong> · <strong>${agg.up}</strong> up, <strong>${agg.down}</strong> down.
       </div>
     `;
+
+    // Direction chips: All / Outbound / Inbound. Only meaningful for country + region.
+    if (node.kind !== 'airport') {
+      dirTab.hidden = false;
+      dirTab.innerHTML = `
+        <button class="dir-chip ${filters.dirRel==='both' ? 'active':''}" data-dir="both">All flows</button>
+        <button class="dir-chip ${filters.dirRel==='out'  ? 'active':''}" data-dir="out">Outbound →</button>
+        <button class="dir-chip ${filters.dirRel==='in'   ? 'active':''}" data-dir="in">← Inbound</button>
+      `;
+      dirTab.querySelectorAll('.dir-chip').forEach(btn => {
+        btn.addEventListener('click', () => { filters.dirRel = btn.dataset.dir; render(); });
+      });
+    } else {
+      dirTab.hidden = true;
+    }
+
     const top = shown.slice(0, SHORT_LIST_MAX);
     const overflow = shown.length - top.length;
     feed.innerHTML = `
-      <div class="feed-heading">Top ${top.length} corridor thesis card${top.length===1?'':'s'}</div>
       ${top.map(i => thesisCardHtml(i, insights)).join('')}
       ${overflow > 0 ? `<button class="show-more" id="show-more">Show ${overflow} more</button>` : ''}
     `;
     wireThesisCards(feed, insights);
     if (overflow > 0) {
       document.getElementById('show-more').addEventListener('click', () => {
-        feed.innerHTML = `<div class="feed-heading">All ${shown.length} corridors</div>${shown.map(i => thesisCardHtml(i, insights)).join('')}`;
+        feed.innerHTML = shown.map(i => thesisCardHtml(i, insights)).join('');
         wireThesisCards(feed, insights);
       });
     }
     drawArcs(shown);
   }
 
-  // ---- PAIR: A and B picked, one full thesis card ----
+  // ---- PAIR: two countries pinned, single thesis card ----
   function renderPairMode(hero, feed) {
     const shown = filteredInsights();
+    const node = currentFocus();
     if (!shown.length) {
       hero.innerHTML = `
-        <div class="hero-eyebrow">${escapeHtml(filters.countryA)} ↔ ${escapeHtml(filters.countryB)}</div>
+        <div class="hero-eyebrow">PAIR · ${escapeHtml(node.name)}</div>
         <div class="hero-title">No signal for this corridor</div>
-        <div class="hero-sub">No material anomaly computed yet for <strong>${escapeHtml(filters.countryA)}</strong> ↔ <strong>${escapeHtml(filters.countryB)}</strong> in the current period. Remove Country B to widen, or try a different pair.</div>
+        <div class="hero-sub">No material anomaly computed for this pair in the current period. Focus on either endpoint alone to widen.</div>
       `;
       feed.innerHTML = '';
       drawArcs([]);
       return;
     }
     const primary = shown[0];
-    hero.innerHTML = '';
-    // Pair mode: the primary thesis card opens by default; related corridors below.
-    const cardsHtml = thesisCardHtml(primary, insights);
+    hero.innerHTML = `
+      <div class="hero-eyebrow">PAIR · ${escapeHtml(primary.origin.name)} ↔ ${escapeHtml(primary.dest.name)}</div>
+      <div class="hero-title">${escapeHtml(primary.headline || '')}</div>
+    `;
     const related = shown.slice(1, 4);
     feed.innerHTML = `
-      <div class="board-heading">
-        <h3>${escapeHtml(primary.origin.name)} ↔ ${escapeHtml(primary.dest.name)}</h3>
-        <span class="sub">${escapeHtml(primary.period || '')}</span>
-      </div>
-      ${cardsHtml}
-      ${related.length ? `<div class="feed-heading" style="padding-top:1rem">Related corridors</div>${related.map(i => thesisCardHtml(i, insights)).join('')}` : ''}
+      ${thesisCardHtml(primary, insights)}
+      ${related.length ? `<div class="feed-heading" style="padding-top:0.75rem">Related</div>${related.map(i => thesisCardHtml(i, insights)).join('')}` : ''}
     `;
     wireThesisCards(feed, insights);
-    // Auto-expand the primary card
     requestAnimationFrame(() => {
       const first = feed.querySelector('.thesis-card');
       if (first) {
@@ -1186,8 +1374,11 @@
           <div class="tc-delta ${up ? 'up' : 'down'}">${sign}${(+i.deltaPct).toFixed(1)}%</div>
         </div>
         <div class="tc-anomaly">
-          <strong>${escapeHtml(i.origin.name)} → ${escapeHtml(i.dest.name)}</strong> · ${vol}${priorVol ? ' vs ' + priorVol : ''} · ${escapeHtml(i.period || '')}
-          <span class="tc-baseline"><span class="bs-name">baseline:</span> prior-year same window <span class="bs-note">→ single baseline for now; seasonal + peer arriving next</span></span>
+          <span class="clickable-node" data-node-country="${escapeHtml(i.origin.country || i.origin.name)}">${escapeHtml(i.origin.name)}</span>
+          →
+          <span class="clickable-node" data-node-country="${escapeHtml(i.dest.country || i.dest.name)}">${escapeHtml(i.dest.name)}</span>
+          · ${vol}${priorVol ? ' vs ' + priorVol : ''} · ${escapeHtml(i.period || '')}
+          <span class="tc-baseline"><span class="bs-name">baseline:</span> prior-year same window <span class="bs-note">→ seasonal + peer baselines coming</span></span>
         </div>
         <div class="tc-meta">
           <span class="tc-conf ${conf}">${conf.toUpperCase()}</span>
@@ -1207,6 +1398,7 @@
     container.querySelectorAll('.thesis-card').forEach(el => {
       el.addEventListener('click', e => {
         if (e.target.closest('.tc-expand')) return;
+        if (e.target.closest('.clickable-node')) return;
         selectInsight(el.dataset.id);
       });
       el.addEventListener('mouseenter', () => setHover(el.dataset.id));
@@ -1218,6 +1410,15 @@
         const card = btn.closest('.thesis-card');
         const isOpen = card.classList.toggle('open');
         btn.textContent = isOpen ? 'Hide reasoning ▴' : 'Show reasoning ▾';
+      });
+    });
+    // Endpoint chips → focus on that country
+    container.querySelectorAll('.clickable-node').forEach(el => {
+      el.addEventListener('click', e => {
+        e.stopPropagation();
+        const name = el.dataset.nodeCountry;
+        if (!name) return;
+        focusOn({ kind: 'country', id: name, name });
       });
     });
   }
@@ -1506,13 +1707,8 @@
   }
 
   function filterToCountry(name) {
-    // Set as Country A; if A is already this country, promote to Country B.
-    if (normName(pickA.value) === normName(name)) {
-      pickB.value = name;
-    } else {
-      pickA.value = name;
-    }
-    onPickerChange();
+    // From the drawer, jumping to a country focuses that node.
+    focusOn({ kind: 'country', id: name, name });
     closeDrawer();
   }
 
@@ -1578,48 +1774,91 @@
     });
   });
 
-  // ---- Country pickers ----
-  const pickA = document.getElementById('pick-a');
-  const pickB = document.getElementById('pick-b');
-  const clearA = document.getElementById('clear-a');
-  const clearB = document.getElementById('clear-b');
+  // ── Focus input + autocomplete (countries · regions · airports) ─────────
+  const focusInput  = document.getElementById('focus-input');
+  const focusClear  = document.getElementById('focus-clear');
+  const focusSuggest = document.getElementById('focus-suggest');
+  let suggestIndex = 0;
+  let suggestOptions = [];
 
-  function updatePickerClearButtons() {
-    clearA.hidden = !pickA.value;
-    clearB.hidden = !pickB.value;
-  }
-
-  function onPickerChange() {
-    filters.countryA = pickA.value.trim();
-    filters.countryB = pickB.value.trim();
-    updatePickerClearButtons();
-    render();
-  }
-
-  pickA.addEventListener('input', onPickerChange);
-  pickB.addEventListener('input', onPickerChange);
-  pickA.addEventListener('change', onPickerChange);
-  pickB.addEventListener('change', onPickerChange);
-  clearA.addEventListener('click', () => { pickA.value = ''; onPickerChange(); pickA.focus(); });
-  clearB.addEventListener('click', () => { pickB.value = ''; onPickerChange(); pickB.focus(); });
-
-  function populateCountryOptions() {
-    // Prefer country names for autocomplete — cities appear as suggestions too
-    // via origin/dest names, but country selection is the primary flow.
+  function buildIndex() {
+    // countries — from what's actually in the insights
     const countries = new Set();
-    const cities = new Set();
+    const airports = new Map();  // "Frankfurt (FRA)" → { iataOrIcao, name }
     insights.forEach(i => {
-      if (i.origin.country) countries.add(i.origin.country);
-      if (i.dest.country)   countries.add(i.dest.country);
-      countries.add(i.origin.name);
-      countries.add(i.dest.name);
-      if (i.origin.type === 'city') cities.add(i.origin.name);
-      if (i.dest.type   === 'city') cities.add(i.dest.name);
+      [i.origin, i.dest].forEach(p => {
+        if (p.country) countries.add(p.country);
+        if (p.type === 'city' && p.name.match(/\(([A-Z0-9]+)\)/)) {
+          const m = p.name.match(/\(([A-Z0-9]+)\)/);
+          if (m) airports.set(p.name, { iataOrIcao: m[1], name: p.name });
+        }
+      });
     });
-    const dl = document.getElementById('country-options');
-    dl.innerHTML = [...countries].sort()
-      .map(n => `<option value="${escapeHtml(n)}">`).join('');
+    return {
+      countries: [...countries].sort().map(n => ({ kind: 'country', id: n, name: n })),
+      regions:   Object.keys(REGIONS).sort().map(n => ({ kind: 'region', id: n, name: n })),
+      airports:  [...airports.values()].sort((a, b) => a.name.localeCompare(b.name))
+                    .map(a => ({ kind: 'airport', id: a.name, name: a.name, iataOrIcao: a.iataOrIcao })),
+    };
   }
+
+  function renderSuggest(query = '') {
+    const idx = buildIndex();
+    const q = normName(query);
+    const filter = arr => q ? arr.filter(o => normName(o.name).includes(q) || normName(o.id).includes(q)) : arr;
+    const countries = filter(idx.countries).slice(0, 8);
+    const regions   = filter(idx.regions).slice(0, 6);
+    const airports  = filter(idx.airports).slice(0, 6);
+
+    suggestOptions = [...regions, ...countries, ...airports];   // regions first — smallest set, easy to spot
+    if (!suggestOptions.length) {
+      focusSuggest.innerHTML = `<div class="fs-empty">No match. Try a country, region, or airport city.</div>`;
+      focusSuggest.hidden = false;
+      return;
+    }
+    let html = '';
+    if (regions.length)   html += `<div class="fs-group">Regions</div>` + regions.map((o, i) => optHtml(o, i)).join('');
+    if (countries.length) html += `<div class="fs-group">Countries</div>` + countries.map((o, i) => optHtml(o, regions.length + i)).join('');
+    if (airports.length)  html += `<div class="fs-group">Airports</div>` + airports.map((o, i) => optHtml(o, regions.length + countries.length + i)).join('');
+    focusSuggest.innerHTML = html;
+    focusSuggest.hidden = false;
+    suggestIndex = 0;
+    updateSuggestActive();
+    focusSuggest.querySelectorAll('.fs-option').forEach(el => {
+      el.addEventListener('mousedown', e => {   // mousedown so it fires before input blur
+        e.preventDefault();
+        const idx = Number(el.dataset.idx);
+        pickSuggest(idx);
+      });
+    });
+  }
+  function optHtml(o, i) {
+    return `<div class="fs-option" data-idx="${i}"><span>${escapeHtml(o.name)}</span><span class="fs-kind">${o.kind}</span></div>`;
+  }
+  function updateSuggestActive() {
+    focusSuggest.querySelectorAll('.fs-option').forEach((el, i) => {
+      el.classList.toggle('active', i === suggestIndex);
+    });
+  }
+  function pickSuggest(i) {
+    if (i < 0 || i >= suggestOptions.length) return;
+    const opt = suggestOptions[i];
+    focusOn(opt);
+    focusSuggest.hidden = true;
+    focusInput.blur();
+  }
+
+  focusInput.addEventListener('focus', () => renderSuggest(focusInput.value));
+  focusInput.addEventListener('input', () => renderSuggest(focusInput.value));
+  focusInput.addEventListener('blur', () => setTimeout(() => { focusSuggest.hidden = true; }, 150));
+  focusInput.addEventListener('keydown', e => {
+    if (focusSuggest.hidden) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); suggestIndex = Math.min(suggestIndex + 1, suggestOptions.length - 1); updateSuggestActive(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); suggestIndex = Math.max(suggestIndex - 1, 0); updateSuggestActive(); }
+    else if (e.key === 'Enter')   { e.preventDefault(); pickSuggest(suggestIndex); }
+    else if (e.key === 'Escape')  { e.preventDefault(); focusSuggest.hidden = true; focusInput.blur(); }
+  });
+  focusClear.addEventListener('click', () => { clearFocus(); focusInput.focus(); });
 
   document.getElementById('mobile-toggle').addEventListener('click', () => {
     document.body.classList.toggle('sidebar-open');
@@ -1628,11 +1867,12 @@
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
       if (drawer.classList.contains('open')) { closeDrawer(); return; }
-      if (activeId) selectInsight(activeId);
+      if (activeId) { selectInsight(activeId); return; }
+      if (currentFocus()) { goBack(); return; }
     }
     if (e.key === '/' && document.activeElement.tagName !== 'INPUT') {
       e.preventDefault();
-      pickA.focus();
+      focusInput.focus();
     }
   });
 
@@ -1655,7 +1895,6 @@
       insights = json.insights || [];
       meta = json.meta || {};
       document.getElementById('updated-pill').textContent = formatUpdated(meta.updated);
-      populateCountryOptions();
       render();
     })
     .catch(err => {
