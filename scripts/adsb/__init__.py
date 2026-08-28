@@ -10,5 +10,6 @@ Modules:
     reconstruct.py  Snapshots -> flights (per-hex sessions with gap detection).
     enrich.py       Downloads aircraft DB (tar1090-db) and airport DB (OurAirports).
     signals.py      Flights -> weekly aggregates -> insights.json.
-    inspect.py      Health check: rows, date range, top operators.
+    stats.py        Health check: rows, date range, top operators.
+                    (name avoids clashing with the stdlib `inspect` module)
 """

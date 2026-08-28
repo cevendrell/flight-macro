@@ -50,7 +50,7 @@ Start-Process pythonw.exe -ArgumentList "scripts\adsb\poller.py" -WindowStyle Hi
 
 **Check what's captured**:
 ```powershell
-python scripts\adsb\inspect.py
+python scripts\adsb\stats.py
 ```
 
 **Reconstruct flights from all snapshots so far**:

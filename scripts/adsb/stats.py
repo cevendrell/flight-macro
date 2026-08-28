@@ -1,7 +1,7 @@
 """
 ADS-B health check. Prints how much data we have, how fresh, top operators.
 
-    python scripts/adsb/inspect.py
+    python scripts/adsb/stats.py
 """
 
 from __future__ import annotations
