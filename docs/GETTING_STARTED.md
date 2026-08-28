@@ -1,11 +1,31 @@
 # OvrHead — laptop setup (Matebook)
 
-The whole pipeline runs from your laptop. This guide is copy-paste for a fresh
-setup this afternoon.
+The whole pipeline runs from your always-on laptop. Everything below happens
+there, not on the Mac.
 
 ---
 
-## 1. One-time setup (10 min)
+## 0. The fast path — one command does it all
+
+Sign up first at https://opensky-network.org (30 seconds; confirm email).
+
+Then on the Matebook:
+
+```bash
+cd ~/Documents/GitHub/flight-macro  # or wherever you cloned it
+git pull
+./scripts/bootstrap_matebook.sh
+```
+
+It will: create a venv, install Python deps, prompt (silently) for your
+OpenSky + Anthropic creds and store them in `~/.config/ovrhead/env` (mode
+600, never in git), create the daily cron wrapper at `~/bin/ovrhead-daily.sh`,
+optionally install the cron entry itself, and run a smoke test.
+
+Skip the manual sections below if the bootstrap works — they're only there for
+troubleshooting.
+
+## 1. One-time setup (manual — only if bootstrap didn't fit)
 
 ```bash
 # from anywhere
