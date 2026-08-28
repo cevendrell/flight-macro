@@ -274,10 +274,113 @@ def to_insight(c: Corridor, enrichment: dict) -> dict:
     }
 
 
+def collect_from_api(current_m: str, prior_m: str) -> list[Corridor]:
+    """Fallback path: hit Eurostat's HTTP API directly (no warehouse required)."""
+    rows = fetch_all([current_m], [prior_m])
+    print(f"[fetch/api] {len(rows)} country-level rows")
+    country = build_corridors(rows, current_m, prior_m)
+
+    city_rows = fetch_all_airport([current_m, prior_m])
+    print(f"[fetch/api] {len(city_rows)} airport-level rows")
+    city = build_city_corridors(city_rows, current_m, prior_m)
+
+    ranked_country = rank_anomalies(country, TOP_N_COUNTRY, VOLUME_FLOOR_COUNTRY)
+    ranked_city    = rank_anomalies(city,    TOP_N_CITY,    VOLUME_FLOOR_CITY)
+    print(f"[rank/api] country={len(ranked_country)} city={len(ranked_city)}")
+    return ranked_country + ranked_city
+
+
+def collect_from_warehouse(current_m: str, prior_m: str) -> list[Corridor]:
+    """Primary path: query the local DuckDB warehouse populated by ingest_*.py."""
+    try:
+        from warehouse import connect, register_views
+    except ImportError as e:
+        print(f"[warehouse] duckdb missing: {e}", file=sys.stderr)
+        return []
+
+    con = connect(read_only=True)
+    register_views(con)
+
+    # Country-level from corridor_monthly (prefers passengers, falls back to flights × 100).
+    period_label = f"{_pretty_month(current_m)} vs {_pretty_month(prior_m)}"
+    country_rows = con.execute("""
+        WITH cur AS (
+            SELECT o_country, d_country,
+                   COALESCE(passengers, flights * 100) AS volume
+            FROM corridor_monthly WHERE month = ?
+        ),
+        pri AS (
+            SELECT o_country, d_country,
+                   COALESCE(passengers, flights * 100) AS volume
+            FROM corridor_monthly WHERE month = ?
+        )
+        SELECT c.o_country, c.d_country, c.volume AS vc, p.volume AS vp
+        FROM cur c JOIN pri p USING (o_country, d_country)
+        WHERE c.volume > 0 AND p.volume > 0
+    """, [current_m, prior_m]).fetchall()
+    print(f"[fetch/warehouse] country pairs with both periods: {len(country_rows)}")
+
+    country_corridors: list[Corridor] = []
+    for o, d, vc, vp in country_rows:
+        oc = country_lookup(o); dc = country_lookup(d)
+        if not oc or not dc:
+            continue
+        country_corridors.append(Corridor(
+            origin_code=o, dest_code=d,
+            origin_name=oc["name"], dest_name=dc["name"],
+            origin_lat=oc["lat"], origin_lng=oc["lng"],
+            dest_lat=dc["lat"],   dest_lng=dc["lng"],
+            period=period_label,
+            volume_current=int(vc), volume_prior=int(vp),
+            granularity="country",
+        ))
+
+    city_rows = con.execute("""
+        WITH cur AS (
+            SELECT o_country, d_country, d_airport,
+                   COALESCE(passengers, flights * 100) AS volume
+            FROM city_corridor_monthly WHERE month = ?
+        ),
+        pri AS (
+            SELECT o_country, d_country, d_airport,
+                   COALESCE(passengers, flights * 100) AS volume
+            FROM city_corridor_monthly WHERE month = ?
+        )
+        SELECT c.o_country, c.d_country, c.d_airport, c.volume AS vc, p.volume AS vp
+        FROM cur c JOIN pri p USING (o_country, d_country, d_airport)
+        WHERE c.volume > 0 AND p.volume > 0
+    """, [current_m, prior_m]).fetchall()
+    print(f"[fetch/warehouse] city pairs with both periods: {len(city_rows)}")
+
+    city_corridors: list[Corridor] = []
+    for o, d, ap_icao, vc, vp in city_rows:
+        oc = country_lookup(o)
+        ap = lookup_icao(ap_icao)
+        if not oc or not ap:
+            continue
+        city_corridors.append(Corridor(
+            origin_code=o, dest_code=ap["country"],
+            origin_name=oc["name"],
+            dest_name=f"{ap['city']} ({ap['iata']})",
+            origin_lat=oc["lat"], origin_lng=oc["lng"],
+            dest_lat=ap["lat"],   dest_lng=ap["lng"],
+            period=period_label,
+            volume_current=int(vc), volume_prior=int(vp),
+            granularity="city",
+        ))
+
+    ranked_country = rank_anomalies(country_corridors, TOP_N_COUNTRY, VOLUME_FLOOR_COUNTRY)
+    ranked_city    = rank_anomalies(city_corridors,    TOP_N_CITY,    VOLUME_FLOOR_CITY)
+    print(f"[rank/warehouse] country={len(ranked_country)} city={len(ranked_city)}")
+    return ranked_country + ranked_city
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dry-run", action="store_true", help="Skip Claude enrichment, use placeholder text")
-    parser.add_argument("--month", help="YYYY-MM to analyze (default: latest available)")
+    parser.add_argument("--month",   help="YYYY-MM to analyze (default: latest available)")
+    parser.add_argument("--source",  choices=["warehouse", "api"], default="warehouse",
+                        help="warehouse = query local DuckDB (default). api = hit Eurostat directly.")
     args = parser.parse_args()
 
     api_key = os.environ.get("ANTHROPIC_API_KEY")
@@ -288,28 +391,15 @@ def main() -> int:
     ref = datetime.strptime(args.month, "%Y-%m").date() if args.month else latest_available_month()
     prior = date(ref.year - 1, ref.month, 1)
     current_m, prior_m = month_str(ref), month_str(prior)
-    print(f"[cfg] current={current_m}  prior={prior_m}  top_n={TOP_N}  floor={VOLUME_FLOOR:,}")
+    print(f"[cfg] source={args.source} current={current_m} prior={prior_m}")
 
-    rows = fetch_all([current_m], [prior_m])
-    print(f"[fetch] {len(rows)} country-level rows")
-
-    corridors = build_corridors(rows, current_m, prior_m)
-    print(f"[build] {len(corridors)} unique country-pair corridors")
-
-    ranked_country = rank_anomalies(corridors, TOP_N_COUNTRY, VOLUME_FLOOR_COUNTRY)
-    print(f"[rank] country: {len(ranked_country)} above threshold")
-
-    # City-level uses the same raw response family (same cache), but keeps airport codes.
-    city_rows = fetch_all_airport([current_m, prior_m])
-    print(f"[fetch] {len(city_rows)} airport-level rows")
-
-    city_corridors = build_city_corridors(city_rows, current_m, prior_m)
-    print(f"[build] {len(city_corridors)} city-pair corridors (partner side known)")
-
-    ranked_city = rank_anomalies(city_corridors, TOP_N_CITY, VOLUME_FLOOR_CITY)
-    print(f"[rank] city: {len(ranked_city)} above threshold")
-
-    ranked = ranked_country + ranked_city
+    if args.source == "warehouse":
+        ranked = collect_from_warehouse(current_m, prior_m)
+        if not ranked:
+            print("[warehouse] empty result — falling back to API.")
+            ranked = collect_from_api(current_m, prior_m)
+    else:
+        ranked = collect_from_api(current_m, prior_m)
     if not ranked:
         print("[rank] Nothing to publish. Leaving data/insights.json untouched.")
         return 0
@@ -340,8 +430,8 @@ def main() -> int:
             "updated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "current": current_m,
             "prior": prior_m,
-            "source": "Eurostat avia_par_*",
-            "coverage": "EU + EEA reporting countries, aggregated by partner country",
+            "source": "OpenSky Network + Eurostat avia_par_*" if args.source == "warehouse" else "Eurostat avia_par_*",
+            "coverage": "EU + EEA reporting countries plus their partners; city and country grain",
         },
         "insights": insights,
     }, indent=2))

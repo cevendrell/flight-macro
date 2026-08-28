@@ -3,11 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Flight Macro — reading global flight-route data as a lens on macroeconomic shifts. Tourism, business travel, migration, supply chains.">
+  <meta name="description" content="OvrHead — reading global flight-route data as a lens on macroeconomic shifts. Tourism, business travel, migration, supply chains.">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="Flight Macro">
+  <meta property="og:title" content="OvrHead">
   <meta property="og:description" content="Global macro trends, read through flight data.">
-  <title>Flight Macro</title>
+  <title>OvrHead</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230a1119'/%3E%3Cpath d='M6 22 L26 10 M6 10 L26 22' stroke='%23c9a86a' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -108,44 +108,76 @@
       padding: 3px 8px; border-radius: 3px;
       letter-spacing: 0.08em;
     }
-    .summary { display: flex; gap: 0.4rem; margin-bottom: 0.75rem; }
-    .summary-stat {
-      flex: 1;
-      background: var(--surface);
-      border: 1px solid var(--line);
-      border-radius: 6px;
-      padding: 0.55rem 0.65rem;
+    /* HERO CARD — the primary answer */
+    .hero-block {
+      padding: 1rem 1.25rem 0.5rem;
     }
-    .summary-num { font-family: 'JetBrains Mono', monospace; font-size: 1.05rem; font-weight: 600; line-height: 1; }
-    .summary-num.up { color: var(--up); }
-    .summary-num.down { color: var(--down); }
-    .summary-num.total { color: var(--text); }
-    .summary-label { font-size: 0.62rem; color: var(--mute); letter-spacing: 0.14em; text-transform: uppercase; margin-top: 0.25rem; font-family: 'JetBrains Mono', monospace; }
+    .hero-eyebrow {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.62rem;
+      color: var(--mute); letter-spacing: 0.18em; text-transform: uppercase;
+      margin-bottom: 0.35rem;
+    }
+    .hero-title {
+      font-size: 1.35rem; font-weight: 700; letter-spacing: -0.02em;
+      line-height: 1.15; margin-bottom: 0.75rem; color: var(--text);
+    }
+    .hero-title .accent { color: var(--brass); }
+    .hero-num {
+      font-family: 'JetBrains Mono', monospace; font-size: 2rem; font-weight: 600;
+      letter-spacing: -0.02em; line-height: 1; margin-bottom: 0.35rem;
+    }
+    .hero-num.up   { color: var(--up-l); }
+    .hero-num.down { color: var(--down-l); }
+    .hero-sub {
+      font-size: 0.82rem; color: var(--dim); line-height: 1.55;
+      margin-bottom: 0.9rem;
+    }
+    .hero-sub strong { color: var(--text); font-weight: 600; }
+    .hero-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.6rem; }
 
-    /* SEARCH */
-    .search-wrap { position: relative; }
-    .search-input {
-      width: 100%; background: var(--surface); border: 1px solid var(--line-2);
-      color: var(--text); font-family: inherit; font-size: 0.82rem;
-      padding: 7px 10px 7px 30px; border-radius: 5px;
-      transition: border-color 0.15s;
+    /* PAIR-MODE INLINE DETAIL — used when both A and B are picked */
+    .pair-detail {
+      background: var(--panel);
+      border: 1px solid var(--brass);
+      border-radius: 10px;
+      padding: 1rem 1.1rem;
+      margin-top: 0.5rem;
     }
-    .search-input:focus { outline: none; border-color: var(--brass); }
-    .search-input::placeholder { color: var(--mute); }
-    .search-ico { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); color: var(--mute); pointer-events: none; }
+    .pair-detail-reading {
+      font-size: 0.88rem; color: var(--text); line-height: 1.6;
+      margin: 0.6rem 0 0.8rem;
+    }
+    .pair-vol-row { display: flex; align-items: center; gap: 0.6rem; font-size: 0.72rem; margin: 0.35rem 0; }
+    .pair-vol-label { width: 66px; color: var(--mute); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.05em; }
+    .pair-vol-bar { flex: 1; height: 5px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden; }
+    .pair-vol-fill.current { background: var(--brass); height: 100%; }
+    .pair-vol-fill.prior   { background: var(--mute); height: 100%; }
+    .pair-vol-num { width: 60px; text-align: right; font-family: 'JetBrains Mono', monospace; color: var(--text); font-variant-numeric: tabular-nums; }
 
-    /* FILTER PANEL */
-    .filter-panel {
-      padding: 1rem 1.25rem;
-      border-bottom: 1px solid var(--line);
+    /* ADVANCED FILTERS — folded away by default */
+    details.advanced {
+      border-top: 1px solid var(--line);
+      padding: 0.6rem 1.25rem;
     }
-    .filter-group { margin-bottom: 0.85rem; }
+    details.advanced summary {
+      cursor: pointer; list-style: none;
+      font-family: 'JetBrains Mono', monospace; font-size: 0.66rem;
+      color: var(--mute); letter-spacing: 0.16em; text-transform: uppercase;
+      padding: 0.35rem 0; user-select: none;
+    }
+    details.advanced summary::-webkit-details-marker { display: none; }
+    details.advanced summary::before { content: '›  '; color: var(--mute); transition: transform 0.15s; display: inline-block; }
+    details.advanced[open] summary::before { transform: rotate(90deg); }
+    details.advanced .filter-panel-inner {
+      padding: 0.5rem 0 0.75rem;
+    }
+    .filter-group { margin-bottom: 0.75rem; }
     .filter-group:last-child { margin-bottom: 0; }
     .filter-label {
       display: block;
-      font-size: 0.66rem; color: var(--mute);
+      font-size: 0.64rem; color: var(--mute);
       letter-spacing: 0.14em; text-transform: uppercase;
-      margin-bottom: 0.4rem; font-weight: 500;
+      margin-bottom: 0.35rem; font-weight: 500;
       font-family: 'JetBrains Mono', monospace;
     }
     .chip-row { display: flex; flex-wrap: wrap; gap: 0.3rem; }
@@ -167,7 +199,28 @@
     }
     .feed-title { font-size: 0.66rem; font-family: 'JetBrains Mono', monospace; color: var(--mute); letter-spacing: 0.2em; text-transform: uppercase; }
     .feed-count { font-size: 0.72rem; font-family: 'JetBrains Mono', monospace; color: var(--brass-l); }
-    .feed { padding: 0 1.25rem 2rem; display: flex; flex-direction: column; gap: 0.6rem; }
+    .feed { padding: 0 1.25rem 2rem; display: flex; flex-direction: column; gap: 0.45rem; }
+    .feed-heading {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.62rem;
+      color: var(--mute); letter-spacing: 0.2em; text-transform: uppercase;
+      padding: 0.5rem 0 0.3rem;
+    }
+    .show-more {
+      margin-top: 0.4rem; padding: 0.55rem;
+      background: transparent; border: 1px dashed var(--line-2);
+      color: var(--dim); font-family: inherit; font-size: 0.75rem;
+      border-radius: 6px; cursor: pointer;
+      transition: all 0.15s;
+    }
+    .show-more:hover { color: var(--brass-l); border-color: var(--brass); }
+
+    /* Compact card variant — leaner, used in the primary list */
+    .card.compact { padding: 0.65rem 0.85rem; }
+    .card.compact .card-headline { font-size: 0.82rem; margin: 0.2rem 0 0; line-height: 1.4; color: var(--dim); font-weight: 500; }
+    .card.compact .card-headline.compact { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .card.compact .card-top { padding-right: 0; margin-bottom: 0; }
+    .card.compact .card-route { font-size: 0.75rem; color: var(--text); font-family: inherit; font-weight: 500; letter-spacing: 0; text-transform: none; }
+    .card.compact .card-delta { font-size: 0.78rem; padding: 1px 6px; }
     .card {
       background: var(--panel);
       border: 1px solid var(--line);
@@ -462,7 +515,7 @@
     <div class="nav-mark">
       <svg viewBox="0 0 32 32"><path d="M6 22 L26 10 M6 10 L26 22" stroke="#c9a86a" stroke-width="2.4" stroke-linecap="round" fill="none"/></svg>
     </div>
-    Flight Macro
+    OvrHead
     <span class="nav-title-sub">macro trends · flight data</span>
   </a>
   <ul class="nav-links">
@@ -476,7 +529,7 @@
   <aside id="sidebar">
     <div class="side-head">
       <div class="side-head-top">
-        <span class="side-title">Explore corridors</span>
+        <span class="side-title">Ask the map</span>
         <span class="updated-pill" id="updated-pill">—</span>
       </div>
       <datalist id="country-options"></datalist>
@@ -496,59 +549,48 @@
           </button>
         </div>
       </div>
-      <div class="picker-hint" id="picker-hint">Click a country on the globe, or type here. City-level corridors (e.g. Frankfurt, Madrid) appear once a country is picked.</div>
     </div>
 
-    <div class="filter-panel">
-      <div class="filter-group">
-        <label class="filter-label">Theme</label>
-        <div class="chip-row" data-filter="theme">
-          <button class="chip active" data-value="all">All</button>
-          <button class="chip" data-value="tourism">Tourism</button>
-          <button class="chip" data-value="business">Business</button>
-          <button class="chip" data-value="migration">Migration</button>
-          <button class="chip" data-value="supply-chain">Supply chain</button>
+    <div class="hero-block" id="hero-block"></div>
+
+    <div class="feed" id="feed"></div>
+
+    <details class="advanced" id="advanced">
+      <summary>Advanced</summary>
+      <div class="filter-panel-inner">
+        <div class="filter-group">
+          <label class="filter-label">Theme</label>
+          <div class="chip-row" data-filter="theme">
+            <button class="chip active" data-value="all">All</button>
+            <button class="chip" data-value="tourism">Tourism</button>
+            <button class="chip" data-value="business">Business</button>
+            <button class="chip" data-value="migration">Migration</button>
+            <button class="chip" data-value="supply-chain">Supply chain</button>
+          </div>
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">Direction</label>
+          <div class="chip-row" data-filter="direction">
+            <button class="chip active" data-value="all">All</button>
+            <button class="chip" data-value="up">Up YoY</button>
+            <button class="chip" data-value="down">Down YoY</button>
+            <button class="chip" data-value="watched">★ Watched</button>
+          </div>
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">Sort</label>
+          <div class="chip-row" data-filter="sort">
+            <button class="chip active" data-value="strength">Signal strength</button>
+            <button class="chip" data-value="delta">|Delta|</button>
+            <button class="chip" data-value="volume">Volume</button>
+          </div>
+        </div>
+        <div class="actions-row" style="padding:0.5rem 0 0">
+          <button class="action-btn" id="btn-export" title="Export currently visible signals as CSV">Export CSV</button>
+          <button class="action-btn" id="btn-clear-watch" title="Clear all watched signals">Clear watched</button>
         </div>
       </div>
-
-      <div class="filter-group">
-        <label class="filter-label">Direction</label>
-        <div class="chip-row" data-filter="direction">
-          <button class="chip active" data-value="all">All</button>
-          <button class="chip" data-value="up">Up YoY</button>
-          <button class="chip" data-value="down">Down YoY</button>
-          <button class="chip" data-value="watched">★ Watched</button>
-        </div>
-      </div>
-
-      <div class="filter-group">
-        <label class="filter-label">Sort</label>
-        <div class="chip-row" data-filter="sort">
-          <button class="chip active" data-value="strength">Signal strength</button>
-          <button class="chip" data-value="delta">|Delta|</button>
-          <button class="chip" data-value="volume">Volume</button>
-          <button class="chip" data-value="az">A → Z</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="feed-header">
-      <span class="feed-title">Signals</span>
-      <span class="feed-count" id="feed-count">—</span>
-    </div>
-    <div class="actions-row">
-      <button class="action-btn" id="btn-export" title="Export currently visible signals as CSV">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        Export CSV
-      </button>
-      <button class="action-btn" id="btn-clear-watch" title="Clear all watched signals">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-        Clear watched
-      </button>
-    </div>
-    <div class="feed" id="feed">
-      <div class="empty">Loading signals…</div>
-    </div>
+    </details>
   </aside>
 
   <div id="map-wrap">
@@ -558,9 +600,9 @@
       <p>Loading globe</p>
     </div>
     <div class="map-prompt" id="map-prompt">
-      <div class="map-prompt-eye">Start here</div>
-      <h2>Click a country on the globe</h2>
-      <p>Or type into the panel. Pick one country to see all its corridors, two to focus on a specific pair. Corridors are computed on demand — you'd never look at all of them at once.</p>
+      <div class="map-prompt-eye">One question, one answer</div>
+      <h2>Click any country</h2>
+      <p>Type one to read its full corridor picture. Add a second to focus on a specific pair.</p>
     </div>
     <div class="map-legend">
       <div class="legend-title">Route flow YoY</div>
@@ -678,7 +720,7 @@
   const arcById = new Map();
 
   // ---- Watchlist (per-viewer, browser storage) ----
-  const WATCH_KEY = 'flightmacro.watched.v1';
+  const WATCH_KEY = 'ovrhead.watched.v1';
   let watched = new Set();
   try {
     const raw = localStorage.getItem(WATCH_KEY);
@@ -739,59 +781,207 @@
     return out;
   }
 
+  // How many signals show in the short list under the hero. Busy user cap.
+  const SHORT_LIST_MAX = 5;
+
+  function selectionMode() {
+    const hasA = !!filters.countryA;
+    const hasB = !!filters.countryB;
+    if (hasA && hasB) return 'pair';
+    if (hasA) return 'country';
+    return 'landing';
+  }
+
+  function scopedInsights() {
+    // Insights matching the current country selection (before theme/dir filters).
+    return insights.filter(i => matchesCountry(i, filters.countryA) && matchesCountry(i, filters.countryB));
+  }
+
+  function filteredInsights() {
+    // scoped + user filters (theme/direction) + sort
+    return sortInsights(insights.filter(passesFilter));
+  }
+
   function render() {
     arcById.clear();
+    const mode = selectionMode();
+    document.getElementById('map-prompt').classList.toggle('hidden', mode !== 'landing');
 
-    const selectionActive = corridorSelectionActive();
-    document.getElementById('map-prompt').classList.toggle('hidden', selectionActive);
-
-    let visible = insights.filter(passesFilter);
-    visible = sortInsights(visible);
-    document.getElementById('feed-count').textContent = selectionActive ? String(visible.length).padStart(2, '0') : '—';
-
+    const hero = document.getElementById('hero-block');
     const feed = document.getElementById('feed');
-    if (!selectionActive) {
-      feed.innerHTML = `
-        <div class="feed-landing">
-          <span class="big">No corridor selected</span>
-          Pick <strong style="color:var(--brass-l)">Country A</strong> above to load its corridors.<br>
-          Add <strong style="color:var(--brass-l)">Country B</strong> to focus on a specific pair.
-        </div>`;
-    } else if (visible.length === 0) {
-      feed.innerHTML = `
-        <div class="feed-landing">
-          <span class="big">No signal computed for this selection</span>
-          The current dataset doesn't have a material anomaly on this corridor.<br>
-          Try a different pair, remove Country B to widen, or check back after the next daily update.
-        </div>`;
+
+    if (mode === 'landing') {
+      renderLanding(hero, feed);
+      drawArcs([]);            // no arcs until a country is picked
+    } else if (mode === 'country') {
+      renderCountryMode(hero, feed);
     } else {
-      feed.innerHTML = visible.map(cardHtml).join('');
-      feed.querySelectorAll('.card').forEach(el => {
-        el.addEventListener('click', e => {
-          if (e.target.closest('.card-star')) return;
-          selectInsight(el.dataset.id);
-        });
-        el.addEventListener('mouseenter', () => setHover(el.dataset.id));
-        el.addEventListener('mouseleave', () => setHover(null));
-      });
-      feed.querySelectorAll('.card-star').forEach(el => {
-        el.addEventListener('click', e => { e.stopPropagation(); toggleWatch(el.dataset.id); });
-      });
+      renderPairMode(hero, feed);
     }
 
-    drawArcs(visible);
     applyHighlight();
+    wireCards(feed);
 
-    // Only fly the globe when the country selection itself changed — not on sort/theme tweaks.
+    // Fly only when the country selection changes — not on sort/filter tweaks.
     const selKey = `${normName(filters.countryA)}|${normName(filters.countryB)}`;
-    if (selectionActive && visible.length > 0 && selKey !== lastFlownKey) {
-      flyToSelection(visible);
+    if (mode !== 'landing' && selKey !== lastFlownKey) {
+      const arcTargets = filteredInsights();
+      if (arcTargets.length) flyToSelection(arcTargets);
       lastFlownKey = selKey;
-    } else if (!selectionActive) {
+    } else if (mode === 'landing') {
       lastFlownKey = '';
     }
   }
   let lastFlownKey = '';
+
+  function wireCards(container) {
+    container.querySelectorAll('.card').forEach(el => {
+      el.addEventListener('click', e => {
+        if (e.target.closest('.card-star')) return;
+        selectInsight(el.dataset.id);
+      });
+      el.addEventListener('mouseenter', () => setHover(el.dataset.id));
+      el.addEventListener('mouseleave', () => setHover(null));
+    });
+    container.querySelectorAll('.card-star').forEach(el => {
+      el.addEventListener('click', e => { e.stopPropagation(); toggleWatch(el.dataset.id); });
+    });
+  }
+
+  // ---- LANDING: no country picked ----
+  function renderLanding(hero, feed) {
+    hero.innerHTML = `
+      <div class="hero-eyebrow">Start here</div>
+      <div class="hero-title">Which flight <span class="accent">corridor</span> do you want to read?</div>
+      <div class="hero-sub">Click a country on the globe, or type one above. OvrHead computes the corridor on demand.</div>
+    `;
+    // Small "biggest movers today" — a hook, not a feed. Top 3 across everything.
+    const movers = sortInsights(insights.slice()).slice(0, 3);
+    if (movers.length) {
+      feed.innerHTML = `
+        <div class="feed-heading">Biggest movers today</div>
+        ${movers.map(compactCard).join('')}
+      `;
+    } else {
+      feed.innerHTML = `<div class="feed-landing">Loading signals…</div>`;
+    }
+    drawArcs(movers);   // faint hint on globe
+  }
+
+  // ---- COUNTRY: one country picked, show summary + top-N corridors ----
+  function renderCountryMode(hero, feed) {
+    const scoped = scopedInsights();
+    const shown = filteredInsights();
+    if (!shown.length) {
+      hero.innerHTML = `
+        <div class="hero-eyebrow">${escapeHtml(filters.countryA)}</div>
+        <div class="hero-title">No material anomaly this period</div>
+        <div class="hero-sub">The current dataset shows no corridor above the significance threshold for <strong>${escapeHtml(filters.countryA)}</strong>. Try another country, add a second one to check a specific pair, or check back after the next daily update.</div>
+      `;
+      feed.innerHTML = '';
+      drawArcs([]);
+      return;
+    }
+    const agg = aggregate(scoped);
+    const biggest = shown[0];   // sorted by strength (default)
+    const biggestUp = biggest.deltaPct >= 0;
+
+    hero.innerHTML = `
+      <div class="hero-eyebrow">${escapeHtml(filters.countryA)} · ${escapeHtml(biggest.period || '')}</div>
+      <div class="hero-num ${agg.netUp ? 'up' : 'down'}">${agg.netUp ? '+' : ''}${agg.netPct.toFixed(1)}%</div>
+      <div class="hero-sub">
+        Net across <strong>${agg.total} corridor${agg.total===1?'':'s'}</strong> · <strong>${agg.up}</strong> up, <strong>${agg.down}</strong> down.<br>
+        Biggest mover: <strong style="color:var(--${biggestUp ? 'up-l' : 'down-l'})">${escapeHtml(biggest.dest.name)} ${biggestUp?'+':''}${biggest.deltaPct.toFixed(1)}%</strong>.
+      </div>
+    `;
+    const short = shown.slice(0, SHORT_LIST_MAX);
+    const overflow = shown.length - short.length;
+    feed.innerHTML = `
+      <div class="feed-heading">Top corridors</div>
+      ${short.map(compactCard).join('')}
+      ${overflow > 0 ? `<button class="show-more" id="show-more">Show ${overflow} more</button>` : ''}
+    `;
+    if (overflow > 0) {
+      document.getElementById('show-more').addEventListener('click', () => {
+        feed.innerHTML = `<div class="feed-heading">All corridors</div>${shown.map(compactCard).join('')}`;
+        wireCards(feed);
+      });
+    }
+    drawArcs(shown);
+  }
+
+  // ---- PAIR: A and B picked, inline full detail ----
+  function renderPairMode(hero, feed) {
+    const shown = filteredInsights();
+    if (!shown.length) {
+      hero.innerHTML = `
+        <div class="hero-eyebrow">${escapeHtml(filters.countryA)} ↔ ${escapeHtml(filters.countryB)}</div>
+        <div class="hero-title">No signal for this corridor</div>
+        <div class="hero-sub">No material anomaly computed yet for <strong>${escapeHtml(filters.countryA)}</strong> ↔ <strong>${escapeHtml(filters.countryB)}</strong> in the current period. Remove Country B to widen, or try a different pair.</div>
+      `;
+      feed.innerHTML = '';
+      drawArcs([]);
+      return;
+    }
+    const primary = shown[0];
+    const up = primary.deltaPct >= 0;
+    const vc = primary.volumeCurrent || 0;
+    const vp = primary.volumePrior || 0;
+    const maxV = Math.max(vc, vp, 1);
+
+    hero.innerHTML = `
+      <div class="hero-eyebrow">${escapeHtml(primary.origin.name)} ↔ ${escapeHtml(primary.dest.name)} · ${escapeHtml(primary.period || '')}</div>
+      <div class="hero-num ${up ? 'up' : 'down'}">${up ? '+' : ''}${primary.deltaPct.toFixed(1)}%</div>
+      <div class="pair-detail">
+        <div style="font-size:0.9rem;font-weight:600;color:var(--text);line-height:1.35">${escapeHtml(primary.headline || '')}</div>
+        <div class="pair-detail-reading">${escapeHtml(primary.reading || '')}</div>
+        ${(vc || vp) ? `
+          <div class="pair-vol-row">
+            <span class="pair-vol-label">current</span>
+            <div class="pair-vol-bar"><div class="pair-vol-fill current" style="width:${(vc/maxV*100).toFixed(1)}%"></div></div>
+            <span class="pair-vol-num">${fmtInt(vc)}</span>
+          </div>
+          <div class="pair-vol-row">
+            <span class="pair-vol-label">prior yr</span>
+            <div class="pair-vol-bar"><div class="pair-vol-fill prior" style="width:${(vp/maxV*100).toFixed(1)}%"></div></div>
+            <span class="pair-vol-num">${fmtInt(vp)}</span>
+          </div>
+        ` : ''}
+        <div class="drawer-actions" style="margin-top:0.7rem">
+          <button class="drawer-btn ${watched.has(primary.id) ? 'ok' : 'ghost'}" id="hero-watch">
+            <svg viewBox="0 0 24 24" fill="${watched.has(primary.id) ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            ${watched.has(primary.id) ? 'Watched' : 'Watch'}
+          </button>
+          <button class="drawer-btn ghost" id="hero-copy">Copy for note</button>
+        </div>
+      </div>
+    `;
+    document.getElementById('hero-watch').addEventListener('click', () => toggleWatch(primary.id));
+    document.getElementById('hero-copy').addEventListener('click', e => copyCitation(primary, e.currentTarget));
+
+    const related = shown.slice(1, 4);
+    if (related.length) {
+      feed.innerHTML = `<div class="feed-heading">Related corridors</div>${related.map(compactCard).join('')}`;
+    } else {
+      feed.innerHTML = '';
+    }
+    drawArcs(shown);
+  }
+
+  function aggregate(list) {
+    const up = list.filter(i => i.deltaPct > 0).length;
+    const down = list.filter(i => i.deltaPct < 0).length;
+    // Volume-weighted net delta if volumes present, else simple mean
+    let netPct = 0;
+    const withVol = list.filter(i => (i.volumeCurrent || 0) > 0);
+    if (withVol.length) {
+      const totalVol = withVol.reduce((s, i) => s + i.volumeCurrent, 0);
+      netPct = withVol.reduce((s, i) => s + (i.deltaPct * i.volumeCurrent), 0) / totalVol;
+    } else if (list.length) {
+      netPct = list.reduce((s, i) => s + i.deltaPct, 0) / list.length;
+    }
+    return { total: list.length, up, down, netPct, netUp: netPct >= 0 };
+  }
 
   function flyToSelection(visible) {
     // Centroid of all endpoints; altitude based on max span so both endpoints stay in view.
@@ -811,6 +1001,22 @@
     globe.pointOfView({ lat: sumLat / n, lng: sumLng / n, altitude }, 900);
   }
 
+  // Compact card — the secondary list item. Route, delta, one-line reading, no meta noise.
+  function compactCard(i) {
+    const up = i.deltaPct >= 0;
+    const sign = up ? '+' : '';
+    return `
+      <div class="card compact ${i.id === activeId ? 'active' : ''}" data-id="${i.id}">
+        <div class="card-top">
+          <span class="card-route">${escapeHtml(i.origin.name)} → ${escapeHtml(i.dest.name)}</span>
+          <span class="card-delta ${up ? 'up' : 'down'}">${sign}${(+i.deltaPct).toFixed(1)}%</span>
+        </div>
+        <div class="card-headline compact">${escapeHtml(i.headline || '')}</div>
+      </div>
+    `;
+  }
+
+  // Full card — used inside the drawer for the deep-dive view.
   function cardHtml(i) {
     const up = i.deltaPct >= 0;
     const sign = up ? '+' : '';
@@ -1020,7 +1226,7 @@
 
     document.getElementById('dw-watch').addEventListener('click', () => toggleWatch(i.id));
     document.getElementById('dw-copy').addEventListener('click', e => copyCitation(i, e.currentTarget));
-    document.getElementById('dw-export-one').addEventListener('click', () => exportCsv([i], `flightmacro_${i.id}.csv`));
+    document.getElementById('dw-export-one').addEventListener('click', () => exportCsv([i], `ovrhead_${i.id}.csv`));
     body.querySelectorAll('.country-chip').forEach(el => {
       el.addEventListener('click', () => filterToCountry(el.dataset.country));
     });
@@ -1058,7 +1264,7 @@
   function copyCitation(i, btn) {
     const now = new Date().toISOString().slice(0, 10);
     const vol = i.volumeCurrent ? `${i.volumeCurrent.toLocaleString()} passengers` : 'material volume';
-    const text = `Flight Macro: ${i.origin.name} ↔ ${i.dest.name} ${i.deltaPct >= 0 ? 'up' : 'down'} ${Math.abs(i.deltaPct).toFixed(1)}% YoY (${i.period}, ${vol}). ${i.reading || ''} Source: ${meta.source || 'Eurostat'} via Flight Macro, retrieved ${now}.`;
+    const text = `OvrHead: ${i.origin.name} ↔ ${i.dest.name} ${i.deltaPct >= 0 ? 'up' : 'down'} ${Math.abs(i.deltaPct).toFixed(1)}% YoY (${i.period}, ${vol}). ${i.reading || ''} Source: ${meta.source || 'Eurostat'} via OvrHead, retrieved ${now}.`;
     (navigator.clipboard && navigator.clipboard.writeText
       ? navigator.clipboard.writeText(text)
       : Promise.reject('no clipboard')
@@ -1070,7 +1276,7 @@
     }).catch(() => alert(text));
   }
 
-  function exportCsv(rows, filename = 'flightmacro_signals.csv') {
+  function exportCsv(rows, filename = 'ovrhead_signals.csv') {
     if (!rows.length) return;
     const cols = ['id','origin_name','origin_code','dest_name','dest_code','period','delta_pct','volume_current','volume_prior','theme','confidence','headline','reading'];
     const esc = v => {
@@ -1094,7 +1300,7 @@
 
   document.getElementById('btn-export').addEventListener('click', () => {
     const visible = sortInsights(insights.filter(passesFilter));
-    exportCsv(visible, `flightmacro_${new Date().toISOString().slice(0,10)}.csv`);
+    exportCsv(visible, `ovrhead_${new Date().toISOString().slice(0,10)}.csv`);
   });
   document.getElementById('btn-clear-watch').addEventListener('click', () => {
     if (!watched.size) return;

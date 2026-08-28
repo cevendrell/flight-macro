@@ -1,31 +1,45 @@
-# Flight Macro
+# OvrHead
 
-A map-first dashboard that reads global flight-route data as a lens on macroeconomic shifts — tourism, business travel, migration, supply chains.
+Reading global flight-route data as a lens on macroeconomic shifts — tourism, business travel, migration, supply chains.
 
 ## Structure
-- `index.html` — main map view with filterable insight feed (Leaflet + CARTO dark tiles, no build step)
-- `data/insights.json` — signal records; the site fetches this at runtime
+- `index.html` — 3D globe view (globe.gl on three.js). Click any country to load its corridors.
+- `data/insights.json` — the signals the site consumes (small, committed).
 - `pages/about/` — project intro
 - `pages/methodology/` — how flight data maps to macro signals
-- `scripts/generate_insights.py` — Python pipeline: fetch → rank anomalies → enrich via Claude → write JSON
-- `.github/workflows/update-insights.yml` — daily cron that runs the pipeline
+- `scripts/` — Python pipeline (ingest → warehouse → rollup → Claude enrichment → JSON)
+- `docs/ARCHITECTURE.md` — architecture overview
+- `docs/GETTING_STARTED.md` — setup on the laptop, copy-paste
+
+## Data flow
+
+```
+Sources                    Laptop warehouse                      Repo         Site
+────────                   ────────────────────                  ─────        ────
+OpenSky REST         ──▶   raw/opensky/*.parquet    ──▶
+                                                        rollup ──▶  curated  ──▶  generate
+Eurostat avia_par_*  ──▶   raw/eurostat/*.parquet   ──▶                            insights.json  ──▶  git push  ──▶  GitHub Pages
+```
+
+- **Warehouse** lives outside git (`~/data/ovrhead-warehouse/`), driven by DuckDB + Parquet
+- **Only the small extracted JSON** is committed and served
+- **Cadence**: daily cron on the laptop → repo → site refreshes ~1–2 min later
 
 ## Aesthetic
-Refined finance-terminal palette: warm midnight-navy ground, brass/teak (LayOvr family) as primary accent, sage green for up trends, burnt sienna for down. Parchment text on cool dark ground. Inter + JetBrains Mono.
+Refined finance-terminal palette: warm midnight-navy ground, brass/teak primary accent (LayOvr family), sage green for up trends, burnt sienna for down. Inter + JetBrains Mono.
 
-## Data pipeline (daily)
-1. Fetch route-level flight volumes (OpenSky, BTS T-100, Eurocontrol)
-2. Filter to corridors above the volume floor
-3. Rank by `|delta%| × log(volume)` — takes the top ~25
-4. Send each to Claude with macro context → get headline, reading, theme, confidence
-5. Commit `data/insights.json` → GitHub Pages redeploys
+## Quickstart
+```bash
+pip install -r scripts/requirements.txt
+python scripts/ingest_opensky.py --day 2026-08-27
+python scripts/ingest_eurostat.py --from 2026-05 --to 2026-05 --reporters DE,FR,ES
+python scripts/rollup.py
+python scripts/warehouse_inspect.py
+python scripts/generate_insights.py --source warehouse --dry-run
+```
 
-## Setup
-1. On github.com → repo Settings → Pages → Source: `main / (root)`
-2. Repo Settings → Secrets and variables → Actions → add `ANTHROPIC_API_KEY`
-3. Actions tab → enable workflows (first-time confirmation)
-4. `scripts/generate_insights.py` currently has a stubbed `fetch_corridors()` — wire in a real source and the cron starts producing insights
+See [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) for the full walkthrough.
 
 ## Workflow
-- Site edits: made locally, pushed via GitHub Desktop
-- Data updates: pushed autonomously by the daily Action
+- Site edits: locally → GitHub Desktop push
+- Data updates: `python scripts/run_pipeline.py` on the laptop (daily cron) → auto-push

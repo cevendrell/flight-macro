@@ -1,41 +1,40 @@
-name: Update insights
+# DISABLED — the primary pipeline now runs on the author's laptop, which has
+# access to the local warehouse (Parquet + DuckDB). This workflow is kept only
+# as a scaffold in case a lightweight cloud fallback is ever needed. To
+# re-enable, restore the `schedule:` block and add ANTHROPIC_API_KEY to repo
+# secrets.
+#
+# See docs/ARCHITECTURE.md and docs/GETTING_STARTED.md.
+
+name: Update insights (disabled)
 
 on:
-  schedule:
-    # 06:00 UTC daily
-    - cron: '0 6 * * *'
-  workflow_dispatch: {}
+  workflow_dispatch: {}    # manual only; no cron
 
 permissions:
   contents: write
 
 jobs:
   update:
+    if: false              # explicit disable — remove this line to re-enable
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
           cache: 'pip'
-
       - name: Install deps
         run: pip install -r scripts/requirements.txt
-
-      - name: Run pipeline
+      - name: Run pipeline (API mode — no warehouse in CI)
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: python scripts/generate_insights.py
-
-      - name: Commit changes
+        run: python scripts/generate_insights.py --source api
+      - name: Commit
         run: |
-          if git diff --quiet data/insights.json; then
-            echo "No changes to commit."
-            exit 0
-          fi
-          git config user.name  "flight-macro-bot"
+          if git diff --quiet data/insights.json; then exit 0; fi
+          git config user.name  "ovrhead-bot"
           git config user.email "bot@users.noreply.github.com"
           git add data/insights.json
-          git commit -m "chore(data): refresh insights $(date -u +%Y-%m-%d)"
+          git commit -m "chore(data): fallback refresh $(date -u +%Y-%m-%d)"
           git push

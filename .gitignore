@@ -7,3 +7,10 @@ __pycache__/
 venv/
 node_modules/
 *.log
+
+# Local warehouse artifacts if OVRHEAD_WAREHOUSE is ever pointed inside the repo
+scripts/.cache/
+*.duckdb
+*.duckdb.wal
+*.parquet
+!data/*.json
