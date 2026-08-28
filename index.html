@@ -14,11 +14,11 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
     :root {
-      /* Ground — deep midnight navy, warm enough not to feel like vacuum */
-      --bg:      #0a1119;
-      --bg-2:    #0d1420;
-      --surface: #121a26;
-      --panel:   #18202e;
+      /* Ground — deep midnight navy, warmed a hair to catch a brass reflection */
+      --bg:      #0b1420;
+      --bg-2:    #0f1a29;
+      --surface: #141e2d;
+      --panel:   #1a2434;
 
       /* Structure — warm lines instead of pure white alpha */
       --line:    rgba(201, 180, 140, 0.08);
@@ -73,13 +73,16 @@
     .nav-links a:hover { color: var(--brass-l); }
     @media (max-width: 720px) { .nav-title-sub { display: none; } .nav-links { gap: 1rem; } }
 
-    /* APP LAYOUT */
+    /* APP LAYOUT — 3-column grid, drawer collapses when closed so globe fills the rest */
     #app {
       display: grid;
-      grid-template-columns: 400px 1fr;
+      grid-template-columns: 400px 0px 1fr;
       height: 100vh;
       padding-top: 58px;
+      transition: grid-template-columns 0.28s cubic-bezier(0.4, 0.2, 0.2, 1);
     }
+    body.drawer-open #app { grid-template-columns: 400px 440px 1fr; }
+
     #sidebar {
       background: var(--surface);
       border-right: 1px solid var(--line);
@@ -91,13 +94,28 @@
     #sidebar::-webkit-scrollbar { width: 8px; }
     #sidebar::-webkit-scrollbar-thumb { background: var(--mute); border-radius: 4px; }
     #map-wrap { position: relative; }
-    #map { width: 100%; height: 100%; background: var(--bg-2); }
+    /* Warm brass glow behind the globe — subtle, gives the whole scene a lamp-lit feel */
+    #map-wrap::before {
+      content: ''; position: absolute; inset: 0; pointer-events: none;
+      background:
+        radial-gradient(ellipse at 60% 45%, rgba(201,168,106,0.09), transparent 65%),
+        radial-gradient(ellipse at 25% 80%, rgba(107,140,175,0.06), transparent 55%);
+      z-index: 1;
+    }
+    #map { width: 100%; height: 100%; background: var(--bg-2); position: relative; z-index: 2; }
 
     /* SIDEBAR HEADER */
     .side-head {
       padding: 1rem 1.25rem 0.85rem;
       background: var(--panel);
       border-bottom: 1px solid var(--line);
+      position: relative;
+    }
+    /* subtle brass hairline underneath — feels like the light hits here */
+    .side-head::after {
+      content: ''; position: absolute; left: 12px; right: 12px; bottom: -1px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(201,168,106,0.45), transparent);
     }
     .side-head-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; }
     .side-title { font-family: 'JetBrains Mono', monospace; font-size: 0.66rem; color: var(--mute); letter-spacing: 0.2em; text-transform: uppercase; }
@@ -455,27 +473,16 @@
     /* keep delta from being covered by the star */
     .card-top { padding-right: 22px; }
 
-    /* DETAIL DRAWER */
-    .drawer-backdrop {
-      position: fixed; inset: 58px 0 0 0;
-      background: rgba(5,9,18,0.55);
-      opacity: 0; pointer-events: none;
-      transition: opacity 0.25s;
-      z-index: 700;
-    }
-    .drawer-backdrop.open { opacity: 1; pointer-events: auto; }
+    /* DETAIL DRAWER — grid child between sidebar and map, globe stays navigable */
     .drawer {
-      position: fixed; top: 58px; right: 0; bottom: 0;
-      width: min(460px, 95vw);
       background: var(--surface);
-      border-left: 1px solid var(--line);
-      transform: translateX(100%);
-      transition: transform 0.28s cubic-bezier(0.4, 0.2, 0.2, 1);
-      z-index: 750;
+      border-right: 1px solid var(--line);
+      overflow: hidden;
       display: flex; flex-direction: column;
-      box-shadow: -12px 0 40px rgba(0,0,0,0.5);
+      opacity: 0;
+      transition: opacity 0.18s ease 0.06s;
     }
-    .drawer.open { transform: translateX(0); }
+    body.drawer-open .drawer { opacity: 1; }
     .drawer-head {
       padding: 1.25rem 1.5rem 1rem;
       border-bottom: 1px solid var(--line);
@@ -775,13 +782,26 @@
     </details>
   </aside>
 
+  <aside class="drawer" id="drawer" aria-hidden="true">
+    <div class="drawer-head">
+      <div>
+        <div class="drawer-eyebrow" id="drawer-route">—</div>
+        <div class="drawer-title" id="drawer-headline">—</div>
+      </div>
+      <button class="drawer-close" id="drawer-close" aria-label="Close">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="drawer-body" id="drawer-body"></div>
+  </aside>
+
   <div id="map-wrap">
     <div id="map"></div>
     <div class="globe-loading" id="globe-loading">
       <div class="spinner"></div>
       <p>Loading globe</p>
     </div>
-    <div class="map-prompt" id="map-prompt">Click any country to begin</div>
+    <div class="map-prompt" id="map-prompt">Tinted countries have signals · click any to focus</div>
     <div class="map-legend">
       <div class="legend-row"><div class="legend-swatch up"></div>Growing</div>
       <div class="legend-row"><div class="legend-swatch down"></div>Shrinking</div>
@@ -790,20 +810,6 @@
   </div>
 
 </div>
-
-<div class="drawer-backdrop" id="drawer-backdrop"></div>
-<aside class="drawer" id="drawer" aria-hidden="true">
-  <div class="drawer-head">
-    <div>
-      <div class="drawer-eyebrow" id="drawer-route">—</div>
-      <div class="drawer-title" id="drawer-headline">—</div>
-    </div>
-    <button class="drawer-close" id="drawer-close" aria-label="Close">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>
-  </div>
-  <div class="drawer-body" id="drawer-body"></div>
-</aside>
 
 <button class="mobile-toggle" id="mobile-toggle">Signals</button>
 
@@ -818,8 +824,8 @@
     .globeImageUrl('https://unpkg.com/three-globe@2.31.0/example/img/earth-dark.jpg')
     .bumpImageUrl('https://unpkg.com/three-globe@2.31.0/example/img/earth-topology.png')
     .showAtmosphere(true)
-    .atmosphereColor('#8fa8c8')
-    .atmosphereAltitude(0.14)
+    .atmosphereColor('#a4b1c6')             // slightly warmer than pure cool blue
+    .atmosphereAltitude(0.18)               // bigger halo — helps the "lamp-lit" feel
     .polygonAltitude(0.006)
     .polygonCapColor(() => 'rgba(201,168,106,0)')
     .polygonSideColor(() => 'rgba(201,168,106,0)')
@@ -847,6 +853,8 @@
   }
   resizeGlobe();
   window.addEventListener('resize', resizeGlobe);
+  // The drawer-open transition changes the grid columns → globe container resizes → re-fit.
+  if (window.ResizeObserver) new ResizeObserver(resizeGlobe).observe(mapEl);
 
   // ── Controls: slower auto-rotate before any pick; disable after ──
   globe.controls().autoRotate = true;
@@ -861,14 +869,23 @@
     .then(topo => {
       const countries = topojson.feature(topo, topo.objects.countries).features
         .filter(f => f.properties && f.properties.name !== 'Antarctica');
+      window._countryFeatures = countries;   // stash so we can repaint after data loads
       globe.polygonsData(countries)
-        .polygonLabel(d => `<div class="scene-tooltip">${(d.properties && d.properties.name) || ''}</div>`)
+        .polygonLabel(d => countryHoverLabel(d))
+        .polygonAltitude(0.003)              // baseline — closer to the surface
+        .polygonCapColor(d => countryCapColor(d))
+        .polygonStrokeColor(() => 'rgba(154,148,132,0.25)')
         .onPolygonHover(hovered => {
           hoveredCountryFeature = hovered || null;
           globe
-            .polygonAltitude(d => d === hovered ? 0.02 : 0.006)
-            .polygonCapColor(d => d === hovered ? 'rgba(201,168,106,0.28)' : 'rgba(201,168,106,0)')
-            .polygonStrokeColor(d => d === hovered ? 'rgba(220,194,150,0.9)' : 'rgba(154,148,132,0.35)');
+            // Hover lifts only a hair — was 0.02, now 0.009. Much less "floating".
+            .polygonAltitude(d => d === hovered ? 0.009 : 0.003)
+            .polygonCapColor(d => d === hovered
+              ? mixHoverColor(countryCapColor(d))
+              : countryCapColor(d))
+            .polygonStrokeColor(d => d === hovered
+              ? 'rgba(220,194,150,0.75)'
+              : 'rgba(154,148,132,0.25)');
           mapEl.style.cursor = hovered ? 'pointer' : 'grab';
         })
         .onPolygonClick(feat => {
@@ -905,6 +922,84 @@
   let meta = {};
   let hoveredCountryFeature = null;
   const arcById = new Map();
+
+  // Per-country aggregate signal (volume-weighted net delta) — feeds the globe tinting.
+  let countrySignals = new Map();
+  function computeCountrySignals() {
+    const map = new Map();
+    insights.forEach(i => {
+      // Weight = 1 for each corridor endpoint; sum with volume weight for the delta.
+      const w = i.volumeCurrent || 100000;
+      [i.origin.country, i.dest.country].forEach(name => {
+        if (!name) return;
+        const rec = map.get(name) || { count: 0, up: 0, down: 0, sumWD: 0, sumW: 0 };
+        rec.count += 1;
+        if (i.deltaPct >= 0) rec.up += 1; else rec.down += 1;
+        rec.sumWD += i.deltaPct * w;
+        rec.sumW  += w;
+        map.set(name, rec);
+      });
+    });
+    map.forEach(rec => { rec.netPct = rec.sumW ? rec.sumWD / rec.sumW : 0; });
+    return map;
+  }
+
+  function countryHoverLabel(feat) {
+    const n = (feat && feat.properties && feat.properties.name) || '';
+    const sig = countrySignals.get(n) || countrySignals.get({
+      'United States of America': 'United States',
+      'Czech Republic': 'Czechia',
+      'Turkey': 'Türkiye',
+    }[n]);
+    if (!sig || !sig.count) {
+      return `<div class="scene-tooltip"><div style="font-weight:600">${n}</div><div style="opacity:0.55;font-size:0.62rem;margin-top:2px;letter-spacing:0.06em">NO SIGNALS YET</div></div>`;
+    }
+    const sign = sig.netPct >= 0 ? '+' : '';
+    const color = sig.netPct >= 0 ? '#a3c1ac' : '#cf9578';
+    return `<div class="scene-tooltip">
+      <div style="font-weight:600">${n}</div>
+      <div style="margin-top:3px;font-size:0.68rem;letter-spacing:0.02em">
+        <span style="color:${color};font-weight:600">${sign}${sig.netPct.toFixed(1)}%</span>
+        <span style="opacity:0.7">· net across ${sig.count} corridor${sig.count===1?'':'s'}</span>
+      </div>
+    </div>`;
+  }
+
+  function mixHoverColor(baseRgba) {
+    // If the country already has a data tint, brighten it; if not, use brass.
+    if (baseRgba === 'rgba(201,168,106,0)') return 'rgba(201,168,106,0.28)';
+    // extract rgba components and boost alpha
+    const m = baseRgba.match(/rgba\((\d+),(\d+),(\d+),([\d.]+)\)/);
+    if (!m) return 'rgba(201,168,106,0.28)';
+    const boostedAlpha = Math.min(parseFloat(m[4]) + 0.22, 0.55).toFixed(3);
+    return `rgba(${m[1]},${m[2]},${m[3]},${boostedAlpha})`;
+  }
+
+  function repaintCountries() {
+    if (!window._countryFeatures) return;
+    globe
+      .polygonCapColor(d => countryCapColor(d))
+      .polygonLabel(d => countryHoverLabel(d));
+  }
+
+  function countryCapColor(feat) {
+    if (!feat || !feat.properties) return 'rgba(201,168,106,0)';
+    // Try common name aliases from natural-earth
+    const n = feat.properties.name;
+    const sig = countrySignals.get(n) || countrySignals.get({
+      'United States of America': 'United States',
+      'Czech Republic': 'Czechia',
+      'Russia': 'Russia',
+      'Turkey': 'Türkiye',
+    }[n]);
+    if (!sig || !sig.count) return 'rgba(201,168,106,0)';
+    // Alpha climbs with magnitude, capped at ±30% net.
+    const mag = Math.min(Math.abs(sig.netPct) / 30, 1);
+    const alpha = 0.06 + mag * 0.20;
+    return sig.netPct >= 0
+      ? `rgba(127,168,140,${alpha.toFixed(3)})`       // sage — growing
+      : `rgba(184,120,87,${alpha.toFixed(3)})`;       // sienna — shrinking
+  }
 
   /** Focus stack — most-recent node last. Empty stack = landing. */
   const focusStack = [];   // items: { kind: 'country'|'region'|'airport'|'pair', id, name }
@@ -1585,26 +1680,22 @@
     }
   }
 
-  // ---- Drawer ----
+  // ---- Drawer (grid child — globe stays visible + navigable when open) ----
   const drawer = document.getElementById('drawer');
-  const drawerBackdrop = document.getElementById('drawer-backdrop');
 
   function openDrawer(id) {
     const i = insights.find(x => x.id === id);
     if (!i) return;
     renderDrawer(i);
-    drawer.classList.add('open');
+    document.body.classList.add('drawer-open');
     drawer.setAttribute('aria-hidden', 'false');
-    drawerBackdrop.classList.add('open');
   }
   function closeDrawer() {
-    drawer.classList.remove('open');
+    document.body.classList.remove('drawer-open');
     drawer.setAttribute('aria-hidden', 'true');
-    drawerBackdrop.classList.remove('open');
     if (activeId) { activeId = null; render(); }
   }
   document.getElementById('drawer-close').addEventListener('click', closeDrawer);
-  drawerBackdrop.addEventListener('click', closeDrawer);
 
   function renderDrawer(i) {
     const up = i.deltaPct >= 0;
@@ -1866,7 +1957,7 @@
 
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
-      if (drawer.classList.contains('open')) { closeDrawer(); return; }
+      if (document.body.classList.contains('drawer-open')) { closeDrawer(); return; }
       if (activeId) { selectInsight(activeId); return; }
       if (currentFocus()) { goBack(); return; }
     }
@@ -1894,7 +1985,9 @@
     .then(json => {
       insights = json.insights || [];
       meta = json.meta || {};
+      countrySignals = computeCountrySignals();
       document.getElementById('updated-pill').textContent = formatUpdated(meta.updated);
+      repaintCountries();
       render();
     })
     .catch(err => {
