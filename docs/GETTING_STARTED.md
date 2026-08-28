@@ -9,18 +9,31 @@ there, not on the Mac.
 
 Sign up first at https://opensky-network.org (30 seconds; confirm email).
 
-Then on the Matebook:
+### On Windows (Matebook default)
+
+Install these once (if not already):
+- Python 3.12+ from https://www.python.org/downloads/ — **tick "Add python.exe to PATH"**
+- Git for Windows from https://git-scm.com/download/win — accept defaults
+
+Then in **PowerShell**:
+```powershell
+cd $HOME\Documents\GitHub\flight-macro
+git pull
+powershell -ExecutionPolicy Bypass -File scripts\bootstrap_matebook.ps1
+```
+
+### On macOS / Linux
 
 ```bash
-cd ~/Documents/GitHub/flight-macro  # or wherever you cloned it
+cd ~/Documents/GitHub/flight-macro
 git pull
 ./scripts/bootstrap_matebook.sh
 ```
 
-It will: create a venv, install Python deps, prompt (silently) for your
-OpenSky + Anthropic creds and store them in `~/.config/ovrhead/env` (mode
-600, never in git), create the daily cron wrapper at `~/bin/ovrhead-daily.sh`,
-optionally install the cron entry itself, and run a smoke test.
+Either script does the same thing: creates a venv, installs Python deps,
+prompts (silently) for your OpenSky + Anthropic creds and stores them
+locally (mode 600 / user-only ACL, never in git), creates a daily wrapper,
+optionally installs the scheduled task/cron itself, and runs a smoke test.
 
 Skip the manual sections below if the bootstrap works — they're only there for
 troubleshooting.
