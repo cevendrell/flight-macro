@@ -214,13 +214,114 @@
     }
     .show-more:hover { color: var(--brass-l); border-color: var(--brass); }
 
-    /* Compact card variant — leaner, used in the primary list */
+    /* Compact card variant — leaner, used for related/secondary lists */
     .card.compact { padding: 0.65rem 0.85rem; }
     .card.compact .card-headline { font-size: 0.82rem; margin: 0.2rem 0 0; line-height: 1.4; color: var(--dim); font-weight: 500; }
     .card.compact .card-headline.compact { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     .card.compact .card-top { padding-right: 0; margin-bottom: 0; }
     .card.compact .card-route { font-size: 0.75rem; color: var(--text); font-family: inherit; font-weight: 500; letter-spacing: 0; text-transform: none; }
     .card.compact .card-delta { font-size: 0.78rem; padding: 1px 6px; }
+
+    /* THESIS CARD — the primary experience */
+    .thesis-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-left: 3px solid var(--brass);
+      border-radius: 8px;
+      padding: 0.9rem 1rem 0.85rem;
+      transition: border-color 0.2s, transform 0.15s;
+      cursor: pointer;
+    }
+    .thesis-card:hover { border-color: var(--brass); border-left-color: var(--brass-l); transform: translateY(-1px); }
+    .thesis-card.active { border-color: var(--brass-l); border-left-color: var(--brass-l); background: rgba(201,168,106,0.05); }
+    .thesis-card.dir-down { border-left-color: var(--down); }
+    .thesis-card.dir-down:hover { border-left-color: var(--down-l); }
+    .thesis-card.dir-up   { border-left-color: var(--up); }
+    .thesis-card.dir-up:hover   { border-left-color: var(--up-l); }
+
+    .tc-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.75rem; margin-bottom: 0.5rem; }
+    .tc-thesis { font-size: 0.95rem; font-weight: 700; line-height: 1.3; color: var(--text); letter-spacing: -0.01em; }
+    .tc-delta {
+      font-family: 'JetBrains Mono', monospace; font-size: 1rem; font-weight: 600;
+      padding: 3px 9px; border-radius: 5px; white-space: nowrap; flex-shrink: 0;
+    }
+    .tc-delta.up   { color: var(--up-l);   background: rgba(127,168,140,0.14); }
+    .tc-delta.down { color: var(--down-l); background: rgba(184,120,87,0.15); }
+
+    .tc-anomaly {
+      font-size: 0.78rem; color: var(--dim); line-height: 1.55;
+      padding: 0.35rem 0 0.55rem;
+      border-bottom: 1px dashed var(--line);
+    }
+    .tc-anomaly strong { color: var(--text); font-weight: 500; }
+    .tc-baseline {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.68rem;
+      color: var(--mute); letter-spacing: 0.04em; margin-top: 0.2rem;
+      display: block;
+    }
+    .tc-baseline .bs-name { color: var(--dim); }
+    .tc-baseline .bs-note { color: var(--brass-l); }
+
+    .tc-meta {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding-top: 0.55rem; flex-wrap: wrap;
+    }
+    .tc-conf {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.62rem;
+      padding: 2px 7px; border-radius: 3px; letter-spacing: 0.1em; font-weight: 600;
+    }
+    .tc-conf.high   { color: var(--up-l);    background: rgba(127,168,140,0.14); }
+    .tc-conf.medium { color: var(--brass-l); background: rgba(201,168,106,0.10); }
+    .tc-conf.low    { color: var(--down-l);  background: rgba(184,120,87,0.10); }
+    .tc-theme {
+      font-size: 0.62rem; font-weight: 600;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 2px 7px; border-radius: 3px;
+    }
+    .tc-theme.tourism      { color: var(--brass-l); background: rgba(201,168,106,0.10); }
+    .tc-theme.business     { color: var(--steel-l); background: rgba(107,140,175,0.14); }
+    .tc-theme.migration    { color: #b8afd6;       background: rgba(144,134,184,0.14); }
+    .tc-theme.supply-chain { color: var(--up-l);   background: rgba(127,168,140,0.10); }
+    .tc-expand {
+      margin-left: auto; background: transparent; border: none;
+      color: var(--mute); font-family: 'JetBrains Mono', monospace;
+      font-size: 0.66rem; cursor: pointer; letter-spacing: 0.08em;
+      padding: 3px 6px; border-radius: 3px;
+    }
+    .tc-expand:hover { color: var(--brass-l); }
+
+    .tc-body {
+      max-height: 0; overflow: hidden;
+      transition: max-height 0.3s ease;
+    }
+    .thesis-card.open .tc-body { max-height: 520px; }
+    .tc-section {
+      padding: 0.7rem 0 0.25rem;
+      border-top: 1px solid var(--line);
+      margin-top: 0.6rem;
+    }
+    .tc-section:first-child { border-top: none; margin-top: 0; }
+    .tc-section h4 {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.62rem;
+      color: var(--mute); letter-spacing: 0.16em; text-transform: uppercase;
+      margin-bottom: 0.35rem; font-weight: 500;
+    }
+    .tc-section p {
+      font-size: 0.82rem; color: var(--text); line-height: 1.55;
+      margin: 0;
+    }
+    .tc-section p .muted { color: var(--dim); }
+
+    /* Thesis-board heading on landing */
+    .board-heading {
+      display: flex; justify-content: space-between; align-items: baseline;
+      padding: 0.9rem 1.25rem 0.5rem;
+    }
+    .board-heading h3 { font-size: 0.95rem; font-weight: 700; letter-spacing: -0.01em; color: var(--text); }
+    .board-heading .sub {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.64rem;
+      color: var(--mute); letter-spacing: 0.14em; text-transform: uppercase;
+    }
     .card {
       background: var(--panel);
       border: 1px solid var(--line);
@@ -856,27 +957,27 @@
     });
   }
 
-  // ---- LANDING: no country picked ----
+  // ---- LANDING: no country picked → thesis board of top 8 worldwide ----
   function renderLanding(hero, feed) {
-    hero.innerHTML = `
-      <div class="hero-eyebrow">Start here</div>
-      <div class="hero-title">Which flight <span class="accent">corridor</span> do you want to read?</div>
-      <div class="hero-sub">Click a country on the globe, or type one above. OvrHead computes the corridor on demand.</div>
-    `;
-    // Small "biggest movers today" — a hook, not a feed. Top 3 across everything.
-    const movers = sortInsights(insights.slice()).slice(0, 3);
-    if (movers.length) {
-      feed.innerHTML = `
-        <div class="feed-heading">Biggest movers today</div>
-        ${movers.map(compactCard).join('')}
-      `;
-    } else {
+    const top = sortInsights(insights.slice()).slice(0, 8);
+    hero.innerHTML = '';   // hero slot empty on landing — the board IS the content
+    if (!top.length) {
       feed.innerHTML = `<div class="feed-landing">Loading signals…</div>`;
+      drawArcs([]);
+      return;
     }
-    drawArcs(movers);   // faint hint on globe
+    feed.innerHTML = `
+      <div class="board-heading">
+        <h3>Today's Thesis Board</h3>
+        <span class="sub">${top.length} signals · ranked by strength</span>
+      </div>
+      ${top.map(i => thesisCardHtml(i, insights)).join('')}
+    `;
+    wireThesisCards(feed, insights);
+    drawArcs(top);
   }
 
-  // ---- COUNTRY: one country picked, show summary + top-N corridors ----
+  // ---- COUNTRY: one country picked, show top thesis cards for it ----
   function renderCountryMode(hero, feed) {
     const scoped = scopedInsights();
     const shown = filteredInsights();
@@ -891,34 +992,31 @@
       return;
     }
     const agg = aggregate(scoped);
-    const biggest = shown[0];   // sorted by strength (default)
-    const biggestUp = biggest.deltaPct >= 0;
-
     hero.innerHTML = `
-      <div class="hero-eyebrow">${escapeHtml(filters.countryA)} · ${escapeHtml(biggest.period || '')}</div>
+      <div class="hero-eyebrow">${escapeHtml(filters.countryA)} · ${escapeHtml(shown[0].period || '')}</div>
       <div class="hero-num ${agg.netUp ? 'up' : 'down'}">${agg.netUp ? '+' : ''}${agg.netPct.toFixed(1)}%</div>
       <div class="hero-sub">
-        Net across <strong>${agg.total} corridor${agg.total===1?'':'s'}</strong> · <strong>${agg.up}</strong> up, <strong>${agg.down}</strong> down.<br>
-        Biggest mover: <strong style="color:var(--${biggestUp ? 'up-l' : 'down-l'})">${escapeHtml(biggest.dest.name)} ${biggestUp?'+':''}${biggest.deltaPct.toFixed(1)}%</strong>.
+        Net across <strong>${agg.total} corridor${agg.total===1?'':'s'}</strong> · <strong>${agg.up}</strong> up, <strong>${agg.down}</strong> down.
       </div>
     `;
-    const short = shown.slice(0, SHORT_LIST_MAX);
-    const overflow = shown.length - short.length;
+    const top = shown.slice(0, SHORT_LIST_MAX);
+    const overflow = shown.length - top.length;
     feed.innerHTML = `
-      <div class="feed-heading">Top corridors</div>
-      ${short.map(compactCard).join('')}
+      <div class="feed-heading">Top ${top.length} corridor thesis card${top.length===1?'':'s'}</div>
+      ${top.map(i => thesisCardHtml(i, insights)).join('')}
       ${overflow > 0 ? `<button class="show-more" id="show-more">Show ${overflow} more</button>` : ''}
     `;
+    wireThesisCards(feed, insights);
     if (overflow > 0) {
       document.getElementById('show-more').addEventListener('click', () => {
-        feed.innerHTML = `<div class="feed-heading">All corridors</div>${shown.map(compactCard).join('')}`;
-        wireCards(feed);
+        feed.innerHTML = `<div class="feed-heading">All ${shown.length} corridors</div>${shown.map(i => thesisCardHtml(i, insights)).join('')}`;
+        wireThesisCards(feed, insights);
       });
     }
     drawArcs(shown);
   }
 
-  // ---- PAIR: A and B picked, inline full detail ----
+  // ---- PAIR: A and B picked, one full thesis card ----
   function renderPairMode(hero, feed) {
     const shown = filteredInsights();
     if (!shown.length) {
@@ -932,47 +1030,28 @@
       return;
     }
     const primary = shown[0];
-    const up = primary.deltaPct >= 0;
-    const vc = primary.volumeCurrent || 0;
-    const vp = primary.volumePrior || 0;
-    const maxV = Math.max(vc, vp, 1);
-
-    hero.innerHTML = `
-      <div class="hero-eyebrow">${escapeHtml(primary.origin.name)} ↔ ${escapeHtml(primary.dest.name)} · ${escapeHtml(primary.period || '')}</div>
-      <div class="hero-num ${up ? 'up' : 'down'}">${up ? '+' : ''}${primary.deltaPct.toFixed(1)}%</div>
-      <div class="pair-detail">
-        <div style="font-size:0.9rem;font-weight:600;color:var(--text);line-height:1.35">${escapeHtml(primary.headline || '')}</div>
-        <div class="pair-detail-reading">${escapeHtml(primary.reading || '')}</div>
-        ${(vc || vp) ? `
-          <div class="pair-vol-row">
-            <span class="pair-vol-label">current</span>
-            <div class="pair-vol-bar"><div class="pair-vol-fill current" style="width:${(vc/maxV*100).toFixed(1)}%"></div></div>
-            <span class="pair-vol-num">${fmtInt(vc)}</span>
-          </div>
-          <div class="pair-vol-row">
-            <span class="pair-vol-label">prior yr</span>
-            <div class="pair-vol-bar"><div class="pair-vol-fill prior" style="width:${(vp/maxV*100).toFixed(1)}%"></div></div>
-            <span class="pair-vol-num">${fmtInt(vp)}</span>
-          </div>
-        ` : ''}
-        <div class="drawer-actions" style="margin-top:0.7rem">
-          <button class="drawer-btn ${watched.has(primary.id) ? 'ok' : 'ghost'}" id="hero-watch">
-            <svg viewBox="0 0 24 24" fill="${watched.has(primary.id) ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-            ${watched.has(primary.id) ? 'Watched' : 'Watch'}
-          </button>
-          <button class="drawer-btn ghost" id="hero-copy">Copy for note</button>
-        </div>
-      </div>
-    `;
-    document.getElementById('hero-watch').addEventListener('click', () => toggleWatch(primary.id));
-    document.getElementById('hero-copy').addEventListener('click', e => copyCitation(primary, e.currentTarget));
-
+    hero.innerHTML = '';
+    // Pair mode: the primary thesis card opens by default; related corridors below.
+    const cardsHtml = thesisCardHtml(primary, insights);
     const related = shown.slice(1, 4);
-    if (related.length) {
-      feed.innerHTML = `<div class="feed-heading">Related corridors</div>${related.map(compactCard).join('')}`;
-    } else {
-      feed.innerHTML = '';
-    }
+    feed.innerHTML = `
+      <div class="board-heading">
+        <h3>${escapeHtml(primary.origin.name)} ↔ ${escapeHtml(primary.dest.name)}</h3>
+        <span class="sub">${escapeHtml(primary.period || '')}</span>
+      </div>
+      ${cardsHtml}
+      ${related.length ? `<div class="feed-heading" style="padding-top:1rem">Related corridors</div>${related.map(i => thesisCardHtml(i, insights)).join('')}` : ''}
+    `;
+    wireThesisCards(feed, insights);
+    // Auto-expand the primary card
+    requestAnimationFrame(() => {
+      const first = feed.querySelector('.thesis-card');
+      if (first) {
+        first.classList.add('open');
+        const btn = first.querySelector('.tc-expand');
+        if (btn) btn.textContent = 'Hide reasoning ▴';
+      }
+    });
     drawArcs(shown);
   }
 
@@ -1007,6 +1086,140 @@
     const altitude = Math.min(2.6, Math.max(0.9, span / 40 + 0.9));
     globe.controls().autoRotate = false;
     globe.pointOfView({ lat: sumLat / n, lng: sumLng / n, altitude }, 900);
+  }
+
+  // ── Thesis card — the primary experience ───────────────────────────────
+  // Structure: Thesis (headline) · Anomaly + baseline · [expand] Pattern / If true / Angle
+  // Confidence + theme in the meta row. No source line — attribution lives in
+  // About/Methodology; on-card, it's just noise.
+
+  function computePattern(i, all) {
+    // Find peer corridors — same destination OR same origin — from other insights.
+    const destPeers = all.filter(x => x.id !== i.id && x.dest.country === i.dest.country);
+    const origPeers = all.filter(x => x.id !== i.id && x.origin.country === i.origin.country);
+    const iUp = i.deltaPct >= 0;
+
+    function summarize(peers, side) {
+      if (peers.length < 2) return null;
+      const same  = peers.filter(p => (p.deltaPct >= 0) === iUp).length;
+      const total = peers.length;
+      const ratio = same / total;
+      const meanDelta = peers.reduce((s, p) => s + p.deltaPct, 0) / total;
+      const sideLabel = side === 'dest' ? i.dest.country : i.origin.country;
+      const oppLabel  = side === 'dest' ? 'origins' : 'destinations';
+      if (ratio >= 0.7) {
+        return `Regional pattern — ${same}/${total} other ${oppLabel} into <strong>${escapeHtml(sideLabel)}</strong> are moving the same way (mean ${meanDelta >= 0 ? '+' : ''}${meanDelta.toFixed(1)}%). This is about <strong>${escapeHtml(sideLabel)}</strong>, not just this pair.`;
+      }
+      if (ratio <= 0.3) {
+        return `Idiosyncratic — other ${oppLabel} into <strong>${escapeHtml(sideLabel)}</strong> move the opposite way (mean ${meanDelta >= 0 ? '+' : ''}${meanDelta.toFixed(1)}%). This corridor is the outlier, not the rule.`;
+      }
+      return null;
+    }
+    return summarize(destPeers, 'dest') || summarize(origPeers, 'origin') ||
+      `<span class="muted">Not enough peer corridors in the current dataset to say whether this is regional or idiosyncratic.</span>`;
+  }
+
+  function templateIfTrue(i) {
+    const up = i.deltaPct >= 0;
+    const theme = i.theme || 'business';
+    const dest = escapeHtml(i.dest.name);
+    const orig = escapeHtml(i.origin.name);
+    if (theme === 'tourism') {
+      return up
+        ? `If sustained, expect <strong>${dest}</strong> hotel occupancy and F&B receipts to lift over the next 4–8 weeks. Watch for corroboration in next release of the ${orig} consumer-confidence index.`
+        : `If sustained, expect <strong>${dest}</strong> hospitality operators to see a soft next quarter. Watch ${orig} disposable-income and FX moves.`;
+    }
+    if (theme === 'business') {
+      return up
+        ? `If persistent, likely to show up in cross-border services trade and next PMI release for the ${orig}–${dest} corridor. Corporate activity indicator to track: front-cabin load factor.`
+        : `If persistent, softer transnational corporate activity between ${orig} and ${dest}. Track it against services-PMI and trade-balance releases.`;
+    }
+    if (theme === 'migration') {
+      return up
+        ? `If sustained, expect visa / work-permit applications on the ${orig} → ${dest} corridor to trend in the same direction over the next 1–2 quarters.`
+        : `If sustained, a slowdown in visa / work-permit flows on this corridor. Watch labour-market indicators in ${dest}.`;
+    }
+    // supply-chain
+    return up
+      ? `If persistent, freighter capacity on the ${orig} → ${dest} lane will follow within a quarter. Corroborate against port-throughput data.`
+      : `If persistent, expect logistics slot capacity to unwind on this lane. Corroborate against ${dest} manufacturing-PMI.`;
+  }
+
+  function templateAngle(i) {
+    const up = i.deltaPct >= 0;
+    const theme = i.theme || 'business';
+    const dest = escapeHtml(i.dest.name);
+    const orig = escapeHtml(i.origin.name);
+    if (theme === 'tourism') {
+      return up
+        ? `Long ${dest} hospitality / short ${orig} discretionary retail if the trend hardens.`
+        : `Long ${orig} domestic tourism / cautious on ${dest} hospitality names with exposure to this corridor.`;
+    }
+    if (theme === 'business') {
+      return up
+        ? `Overweight ${dest} services stocks with ${orig} client exposure; track carrier front-cabin unit revenue.`
+        : `Underweight ${dest}-exposed corporate services if the pattern extends beyond one quarter.`;
+    }
+    if (theme === 'migration') {
+      return up
+        ? `${dest} labour supply loosening on this corridor — bullish for ${dest} sectors hiring at scale.`
+        : `${dest} labour supply tightening on this corridor — cost pressure to watch in ${dest} labour-intensive sectors.`;
+    }
+    return up
+      ? `Long ${dest} industrial-exposure names benefitting from inbound capacity; watch cargo carrier unit revenue.`
+      : `Cargo capacity on this lane is easing — freight-rate downside for carriers over-indexed to it.`;
+  }
+
+  function thesisCardHtml(i, all) {
+    const up = i.deltaPct >= 0;
+    const sign = up ? '+' : '';
+    const conf = (i.confidence || 'medium').toLowerCase();
+    const theme = i.theme || 'business';
+    const vol = i.volumeCurrent ? `<strong>${fmtInt(i.volumeCurrent)}</strong> pax` : 'material volume';
+    const priorVol = i.volumePrior ? `${fmtInt(i.volumePrior)} prior` : '';
+    const patternHtml = computePattern(i, all);
+
+    return `
+      <div class="thesis-card ${up ? 'dir-up' : 'dir-down'} ${i.id === activeId ? 'active' : ''}" data-id="${i.id}">
+        <div class="tc-head">
+          <div class="tc-thesis">${escapeHtml(i.headline || (i.origin.name + ' ↔ ' + i.dest.name))}</div>
+          <div class="tc-delta ${up ? 'up' : 'down'}">${sign}${(+i.deltaPct).toFixed(1)}%</div>
+        </div>
+        <div class="tc-anomaly">
+          <strong>${escapeHtml(i.origin.name)} → ${escapeHtml(i.dest.name)}</strong> · ${vol}${priorVol ? ' vs ' + priorVol : ''} · ${escapeHtml(i.period || '')}
+          <span class="tc-baseline"><span class="bs-name">baseline:</span> prior-year same window <span class="bs-note">→ single baseline for now; seasonal + peer arriving next</span></span>
+        </div>
+        <div class="tc-meta">
+          <span class="tc-conf ${conf}">${conf.toUpperCase()}</span>
+          <span class="tc-theme ${theme}">${theme.replace('-', ' ')}</span>
+          <button class="tc-expand" data-id="${i.id}">Show reasoning ▾</button>
+        </div>
+        <div class="tc-body">
+          <div class="tc-section"><h4>Pattern</h4><p>${patternHtml}</p></div>
+          <div class="tc-section"><h4>If true</h4><p>${templateIfTrue(i)}</p></div>
+          <div class="tc-section"><h4>Angle</h4><p>${templateAngle(i)}</p></div>
+        </div>
+      </div>
+    `;
+  }
+
+  function wireThesisCards(container, allInsights) {
+    container.querySelectorAll('.thesis-card').forEach(el => {
+      el.addEventListener('click', e => {
+        if (e.target.closest('.tc-expand')) return;
+        selectInsight(el.dataset.id);
+      });
+      el.addEventListener('mouseenter', () => setHover(el.dataset.id));
+      el.addEventListener('mouseleave', () => setHover(null));
+    });
+    container.querySelectorAll('.tc-expand').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const card = btn.closest('.thesis-card');
+        const isOpen = card.classList.toggle('open');
+        btn.textContent = isOpen ? 'Hide reasoning ▴' : 'Show reasoning ▾';
+      });
+    });
   }
 
   // Compact card — the secondary list item. Route, delta, one-line reading, no meta noise.
@@ -1237,8 +1450,6 @@
           <div class="drawer-meta-cell"><div class="k">Destination</div><div class="v"><span class="country-chip" data-country="${escapeHtml(i.dest.name)}">${escapeHtml(i.dest.name)}</span></div></div>
           <div class="drawer-meta-cell"><div class="k">Volume (curr)</div><div class="v">${vc ? vc.toLocaleString() + ' pax' : '—'}</div></div>
           <div class="drawer-meta-cell"><div class="k">Volume (prior)</div><div class="v">${vp ? vp.toLocaleString() + ' pax' : '—'}</div></div>
-          <div class="drawer-meta-cell"><div class="k">Source</div><div class="v">${escapeHtml(meta.source || 'Eurostat')}</div></div>
-          <div class="drawer-meta-cell"><div class="k">Coverage</div><div class="v" style="font-size:0.78rem">${escapeHtml(meta.coverage || 'EU reporters')}</div></div>
         </div>
       </div>
 
