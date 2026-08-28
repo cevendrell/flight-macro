@@ -135,9 +135,11 @@ $existingRepo = Get-Content $EnvFile -ErrorAction SilentlyContinue |
 if (-not $existingRepo) { Add-Content $EnvFile $repoLine }
 
 Write-Host ""
-Write-Host "-- OpenSky Network (sign up first: https://opensky-network.org) --"
-Get-OrPrompt 'OPENSKY_USER' 'OpenSky username'
-Get-OrPrompt 'OPENSKY_PASS' 'OpenSky password (hidden)'
+Write-Host "-- OpenSky Network (OAuth2 API client credentials) --"
+Write-Host "   Log in at https://opensky-network.org, go to Account -> API Client,"
+Write-Host "   create one, then paste the client_id and client_secret below."
+Get-OrPrompt 'OPENSKY_CLIENT_ID'     'OpenSky client_id'
+Get-OrPrompt 'OPENSKY_CLIENT_SECRET' 'OpenSky client_secret (hidden)'
 Write-Host ""
 Write-Host "-- Anthropic (optional -- needed for Claude enrichment) --"
 Get-OrPrompt 'ANTHROPIC_API_KEY' 'Anthropic API key (hidden)'
@@ -215,7 +217,7 @@ Write-Host ""
 $smoke = Read-Host "Run a smoke test now (1 day OpenSky + 1 month Eurostat, ~4 min)? [y/N]"
 if ($smoke -match '^[Yy]') {
     if (Test-Path $EnvFile) { . $EnvFile }
-    if ($env:OPENSKY_USER) {
+    if ($env:OPENSKY_CLIENT_ID -and $env:OPENSKY_CLIENT_SECRET) {
         Write-Host "-> OpenSky: yesterday, 30 hubs..."
         & $VenvPy scripts\fetch_opensky_now.py --days 1
     } else {

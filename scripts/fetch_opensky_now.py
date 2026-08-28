@@ -4,24 +4,22 @@ One-shot fetch of near-current flight data from OpenSky Network.
 Fills the 2025/2026 gap that Eurostat can't (Eurostat lags 8+ months).
 OpenSky publishes ADS-B flight records with ~1 day lag globally, free.
 
-Requires a free account:
-    1. Sign up at https://opensky-network.org (takes 30 seconds)
-    2. export OPENSKY_USER=your_username
-       export OPENSKY_PASS=your_password
-    3. python3 scripts/fetch_opensky_now.py --days 30
-
-What this writes:
-    data/insights.json — signals derived from OpenSky flight counts, comparing
-    the last N days to the same N days last year at each airport pair.
-    Meta will read "OpenSky Network (flight counts)".
+OpenSky migrated from basic auth to OAuth2 client credentials in 2024.
+You need an API client (client_id + client_secret), not just a login:
+    1. Sign up at https://opensky-network.org
+    2. Log in → Account → API Client → create one → copy id + secret
+    3. export OPENSKY_CLIENT_ID=...
+       export OPENSKY_CLIENT_SECRET=...
+    4. python3 scripts/fetch_opensky_now.py --days 30
 
 Auth budget:
-    - anonymous access is now blocked (403)
-    - standard user: ~4000 credits/day
+    - anonymous access is blocked (403)
+    - standard authenticated user: ~4000 credits/day
     - each airport-day query costs 4 credits
     - default plan: 30 top EU airports × N days × 4 credits
       → for --days 30 that's ~3600 credits (one full day's budget)
     - script rate-limits itself to 0.5s between calls to stay polite
+    - bearer token cached to disk; auto-refreshes when it expires
 
 Docs: https://openskynetwork.github.io/opensky-api/rest.html
 """
@@ -29,10 +27,10 @@ Docs: https://openskynetwork.github.io/opensky-api/rest.html
 from __future__ import annotations
 
 import argparse
-import base64
 import json
 import math
 import os
+import ssl
 import sys
 import time
 import urllib.error
@@ -69,39 +67,119 @@ HUB_ICAOS = [
 ]
 
 
-def _basic_auth_header() -> str | None:
-    u = os.environ.get("OPENSKY_USER")
-    p = os.environ.get("OPENSKY_PASS")
-    if not u or not p:
+TOKEN_URL = "https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token"
+TOKEN_CACHE = Path(__file__).resolve().parent / ".cache" / "opensky_token.json"
+
+
+def _ssl_context() -> ssl.SSLContext:
+    """
+    Explicit certifi CA bundle — fresh Python on Windows sometimes ships without
+    a working system trust store, which shows up as 'certificate verify failed'.
+    Using certifi's bundle avoids that entire class of failure.
+    """
+    try:
+        import certifi
+        return ssl.create_default_context(cafile=certifi.where())
+    except ImportError:
+        return ssl.create_default_context()
+
+
+_CTX = _ssl_context()
+
+
+def _fetch_bearer_token() -> str | None:
+    """OAuth2 client-credentials flow. Caches token until 30s before expiry."""
+    cid = os.environ.get("OPENSKY_CLIENT_ID")
+    sec = os.environ.get("OPENSKY_CLIENT_SECRET")
+    if not cid or not sec:
         return None
-    token = base64.b64encode(f"{u}:{p}".encode()).decode()
-    return f"Basic {token}"
+
+    # Try cache first
+    if TOKEN_CACHE.exists():
+        try:
+            cached = json.loads(TOKEN_CACHE.read_text())
+            if cached.get("expires_at", 0) > time.time() + 30:
+                return cached["access_token"]
+        except Exception:
+            pass
+
+    body = urllib.parse.urlencode({
+        "grant_type": "client_credentials",
+        "client_id": cid,
+        "client_secret": sec,
+    }).encode()
+    req = urllib.request.Request(
+        TOKEN_URL, data=body, method="POST",
+        headers={"Content-Type": "application/x-www-form-urlencoded",
+                 "User-Agent": "ovrhead-ingest/0.2"},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=30, context=_CTX) as r:
+            payload = json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", errors="replace")[:200]
+        print(f"[opensky] token endpoint {e.code}: {body}", file=sys.stderr)
+        return None
+    except Exception as e:
+        print(f"[opensky] token fetch failed: {type(e).__name__}: {e}", file=sys.stderr)
+        return None
+
+    token = payload.get("access_token")
+    ttl   = int(payload.get("expires_in", 300))
+    TOKEN_CACHE.parent.mkdir(parents=True, exist_ok=True)
+    TOKEN_CACHE.write_text(json.dumps({
+        "access_token": token, "expires_at": time.time() + ttl,
+    }))
+    return token
+
+
+def _auth_ok() -> bool:
+    """Cheap check we have credentials configured (doesn't hit the network)."""
+    return bool(os.environ.get("OPENSKY_CLIENT_ID") and os.environ.get("OPENSKY_CLIENT_SECRET"))
 
 
 def _fetch_json(url: str, retries: int = 3) -> list | None:
-    auth = _basic_auth_header()
-    headers = {"User-Agent": "ovrhead-ingest/0.1", "Accept": "application/json"}
-    if auth: headers["Authorization"] = auth
+    token = _fetch_bearer_token()
+    if not token:
+        return None
+    headers = {
+        "User-Agent": "ovrhead-ingest/0.2",
+        "Accept": "application/json",
+        "Authorization": f"Bearer {token}",
+    }
 
     tries = 0
     while True:
         tries += 1
         try:
             req = urllib.request.Request(url, headers=headers)
-            with urllib.request.urlopen(req, timeout=45) as r:
+            with urllib.request.urlopen(req, timeout=45, context=_CTX) as r:
                 return json.loads(r.read())
         except urllib.error.HTTPError as e:
             if e.code == 404:      # no flights that day for that airport
                 return []
+            if e.code == 401 and tries == 1:
+                # Token may have expired mid-run — refresh and retry once
+                TOKEN_CACHE.unlink(missing_ok=True)
+                token = _fetch_bearer_token()
+                if token:
+                    headers["Authorization"] = f"Bearer {token}"
+                    continue
+                return None
             if e.code == 403:
-                print("[opensky] 403 Forbidden — set OPENSKY_USER / OPENSKY_PASS "
-                      "(free account at https://opensky-network.org)", file=sys.stderr)
+                print("[opensky] 403 Forbidden — check that OPENSKY_CLIENT_ID / "
+                      "OPENSKY_CLIENT_SECRET are set and belong to a valid API client",
+                      file=sys.stderr)
                 return None
             if e.code == 429 and tries < retries:
                 wait = 20 * tries
                 print(f"[opensky] 429 rate-limited, sleeping {wait}s", file=sys.stderr)
                 time.sleep(wait); continue
             print(f"[opensky] HTTP {e.code} on {url[:80]}...", file=sys.stderr)
+            return None
+        except ssl.SSLCertVerificationError as e:
+            print(f"[opensky] TLS cert verification failed: {e}", file=sys.stderr)
+            print("           Try: pip install --upgrade certifi", file=sys.stderr)
             return None
         except Exception as e:
             if tries < retries:
@@ -226,9 +304,10 @@ def main() -> int:
     p.add_argument("--airports", help="Comma-separated ICAOs (default: 30 EU hubs)")
     args = p.parse_args()
 
-    if not _basic_auth_header():
-        print("Need free OpenSky credentials. Sign up: https://opensky-network.org", file=sys.stderr)
-        print("Then: export OPENSKY_USER=... OPENSKY_PASS=... and re-run.", file=sys.stderr)
+    if not _auth_ok():
+        print("Need OpenSky OAuth2 API client credentials.", file=sys.stderr)
+        print("Log in at https://opensky-network.org → Account → API Client → create one.", file=sys.stderr)
+        print("Then set: OPENSKY_CLIENT_ID and OPENSKY_CLIENT_SECRET and re-run.", file=sys.stderr)
         return 1
 
     end   = datetime.strptime(args.end, "%Y-%m-%d").date() if args.end else (datetime.now(timezone.utc) - timedelta(days=1)).date()

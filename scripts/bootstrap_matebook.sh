@@ -77,8 +77,9 @@ get_or_prompt() {
 }
 echo ""
 echo "── OpenSky Network (sign up first: https://opensky-network.org) ──"
-get_or_prompt "OPENSKY_USER" "OpenSky username (press Enter to skip)"
-get_or_prompt "OPENSKY_PASS" "OpenSky password (hidden; press Enter to skip)"
+echo "  (create an API client at https://opensky-network.org → Account → API Client)"
+get_or_prompt "OPENSKY_CLIENT_ID" "OpenSky client_id (press Enter to skip)"
+get_or_prompt "OPENSKY_CLIENT_SECRET" "OpenSky client_secret (hidden; press Enter to skip)"
 echo ""
 echo "── Anthropic (optional; needed for Claude enrichment) ──"
 get_or_prompt "ANTHROPIC_API_KEY" "Anthropic API key (hidden; press Enter to skip)"
@@ -108,7 +109,7 @@ git pull --rebase --autostash origin main >> "\$LOG" 2>&1 || {
 
 source .venv/bin/activate
 
-# Fetch fresh OpenSky (last 14 days rolling window). If OPENSKY_USER is unset,
+# Fetch fresh OpenSky (last 14 days rolling window). If OPENSKY_CLIENT_ID is unset,
 # the script exits cleanly with a message — no harm.
 python3 scripts/fetch_opensky_now.py --days 14 >> "\$LOG" 2>&1 || \
     echo "\$(date -u +%FT%TZ) [opensky] fetch failed (non-fatal)" >> "\$LOG"
@@ -146,7 +147,7 @@ read -rp "Run a smoke test now (fetches 1 day OpenSky + 1 month Eurostat, ~4 min
 if [[ "${smoke:-}" =~ ^[Yy]$ ]]; then
     set +e
     set -a; . "$ENV_FILE"; set +a
-    if [ -n "${OPENSKY_USER:-}" ]; then
+    if [ -n "${OPENSKY_CLIENT_ID:-}" ]; then
         echo "→ OpenSky: yesterday, 30 hubs…"
         python3 scripts/fetch_opensky_now.py --days 1 2>&1 | tail -8
     else

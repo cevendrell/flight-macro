@@ -54,8 +54,8 @@ export ANTHROPIC_API_KEY="sk-ant-..."
 
 # Optional: OpenSky free account for higher rate limits
 # https://opensky-network.org/ → sign up → then:
-export OPENSKY_USER="your_username"
-export OPENSKY_PASS="your_password"
+export OPENSKY_CLIENT_ID="your_username"
+export OPENSKY_CLIENT_SECRET="your_password"
 ```
 
 That's the whole install. The warehouse directory (`~/data/ovrhead-warehouse/`)
@@ -84,8 +84,8 @@ Live ADS-B flight counts, ~1 day lag. Free but needs an account (30s signup).
 ```bash
 # 1) Sign up once: https://opensky-network.org
 # 2) Add credentials to your shell (or the wrapper script from step 5):
-export OPENSKY_USER=your_username
-export OPENSKY_PASS=your_password
+export OPENSKY_CLIENT_ID=your_username
+export OPENSKY_CLIENT_SECRET=your_password
 # 3) Fetch last 14 days vs the same 14 days last year:
 python3 scripts/fetch_opensky_now.py --days 14
 ```
@@ -183,8 +183,8 @@ cron with a login shell), or hardcode via a wrapper script. Simplest wrapper:
 #!/usr/bin/env bash
 # save as ~/bin/ovrhead-daily.sh, chmod +x
 export ANTHROPIC_API_KEY="sk-ant-..."
-export OPENSKY_USER="..."
-export OPENSKY_PASS="..."
+export OPENSKY_CLIENT_ID="..."
+export OPENSKY_CLIENT_SECRET="..."
 cd ~/Documents/GitHub/ovrhead
 source .venv/bin/activate
 python scripts/run_pipeline.py
@@ -218,7 +218,7 @@ it up automatically. Nothing else to babysit.
 ## Trouble
 
 - **OpenSky returns 429**: you're hitting the anonymous rate limit. Set
-  `OPENSKY_USER` / `OPENSKY_PASS` (free account).
+  `OPENSKY_CLIENT_ID` / `OPENSKY_CLIENT_SECRET` (free account).
 - **Eurostat returns empty**: the month you asked for isn't published yet.
   Eurostat lags ~2 months; the ingester's default range already accounts for it.
 - **`duckdb` missing**: `pip install -r scripts/requirements.txt` in the venv.

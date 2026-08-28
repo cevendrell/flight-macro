@@ -2,9 +2,11 @@
 OpenSky Network → local parquet warehouse.
 
 OpenSky publishes historical "flight tables": one row per detected flight, with
-origin/destination airport (ICAO) and timestamps. Free, public, no key required
-for small windows. Optional basic-auth (OPENSKY_USER / OPENSKY_PASS) unlocks
-higher rate limits — highly recommended for backfills.
+origin/destination airport (ICAO) and timestamps. Free but requires an OAuth2
+API client (client_id + client_secret) — anonymous access is now blocked.
+
+Create one at: https://opensky-network.org → Account → API Client
+Then set OPENSKY_CLIENT_ID and OPENSKY_CLIENT_SECRET.
 
 Usage:
     # yesterday, only airports in the lookup
@@ -50,13 +52,37 @@ POLITE_SLEEP = 0.4         # between successful requests
 BACKOFF_ON_429 = 30        # seconds to wait after a 429
 
 
+TOKEN_URL = "https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token"
+_TOKEN_CACHE = {"token": None, "expires_at": 0}
+
+
+def _bearer_token() -> str | None:
+    """OAuth2 client-credentials flow with in-memory cache."""
+    cid = os.environ.get("OPENSKY_CLIENT_ID")
+    sec = os.environ.get("OPENSKY_CLIENT_SECRET")
+    if not cid or not sec:
+        return None
+    if _TOKEN_CACHE["token"] and _TOKEN_CACHE["expires_at"] > time.time() + 30:
+        return _TOKEN_CACHE["token"]
+    r = requests.post(TOKEN_URL, data={
+        "grant_type": "client_credentials",
+        "client_id": cid, "client_secret": sec,
+    }, timeout=30)
+    if r.status_code != 200:
+        print(f"[opensky] token endpoint {r.status_code}: {r.text[:200]}", file=sys.stderr)
+        return None
+    p = r.json()
+    _TOKEN_CACHE["token"] = p["access_token"]
+    _TOKEN_CACHE["expires_at"] = time.time() + int(p.get("expires_in", 300))
+    return _TOKEN_CACHE["token"]
+
+
 def _session() -> requests.Session:
     s = requests.Session()
-    user = os.environ.get("OPENSKY_USER")
-    pw   = os.environ.get("OPENSKY_PASS")
-    if user and pw:
-        s.auth = (user, pw)
-    s.headers.update({"User-Agent": "ovrhead-ingest/0.1 (github.com/cevendrell/ovrhead)"})
+    token = _bearer_token()
+    if token:
+        s.headers["Authorization"] = f"Bearer {token}"
+    s.headers.update({"User-Agent": "ovrhead-ingest/0.2 (github.com/cevendrell/ovrhead)"})
     return s
 
 
@@ -176,8 +202,10 @@ def main() -> int:
         days = [(datetime.now(timezone.utc) - timedelta(days=1)).date()]
 
     print(f"[opensky] ingesting {len(days)} day(s), {len(airports)} airport(s)")
-    if not os.environ.get("OPENSKY_USER"):
-        print("[opensky] tip: set OPENSKY_USER/OPENSKY_PASS for higher rate limits")
+    if not (os.environ.get("OPENSKY_CLIENT_ID") and os.environ.get("OPENSKY_CLIENT_SECRET")):
+        print("[opensky] set OPENSKY_CLIENT_ID/OPENSKY_CLIENT_SECRET for API access")
+        print("[opensky] create an API client at https://opensky-network.org → Account → API Client")
+        return 1
 
     session = _session()
     for d in days:

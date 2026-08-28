@@ -14,7 +14,7 @@ Usage:
 
 Env:
     ANTHROPIC_API_KEY   required for enrichment (or pass --dry-run)
-    OPENSKY_USER / OPENSKY_PASS  optional, raises OpenSky rate limits
+    OPENSKY_CLIENT_ID / OPENSKY_CLIENT_SECRET  required for OpenSky fetches
     OVRHEAD_WAREHOUSE   optional, overrides ~/data/ovrhead-warehouse
 """
 
