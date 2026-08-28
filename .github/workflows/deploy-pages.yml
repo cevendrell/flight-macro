@@ -1,0 +1,37 @@
+name: Deploy to GitHub Pages
+
+# Runs whenever main is updated. If Pages is set to "GitHub Actions" as source,
+# this workflow does the deploy with the correct permissions.
+# (If Pages is set to "Deploy from a branch" instead, this workflow is harmless
+#  — it uploads and deploys the same artifact.)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write        # required by actions/deploy-pages
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - name: Upload site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'          # the whole repo is the site
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
