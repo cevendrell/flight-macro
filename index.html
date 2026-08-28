@@ -928,11 +928,11 @@
     .showAtmosphere(true)
     .atmosphereColor('#a4b1c6')             // slightly warmer than pure cool blue
     .atmosphereAltitude(0.18)               // bigger halo — helps the "lamp-lit" feel
-    .polygonAltitude(0.001)
+    .polygonAltitude(0.0002)                 // hair above surface, invisible even on continents
     .polygonCapColor(() => 'rgba(201,168,106,0)')
-    .polygonSideColor(() => 'rgba(201,168,106,0)')
+    .polygonSideColor(() => 'rgba(0,0,0,0)') // fully transparent sides — no visible extrusion wall
     .polygonStrokeColor(() => 'rgba(154,148,132,0.22)')
-    .polygonsTransitionDuration(180)
+    .polygonsTransitionDuration(0)           // don't animate — instant repaint feels flatter
     // Two-layer arcs: solid faded base + flowing dashed overlay (IEA-style)
     .arcColor('color')
     .arcAltitudeAutoScale(0.42)
@@ -974,19 +974,20 @@
       window._countryFeatures = countries;   // stash so we can repaint after data loads
       globe.polygonsData(countries)
         .polygonLabel(d => countryHoverLabel(d))
-        .polygonAltitude(0.001)              // painted right on the surface
+        .polygonAltitude(0.0002)             // painted flush with the surface — no visible lift
+        .polygonSideColor(() => 'rgba(0,0,0,0)')
         .polygonCapColor(d => countryCapColor(d))
         .polygonStrokeColor(() => 'rgba(154,148,132,0.22)')
         .onPolygonHover(hovered => {
           hoveredCountryFeature = hovered || null;
+          // Zero altitude change on hover — tint + stroke do all the work.
+          // This is what fixes the "Brazil/Russia extrudes weirdly" artifact.
           globe
-            // No perceptible lift on hover — brighter tint + bright stroke do the work.
-            .polygonAltitude(d => d === hovered ? 0.002 : 0.001)
             .polygonCapColor(d => d === hovered
               ? mixHoverColor(countryCapColor(d))
               : countryCapColor(d))
             .polygonStrokeColor(d => d === hovered
-              ? 'rgba(220,194,150,0.9)'
+              ? 'rgba(220,194,150,0.95)'
               : 'rgba(154,148,132,0.22)');
           mapEl.style.cursor = hovered ? 'pointer' : 'grab';
         })

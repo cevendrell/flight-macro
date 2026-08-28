@@ -30,19 +30,48 @@ gets created automatically on first run.
 
 ## 2. Fast path — real data in 2 minutes (no deps beyond stdlib)
 
-If you just want real Eurostat numbers on the site without setting up DuckDB,
-run this. Writes real signals to `data/insights.json`, uses only Python stdlib.
+Two scripts, two sources. Pick the freshness you need.
+
+### Historical baseline — Eurostat (2015–2024)
+
+Deep passenger data. Publishes with a ~9-month lag → latest available today is
+Dec 2024. Best for reliable YoY baselines. Free, no auth.
 
 ```bash
 python3 scripts/fetch_real_now.py --month 2024-10 --top 40 --top-city 100
 ```
 
-- ~2 min on first run (Eurostat API is slow)
-- Subsequent runs use disk cache in `scripts/.cache/eurostat_raw/`
-- Readings are placeholders — real LLM enrichment happens once the full
-  pipeline runs (below)
+- ~2 min on first run; cached to `scripts/.cache/eurostat_raw/` after
+- Writes to `data/insights.json` with `meta.source = "Eurostat avia_par_*"`
 
-Commit, push, done. This is the pragmatic "prove it works" step.
+### Near-current data — OpenSky Network (2025–2026)
+
+Live ADS-B flight counts, ~1 day lag. Free but needs an account (30s signup).
+
+```bash
+# 1) Sign up once: https://opensky-network.org
+# 2) Add credentials to your shell (or the wrapper script from step 5):
+export OPENSKY_USER=your_username
+export OPENSKY_PASS=your_password
+# 3) Fetch last 14 days vs the same 14 days last year:
+python3 scripts/fetch_opensky_now.py --days 14
+```
+
+- Iterates 30 major EU hubs, so ~840 API calls per run
+- Costs ~3,400 credits out of your 4,000/day quota — one full refresh per day
+- Also cached to `scripts/.cache/opensky_raw/`
+- Writes to `data/insights.json` with `meta.source = "OpenSky Network"`
+
+### Which one to use
+
+- Building the site's first proof: run `fetch_real_now.py`. It works with zero
+  setup and gives you real (if not-so-fresh) numbers.
+- Once you have the OpenSky account: run `fetch_opensky_now.py` on the daily
+  cron for near-current freshness.
+- Best of both: the full pipeline (below) blends them in DuckDB so historical
+  Eurostat depth and OpenSky freshness show up together.
+
+Commit + push after either script writes the JSON — GitHub Pages redeploys automatically.
 
 ## 3. Smoke test (5 min) — the full pipeline
 
