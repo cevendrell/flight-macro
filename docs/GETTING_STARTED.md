@@ -28,7 +28,23 @@ export OPENSKY_PASS="your_password"
 That's the whole install. The warehouse directory (`~/data/ovrhead-warehouse/`)
 gets created automatically on first run.
 
-## 2. Smoke test (5 min)
+## 2. Fast path — real data in 2 minutes (no deps beyond stdlib)
+
+If you just want real Eurostat numbers on the site without setting up DuckDB,
+run this. Writes real signals to `data/insights.json`, uses only Python stdlib.
+
+```bash
+python3 scripts/fetch_real_now.py --month 2024-10 --top 40 --top-city 100
+```
+
+- ~2 min on first run (Eurostat API is slow)
+- Subsequent runs use disk cache in `scripts/.cache/eurostat_raw/`
+- Readings are placeholders — real LLM enrichment happens once the full
+  pipeline runs (below)
+
+Commit, push, done. This is the pragmatic "prove it works" step.
+
+## 3. Smoke test (5 min) — the full pipeline
 
 Prove the whole chain works before wiring up cron:
 

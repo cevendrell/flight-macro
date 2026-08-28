@@ -266,24 +266,30 @@
     .card-conf-dot.low { background: var(--down); }
     .empty { padding: 2rem 1rem; text-align: center; color: var(--mute); font-size: 0.85rem; }
 
-    /* MAP OVERLAY LEGEND */
+    /* MAP OVERLAY LEGEND — compact horizontal strip, bottom-left */
     .map-legend {
       position: absolute;
-      bottom: 20px; left: 20px;
-      background: rgba(11,18,32,0.9);
-      border: 1px solid var(--line);
+      bottom: 14px; left: 16px;
+      background: rgba(24,32,46,0.85);
+      border: 1px solid var(--line-2);
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
-      padding: 0.75rem 0.9rem;
+      padding: 6px 10px;
       border-radius: 6px;
       z-index: 400;
-      font-size: 0.75rem;
+      display: flex; align-items: center; gap: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.62rem;
+      color: var(--dim);
+      letter-spacing: 0.06em;
+      max-width: calc(100% - 32px);
+      flex-wrap: wrap;
     }
-    .legend-title { font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; color: var(--mute); letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 0.5rem; }
-    .legend-row { display: flex; align-items: center; gap: 0.5rem; color: var(--dim); margin: 0.3rem 0; font-size: 0.72rem; }
-    .legend-swatch { width: 24px; height: 3px; border-radius: 2px; }
-    .legend-swatch.up { background: var(--up); box-shadow: 0 0 6px rgba(127,168,140,0.5); }
-    .legend-swatch.down { background: var(--down); box-shadow: 0 0 6px rgba(184,120,87,0.5); }
+    .legend-row { display: flex; align-items: center; gap: 6px; }
+    .legend-swatch { width: 18px; height: 3px; border-radius: 2px; flex-shrink: 0; }
+    .legend-swatch.up { background: var(--up); }
+    .legend-swatch.down { background: var(--down); }
+    .legend-swatch.flow { background: linear-gradient(90deg, var(--brass-l), transparent); }
 
     /* GLOBE */
     #map canvas { display: block; outline: none; }
@@ -462,25 +468,28 @@
     .picker-clear:hover { color: var(--down-l); }
     .picker-hint { font-size: 0.7rem; color: var(--mute); margin-top: 0.5rem; line-height: 1.5; }
 
-    /* MAP LANDING PROMPT */
+    /* MAP LANDING PROMPT — small top-left hint, not a modal */
     .map-prompt {
-      position: absolute; top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      background: rgba(11,18,32,0.88);
+      position: absolute; top: 16px; left: 16px;
+      background: rgba(24,32,46,0.85);
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
       border: 1px solid var(--line-2);
-      border-radius: 10px;
-      padding: 1.5rem 1.75rem;
-      max-width: 380px; text-align: center;
+      border-radius: 6px;
+      padding: 6px 12px;
       z-index: 380;
       pointer-events: none;
       transition: opacity 0.2s;
+      display: flex; align-items: center; gap: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem; color: var(--dim);
+      letter-spacing: 0.06em;
+    }
+    .map-prompt::before {
+      content: ''; width: 6px; height: 6px; border-radius: 50%;
+      background: var(--brass); box-shadow: 0 0 6px var(--brass);
     }
     .map-prompt.hidden { opacity: 0; }
-    .map-prompt-eye { font-family: 'JetBrains Mono', monospace; font-size: 0.66rem; color: var(--brass-l); letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 0.75rem; }
-    .map-prompt h2 { font-size: 1.1rem; font-weight: 600; letter-spacing: -0.01em; color: var(--text); margin-bottom: 0.5rem; }
-    .map-prompt p { font-size: 0.82rem; color: var(--dim); line-height: 1.55; }
 
     /* LANDING STATE IN FEED */
     .feed-landing {
@@ -599,16 +608,11 @@
       <div class="spinner"></div>
       <p>Loading globe</p>
     </div>
-    <div class="map-prompt" id="map-prompt">
-      <div class="map-prompt-eye">One question, one answer</div>
-      <h2>Click any country</h2>
-      <p>Type one to read its full corridor picture. Add a second to focus on a specific pair.</p>
-    </div>
+    <div class="map-prompt" id="map-prompt">Click any country to begin</div>
     <div class="map-legend">
-      <div class="legend-title">Flow YoY</div>
-      <div class="legend-row"><div class="legend-swatch up"></div> Corridor growing</div>
-      <div class="legend-row"><div class="legend-swatch down"></div> Corridor shrinking</div>
-      <div class="legend-row" style="opacity:0.7"><div class="legend-swatch" style="background:linear-gradient(90deg,var(--brass-l),transparent)"></div> Flow speed ∝ traffic</div>
+      <div class="legend-row"><div class="legend-swatch up"></div>Growing</div>
+      <div class="legend-row"><div class="legend-swatch down"></div>Shrinking</div>
+      <div class="legend-row"><div class="legend-swatch flow"></div>Flow ∝ traffic</div>
     </div>
   </div>
 

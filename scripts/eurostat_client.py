@@ -10,6 +10,10 @@ API docs: https://wikis.ec.europa.eu/display/EUROSTATHELP/API+-+Data+queries
 Format:   JSON-stat 2.0 (https://json-stat.org/)
 
 No auth required, no rate limits published — cache raw responses to be polite.
+
+Airport-pair code format:
+    <origin_country>_<origin_airport>_<partner_country>_<partner_airport>
+    e.g. 'DE_EDDF_ES_LEMD' or 'DE_ED00_FR_LFPG' (ED00 = country aggregate).
 """
 
 from __future__ import annotations
@@ -122,19 +126,30 @@ def _decode_jsonstat(payload: dict) -> Iterable[tuple[dict, float]]:
         yield coords, v
 
 
+def _parse_pair_code(code: str) -> tuple[str | None, str | None, str | None, str | None]:
+    """
+    Eurostat airport-pair codes are 4-tokened:
+        <origin_country>_<origin_airport>_<partner_country>_<partner_airport>
+    e.g. 'DE_EDDF_ES_LEMD' or 'DE_ED00_FR_LFPG' (ED00 = country-level rollup).
+
+    Returns (origin_country, origin_airport, partner_country, partner_airport)
+    or (None, None, None, None) if the code doesn't fit.
+    """
+    if not code:
+        return None, None, None, None
+    parts = code.split("_")
+    if len(parts) == 4:
+        return parts[0], parts[1], parts[2], parts[3]
+    # Some older rows may use just a 2-letter country code (aggregate partner)
+    if len(parts) == 1 and len(code) == 2 and code.isalpha():
+        return None, None, code, None
+    return None, None, None, None
+
+
 def _partner_country(airport_code: str) -> str | None:
-    """
-    Eurostat airport codes look like `LT_EYVI` (country_ICAO).
-    Some entries are country-level rollups like `LT` alone.
-    Returns the 2-letter partner country or None if we can't tell.
-    """
-    if not airport_code:
-        return None
-    if "_" in airport_code:
-        return airport_code.split("_", 1)[0]
-    if len(airport_code) == 2 and airport_code.isalpha():
-        return airport_code
-    return None
+    """Backwards-compat helper — returns just the partner country."""
+    _, _, partner_country, _ = _parse_pair_code(airport_code)
+    return partner_country
 
 
 def fetch_country_pairs(
@@ -210,21 +225,15 @@ def fetch_airport_pairs(
 
     out: list[MonthlyAirportPair] = []
     for coords, value in _decode_jsonstat(payload):
-        # For avia_par_*, the reporter airport is fixed via `airp_hz` (some datasets)
-        # or implied by `geo` (which is the reporter country) — we only have partner in `airp_pr`.
-        # Rows here are (reporter_country → partner_airport_or_country).
-        partner_code = coords.get("airp_pr", "")
-        partner_country = _partner_country(partner_code)
-        if not partner_country:
+        pair = coords.get("airp_pr", "")
+        oc, oa, pc, pa = _parse_pair_code(pair)
+        if not pc:
             continue
-        partner_airport = partner_code if "_" in partner_code else ""
-        # Reporter airport isn't broken out in the country-partner dataset — we'll
-        # assign it later using the alternative `airp_hz_XX` datasets if we ever add them.
         out.append(MonthlyAirportPair(
-            reporter_country=reporter,
-            reporter_airport="",   # unknown from this dataset alone
-            partner_country=partner_country,
-            partner_airport=partner_airport.split("_", 1)[1] if partner_airport else "",
+            reporter_country=oc or reporter,
+            reporter_airport=oa or "",
+            partner_country=pc,
+            partner_airport=pa or "",
             month=coords.get("time", ""),
             passengers=int(value),
         ))
