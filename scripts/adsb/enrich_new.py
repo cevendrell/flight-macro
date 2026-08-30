@@ -51,6 +51,9 @@ def http_get(url: str, timeout: int = 60) -> bytes:
 # gzipped-JSON chunk files under db/<hex-prefix>.js. Each file's keys are
 # the *remainder* after the prefix (so "00002" in file "6.js" = hex "600002").
 # Each value: [reg, type_code, flags, description].
+#
+# Not every chunk is a dict — a few are metadata lists (author etc.); those
+# get skipped rather than blowing up the whole run.
 
 TAR1090_DB_LIST = "https://api.github.com/repos/wiedehopf/tar1090-db/contents/db"
 
@@ -63,20 +66,34 @@ def refresh_aircraft() -> None:
     print(f"[aircraft] fetching {len(chunks)} chunks (~5 MB total)...")
 
     rows = []
+    skipped = 0
     for i, f in enumerate(chunks, 1):
         prefix = f["name"][:-3].upper()  # "6.js" -> "6", "3D.js" -> "3D"
         try:
             raw = http_get(f["download_url"], timeout=30)
         except Exception as e:
-            print(f"  [aircraft] chunk {f['name']} failed: {e}")
+            print(f"  [aircraft] chunk {f['name']} download failed: {e}")
+            skipped += 1
             continue
         try:
             payload = json.loads(gzip.decompress(raw).decode("utf-8"))
         except (gzip.BadGzipFile, OSError):
-            payload = json.loads(raw.decode("utf-8"))
+            try:
+                payload = json.loads(raw.decode("utf-8"))
+            except Exception as e:
+                print(f"  [aircraft] chunk {f['name']} parse failed: {e}")
+                skipped += 1
+                continue
+
+        if not isinstance(payload, dict):
+            # Metadata/index files show up as lists — skip cleanly.
+            skipped += 1
+            continue
+
         for suffix, values in payload.items():
-            values = values or []
-            hex_full = (prefix + suffix).lower()
+            if not isinstance(values, (list, tuple)):
+                continue
+            hex_full = (prefix + str(suffix)).lower()
             rows.append({
                 "hex":   hex_full,
                 "reg":   values[0] if len(values) > 0 else None,
@@ -85,7 +102,7 @@ def refresh_aircraft() -> None:
                 "desc":  values[3] if len(values) > 3 else None,
             })
         if i % 20 == 0 or i == len(chunks):
-            print(f"  [aircraft] {i}/{len(chunks)} chunks, {len(rows):,} aircraft so far")
+            print(f"  [aircraft] {i}/{len(chunks)} chunks processed, {len(rows):,} aircraft, {skipped} skipped")
 
     if not rows:
         raise RuntimeError("no aircraft rows produced")
@@ -114,8 +131,6 @@ def refresh_airports() -> None:
 
 
 # ── 3. Airline callsign prefixes (curated, offline) ─────────────────────────
-# ICAO 3-letter callsign prefix -> airline + country. Top ~180 by global traffic.
-# Add rows as new operators show up in the receiver feed.
 
 AIRLINES = {
   "AAL":{"name":"American Airlines","country":"US"},"AAR":{"name":"Asiana Airlines","country":"KR"},
@@ -187,7 +202,6 @@ def refresh_airlines() -> None:
 
 
 def main() -> int:
-    # Each in its own try/except so one failure doesn't kill the others.
     failures = 0
     for name, fn in [("aircraft", refresh_aircraft),
                      ("airports", refresh_airports),
