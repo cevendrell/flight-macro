@@ -32,6 +32,10 @@ try {
     Run 'git-pull'    'git'   @('pull', '--rebase', '--autostash', 'origin', 'main')
     Run 'reconstruct' $Python @((Join-Path $RepoRoot 'scripts\adsb\reconstruct.py'))
     Run 'sync'        $Python @((Join-Path $RepoRoot 'scripts\adsb\sync_to_repo.py'))
+    # Taxonomy is static reference data; the summary is the site's fast layer
+    # and must be rebuilt after every sync or the homepage goes stale.
+    Run 'taxonomy'    $Python @((Join-Path $RepoRoot 'scripts\adsb\taxonomy.py'))
+    Run 'summary'     $Python @((Join-Path $RepoRoot 'scripts\adsb\build_summary.py'))
 
     $status = & git status --porcelain data/adsb 2>&1 | Out-String
     if (-not $status.Trim()) {

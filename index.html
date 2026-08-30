@@ -1,851 +1,1334 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="OvrHead — one ADS-B antenna over Aarhus, Denmark. Real flight data, live from the sky.">
-  <title>OvrHead</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230a1119'/%3E%3Cpath d='M6 22 L26 10 M6 10 L26 22' stroke='%23c9a86a' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --bg:      #080e17;
-      --bg-2:    #0b1420;
-      --surface: #101929;
-      --panel:   #16202f;
-      --raised:  #1d2837;
-      --line:    rgba(201,180,140,.09);
-      --line-2:  rgba(201,180,140,.17);
-      --line-3:  rgba(201,180,140,.30);
-      --text:    #ece4d6;
-      --text-2:  #b9b3a6;
-      --dim:     #8d8878;
-      --mute:    #5a5648;
-      --brass:   #c9a86a;
-      --brass-l: #e0c79c;
-      --brass-d: #8f7748;
-      --up:      #7fa88c;
-      --up-l:    #a8c8b3;
-      --down:    #b87857;
-      --down-l:  #d59c7e;
-      --steel:   #6b8caf;
-      --display: 'Space Grotesk', -apple-system, sans-serif;
-      --sans:    'Inter', -apple-system, sans-serif;
-      --mono:    'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
-      --nav-h:   52px;
-      --gutter:  20px;
-    }
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OvrHead — an observatory over Aarhus</title>
+<meta name="description" content="One antenna over Aarhus, Denmark. We turn a continuous record of aircraft passing overhead into signals about connectivity, capacity and trade — with the evidence attached.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2314181b'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%23c9a227'/%3E%3Ccircle cx='16' cy='16' r='8' fill='none' stroke='%23c9a227' stroke-width='1' opacity='.55'/%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%23c9a227' stroke-width='1' opacity='.28'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Libre+Franklin:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ─────────────────────────────────────────────────────────────────────────
+   Tokens. Light is the base; dark redefines only the values.
+   ───────────────────────────────────────────────────────────────────────── */
+:root {
+  --bg:       #eceeec;
+  --surface:  #f6f7f5;
+  --sunken:   #e3e6e3;
+  --ink:      #14181b;
+  --ink-2:    #57616a;
+  --mute:     #89939b;
+  --faint:    #aab2b8;
+  --rule:     rgba(20,24,27,.13);
+  --rule-2:   rgba(20,24,27,.26);
+  --accent:   #8a6a15;
+  --accent-bg:rgba(138,106,21,.09);
+  --rise:     #2d6a4a;
+  --fall:     #a83a26;
+  --rise-bg:  rgba(45,106,74,.11);
+  --fall-bg:  rgba(168,58,38,.10);
 
-    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { height: 100%; }
-    body {
-      font-family: var(--sans);
-      background: var(--bg);
-      color: var(--text);
-      -webkit-font-smoothing: antialiased;
-      overflow-x: hidden;
-    }
-    ::selection { background: var(--brass); color: var(--bg); }
+  --serif: 'Newsreader', Georgia, 'Times New Roman', serif;
+  --sans:  'Libre Franklin', -apple-system, BlinkMacSystemFont, sans-serif;
+  --mono:  'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 
-    /* ── Nav ── */
-    #nav {
-      position: sticky; top: 0; z-index: 100;
-      height: var(--nav-h);
-      display: flex; align-items: center; gap: 16px;
-      padding: 0 var(--gutter);
-      background: var(--bg-2);
-      border-bottom: 1px solid var(--line-2);
-    }
-    .brand {
-      font-family: var(--display);
-      font-size: .95rem; font-weight: 700;
-      letter-spacing: .18em;
-      color: var(--brass);
-    }
-    .location {
-      font-size: .75rem;
-      color: var(--dim);
-      letter-spacing: .04em;
-    }
-    #freshness {
-      margin-left: auto;
-      font-family: var(--mono);
-      font-size: .7rem;
-      color: var(--mute);
-    }
-    #freshness.ok { color: var(--up); }
-    #freshness.stale { color: var(--down); }
+  --rail:  216px;
+  --pad:   clamp(20px, 3.5vw, 44px);
+  --measure: 68ch;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:       #121618;
+    --surface:  #191e21;
+    --sunken:   #0d1113;
+    --ink:      #e6e8e5;
+    --ink-2:    #9aa5ac;
+    --mute:     #6c767d;
+    --faint:    #4d565c;
+    --rule:     rgba(230,232,229,.13);
+    --rule-2:   rgba(230,232,229,.26);
+    --accent:   #c9a227;
+    --accent-bg:rgba(201,162,39,.12);
+    --rise:     #5fa37f;
+    --fall:     #d4674c;
+    --rise-bg:  rgba(95,163,127,.14);
+    --fall-bg:  rgba(212,103,76,.13);
+  }
+}
+:root[data-theme="dark"] {
+  --bg:#121618; --surface:#191e21; --sunken:#0d1113;
+  --ink:#e6e8e5; --ink-2:#9aa5ac; --mute:#6c767d; --faint:#4d565c;
+  --rule:rgba(230,232,229,.13); --rule-2:rgba(230,232,229,.26);
+  --accent:#c9a227; --accent-bg:rgba(201,162,39,.12);
+  --rise:#5fa37f; --fall:#d4674c;
+  --rise-bg:rgba(95,163,127,.14); --fall-bg:rgba(212,103,76,.13);
+}
 
-    /* ── Init overlay ── */
-    #init-overlay {
-      position: fixed; inset: 0; z-index: 200;
-      background: var(--bg);
-      display: flex; align-items: center; justify-content: center;
-    }
-    #init-overlay.hidden { display: none; }
-    .init-inner { text-align: center; }
-    .init-logo {
-      font-size: 2.5rem;
-      color: var(--brass);
-      margin-bottom: 20px;
-      animation: pulse 2s ease-in-out infinite;
-    }
-    @keyframes pulse { 0%,100% { opacity:.5 } 50% { opacity:1 } }
-    .init-msg {
-      font-family: var(--display);
-      font-size: 1rem; font-weight: 500;
-      color: var(--text-2);
-      margin-bottom: 6px;
-    }
-    .init-sub {
-      font-size: .72rem;
-      color: var(--mute);
-      font-family: var(--mono);
-    }
-    #error-box {
-      display: none;
-      margin: 20px auto; max-width: 640px;
-      background: rgba(184,120,87,.1);
-      border: 1px solid var(--down);
-      border-radius: 8px;
-      padding: 14px 18px;
-      font-family: var(--mono);
-      font-size: .75rem;
-      color: var(--down-l);
-    }
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+html { font-size:16px; -webkit-text-size-adjust:100%; }
+body {
+  font-family:var(--sans); font-weight:400; line-height:1.6;
+  background:var(--bg); color:var(--ink);
+  -webkit-font-smoothing:antialiased; font-variant-numeric:tabular-nums;
+}
+a { color:inherit; }
+button, input, textarea, select { font:inherit; color:inherit; }
+:focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:2px; }
+@media (prefers-reduced-motion:reduce) { *{animation:none!important;transition:none!important} }
 
-    /* ── App shell ── */
-    #app { max-width: 1200px; margin: 0 auto; padding: var(--gutter); }
+/* ── Shell ─────────────────────────────────────────────────────────────── */
+#shell { display:grid; grid-template-columns:var(--rail) minmax(0,1fr); min-height:100vh; }
+@media (max-width:900px){ #shell{ grid-template-columns:1fr; } }
 
-    /* ── Stats strip ── */
-    #stats-strip {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 12px;
-      margin-bottom: var(--gutter);
-    }
-    @media (max-width: 700px) { #stats-strip { grid-template-columns: repeat(2,1fr); } }
-    .stat-card {
-      background: var(--panel);
-      border: 1px solid var(--line-2);
-      border-radius: 8px;
-      padding: 14px 18px;
-    }
-    .stat-val {
-      font-family: var(--mono);
-      font-size: 1.55rem;
-      font-weight: 500;
-      color: var(--brass-l);
-      line-height: 1;
-      margin-bottom: 5px;
-    }
-    .stat-lbl {
-      font-size: .7rem;
-      color: var(--dim);
-      letter-spacing: .04em;
-      text-transform: uppercase;
-    }
+#rail {
+  border-right:1px solid var(--rule); background:var(--surface);
+  padding:26px 0 26px 22px; position:sticky; top:0; height:100vh;
+  display:flex; flex-direction:column; gap:26px; overflow-y:auto;
+}
+@media (max-width:900px){
+  #rail{ position:static; height:auto; border-right:none; border-bottom:1px solid var(--rule);
+         flex-direction:row; align-items:center; flex-wrap:wrap; gap:14px; padding:14px var(--pad); }
+}
+.mark { display:flex; flex-direction:column; gap:3px; text-decoration:none; }
+.mark b {
+  font-family:var(--mono); font-size:.82rem; font-weight:600;
+  letter-spacing:.24em; color:var(--ink);
+}
+.mark span { font-size:.66rem; color:var(--mute); letter-spacing:.04em; }
+@media (max-width:900px){ .mark span{ display:none } }
 
-    /* ── Panels ── */
-    .panel {
-      background: var(--panel);
-      border: 1px solid var(--line-2);
-      border-radius: 10px;
-      padding: 18px 20px;
-      margin-bottom: 14px;
-    }
-    .panel-title {
-      font-family: var(--display);
-      font-size: .85rem;
-      font-weight: 600;
-      color: var(--text);
-      letter-spacing: .04em;
-      margin-bottom: 14px;
-      display: flex; align-items: baseline; gap: 8px;
-    }
-    .panel-subtitle {
-      font-family: var(--sans);
-      font-size: .72rem;
-      font-weight: 400;
-      color: var(--dim);
-    }
+#nav { display:flex; flex-direction:column; gap:1px; }
+@media (max-width:900px){ #nav{ flex-direction:row; gap:4px; margin-left:auto; flex-wrap:wrap } }
+#nav a {
+  font-size:.85rem; color:var(--ink-2); text-decoration:none;
+  padding:6px 12px 6px 0; display:flex; align-items:center; gap:9px;
+  border-right:2px solid transparent; margin-right:-1px;
+}
+@media (max-width:900px){ #nav a{ border-right:none; border-bottom:2px solid transparent; padding:4px 2px; } }
+#nav a:hover { color:var(--ink); }
+#nav a.on { color:var(--ink); font-weight:500; border-right-color:var(--accent); }
+@media (max-width:900px){ #nav a.on{ border-right-color:transparent; border-bottom-color:var(--accent) } }
+#nav a i { font-family:var(--mono); font-size:.62rem; font-style:normal; color:var(--faint); }
+@media (max-width:900px){ #nav a i{ display:none } }
 
-    /* Two-col layout */
-    #main-cols {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 14px;
-      margin-bottom: 14px;
-    }
-    @media (max-width: 860px) { #main-cols { grid-template-columns: 1fr; } }
+#rail-foot { margin-top:auto; padding-right:22px; display:flex; flex-direction:column; gap:8px; }
+@media (max-width:900px){ #rail-foot{ display:none } }
+.stamp { font-family:var(--mono); font-size:.62rem; color:var(--mute); line-height:1.5; }
+.stamp b { color:var(--ink-2); font-weight:500; }
 
-    /* ── Operator table ── */
-    .op-table { width: 100%; border-collapse: collapse; }
-    .op-table th {
-      font-family: var(--mono);
-      font-size: .65rem;
-      color: var(--mute);
-      text-align: left;
-      padding: 0 8px 8px 0;
-      border-bottom: 1px solid var(--line);
-      letter-spacing: .06em;
-    }
-    .op-table th:last-child { text-align: right; }
-    .op-table td {
-      padding: 6px 8px 6px 0;
-      border-bottom: 1px solid var(--line);
-      font-size: .8rem;
-      vertical-align: middle;
-    }
-    .op-table tr:last-child td { border-bottom: none; }
-    .op-rank {
-      font-family: var(--mono);
-      color: var(--mute);
-      font-size: .7rem;
-      width: 24px;
-    }
-    .op-prefix {
-      font-family: var(--mono);
-      font-weight: 500;
-      color: var(--brass-l);
-      font-size: .8rem;
-    }
-    .op-name { color: var(--text-2); max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .op-count {
-      font-family: var(--mono);
-      text-align: right;
-      color: var(--text);
-      font-size: .8rem;
-    }
-    .op-bar-cell { width: 80px; padding-right: 0 !important; }
-    .op-bar-wrap { height: 4px; background: var(--raised); border-radius: 2px; }
-    .op-bar { height: 4px; background: var(--brass-d); border-radius: 2px; transition: width .4s; }
+#main { padding:0 var(--pad) 100px; min-width:0; }
+.wrap { max-width:1040px; }
 
-    /* ── Hourly chart ── */
-    #hourly-body { overflow-x: auto; }
-    .hour-chart { display: flex; align-items: flex-end; gap: 3px; height: 100px; padding-bottom: 20px; position: relative; }
-    .hour-bar-wrap {
-      flex: 1; display: flex; flex-direction: column; align-items: center;
-      gap: 3px; height: 100%;
-    }
-    .hour-spacer { flex: 1; }
-    .hour-bar {
-      width: 100%; background: var(--brass-d);
-      border-radius: 2px 2px 0 0;
-      transition: height .3s;
-      min-height: 2px;
-    }
-    .hour-bar-wrap:hover .hour-bar { background: var(--brass); }
-    .hour-label {
-      font-family: var(--mono);
-      font-size: .55rem;
-      color: var(--mute);
-      width: 100%;
-      text-align: center;
-    }
-    .hour-tip {
-      position: absolute; top: 0; left: 0;
-      background: var(--raised);
-      border: 1px solid var(--line-2);
-      border-radius: 5px;
-      padding: 4px 8px;
-      font-family: var(--mono);
-      font-size: .7rem;
-      color: var(--text);
-      pointer-events: none;
-      display: none;
-    }
+/* ── Search ────────────────────────────────────────────────────────────── */
+#search-wrap { position:relative; padding-right:22px; }
+@media (max-width:900px){ #search-wrap{ padding-right:0; flex:1 1 180px; order:3; width:100% } }
+#search {
+  width:100%; background:var(--bg); border:1px solid var(--rule-2);
+  border-radius:3px; padding:7px 10px; font-size:.78rem; color:var(--ink);
+}
+#search::placeholder { color:var(--faint); }
+#results {
+  position:absolute; z-index:60; left:0; right:22px; top:calc(100% + 4px);
+  background:var(--surface); border:1px solid var(--rule-2);
+  border-radius:3px; max-height:340px; overflow-y:auto; display:none;
+  box-shadow:0 8px 28px rgba(0,0,0,.14);
+}
+@media (max-width:900px){ #results{ right:0 } }
+#results.open { display:block; }
+#results a {
+  display:flex; justify-content:space-between; gap:10px; align-items:baseline;
+  padding:7px 10px; text-decoration:none; font-size:.78rem;
+  border-bottom:1px solid var(--rule);
+}
+#results a:last-child { border-bottom:none; }
+#results a:hover, #results a.cursor { background:var(--accent-bg); }
+#results .k { font-family:var(--mono); font-size:.62rem; color:var(--mute); text-transform:uppercase; letter-spacing:.08em; }
 
-    /* ── Recent flights table ── */
-    .flights-table { width: 100%; border-collapse: collapse; font-size: .78rem; }
-    .flights-table th {
-      font-family: var(--mono);
-      font-size: .62rem;
-      color: var(--mute);
-      text-align: left;
-      padding: 0 12px 8px 0;
-      border-bottom: 1px solid var(--line);
-      letter-spacing: .06em;
-    }
-    .flights-table td {
-      padding: 5px 12px 5px 0;
-      border-bottom: 1px solid var(--line);
-      color: var(--text-2);
-      vertical-align: middle;
-    }
-    .flights-table tr:last-child td { border-bottom: none; }
-    .flights-table tr:hover td { background: var(--raised); }
-    .cs { font-family: var(--mono); font-size: .78rem; color: var(--brass-l); font-weight: 500; }
-    .alt-val { font-family: var(--mono); font-size: .75rem; color: var(--steel); }
-    .ts-val { font-family: var(--mono); font-size: .7rem; color: var(--dim); }
+/* ── Page header ───────────────────────────────────────────────────────── */
+.crumbs { font-family:var(--mono); font-size:.66rem; color:var(--mute); letter-spacing:.09em;
+          text-transform:uppercase; padding:26px 0 0; display:flex; gap:7px; flex-wrap:wrap; }
+.crumbs a { text-decoration:none; color:var(--mute); }
+.crumbs a:hover { color:var(--accent); }
+.crumbs em { font-style:normal; color:var(--faint); }
 
-    /* ── SQL Explorer ── */
-    .explore-bar { display: flex; gap: 10px; align-items: flex-start; }
-    .sql-input {
-      flex: 1;
-      background: var(--bg-2);
-      border: 1px solid var(--line-3);
-      border-radius: 6px;
-      padding: 10px 12px;
-      font-family: var(--mono);
-      font-size: .78rem;
-      color: var(--text);
-      resize: vertical;
-      outline: none;
-      line-height: 1.55;
-    }
-    .sql-input:focus { border-color: var(--brass-d); }
-    .run-btn {
-      background: var(--brass-d);
-      border: none;
-      border-radius: 6px;
-      color: var(--bg);
-      font-family: var(--display);
-      font-size: .78rem;
-      font-weight: 600;
-      padding: 10px 16px;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: background .15s;
-    }
-    .run-btn:hover { background: var(--brass); }
-    .run-btn:disabled { opacity: .4; cursor: not-allowed; }
-    #explore-status {
-      font-family: var(--mono);
-      font-size: .7rem;
-      color: var(--dim);
-      margin: 8px 0 4px;
-      min-height: 16px;
-    }
-    .explore-table-wrap { overflow-x: auto; margin-top: 8px; }
-    .explore-table { width: 100%; border-collapse: collapse; font-size: .77rem; }
-    .explore-table th {
-      font-family: var(--mono);
-      font-size: .62rem;
-      color: var(--mute);
-      text-align: left;
-      padding: 0 12px 6px 0;
-      border-bottom: 1px solid var(--line-2);
-      letter-spacing: .05em;
-      white-space: nowrap;
-    }
-    .explore-table td {
-      font-family: var(--mono);
-      font-size: .75rem;
-      padding: 4px 12px 4px 0;
-      border-bottom: 1px solid var(--line);
-      color: var(--text-2);
-      white-space: nowrap;
-    }
-    .explore-table tr:last-child td { border-bottom: none; }
-    .explore-table tr:hover td { background: var(--raised); }
+h1 { font-family:var(--serif); font-weight:400; font-size:clamp(1.85rem,4.2vw,2.75rem);
+     line-height:1.12; letter-spacing:-.015em; margin:12px 0 0; text-wrap:balance; max-width:20ch; }
+h1 .q { color:var(--accent); }
+.lede { font-size:1rem; font-weight:300; color:var(--ink-2); max-width:var(--measure);
+        margin-top:14px; line-height:1.62; }
+.page-head { padding-bottom:30px; border-bottom:1px solid var(--rule); margin-bottom:30px; }
 
-    /* ── Schema hint ── */
-    #schema-hint {
-      font-family: var(--mono);
-      font-size: .7rem;
-      color: var(--mute);
-      padding: 10px 0 30px;
-      display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
-    }
-    #schema-hint code {
-      background: var(--raised);
-      border: 1px solid var(--line-2);
-      border-radius: 4px;
-      padding: 2px 7px;
-      color: var(--brass-d);
-    }
-    .schema-label { color: var(--mute); }
+h2 { font-family:var(--serif); font-weight:500; font-size:1.32rem; letter-spacing:-.01em;
+     margin:0 0 4px; text-wrap:balance; }
+h3 { font-size:.94rem; font-weight:600; margin:0 0 6px; }
+p { max-width:var(--measure); }
 
-    .cs-link {
-      color: var(--brass);
-      text-decoration: none;
-      font-family: var(--mono);
-      font-size: .8rem;
-      font-weight: 500;
-    }
-    .cs-link:hover { text-decoration: underline; color: var(--brass-l); }
+section { margin-bottom:52px; }
+.sec-head { display:flex; align-items:baseline; justify-content:space-between;
+            gap:16px; margin-bottom:18px; flex-wrap:wrap; }
+.sec-note { font-size:.8rem; color:var(--mute); max-width:52ch; }
+.eyebrow { font-family:var(--mono); font-size:.63rem; letter-spacing:.15em;
+           text-transform:uppercase; color:var(--accent); margin-bottom:9px; }
 
-    /* ── Empty / loading states ── */
-    .empty {
-      color: var(--mute);
-      font-size: .78rem;
-      padding: 20px 0;
-      text-align: center;
-      font-family: var(--mono);
-    }
-  </style>
+/* ── Readout strip ─────────────────────────────────────────────────────── */
+.readout { display:grid; grid-template-columns:repeat(auto-fit,minmax(128px,1fr));
+           border-top:1px solid var(--rule-2); border-bottom:1px solid var(--rule); }
+.ro { padding:15px 18px 15px 0; border-right:1px solid var(--rule); }
+.ro:last-child { border-right:none; }
+.ro-v { font-family:var(--mono); font-size:1.5rem; font-weight:500; line-height:1.05;
+        letter-spacing:-.02em; }
+.ro-l { font-size:.7rem; color:var(--mute); margin-top:5px; letter-spacing:.02em; }
+.ro-s { font-size:.68rem; color:var(--faint); font-family:var(--mono); margin-top:2px; }
+
+/* ── Signal rows (the insight grammar) ─────────────────────────────────── */
+.signals { border-top:1px solid var(--rule-2); }
+.sig { border-bottom:1px solid var(--rule); }
+.sig-top {
+  display:grid; grid-template-columns:132px minmax(0,1fr) auto; gap:20px;
+  align-items:start; padding:20px 0; width:100%; background:none; border:none;
+  text-align:left; cursor:pointer;
+}
+@media (max-width:680px){ .sig-top{ grid-template-columns:1fr; gap:9px; padding:17px 0 } }
+.sig-metric { font-family:var(--mono); font-size:1.62rem; font-weight:500; line-height:1;
+              letter-spacing:-.025em; }
+.sig-metric.up { color:var(--rise); } .sig-metric.down { color:var(--fall); }
+.sig-mlabel { font-size:.68rem; color:var(--mute); margin-top:6px; line-height:1.35; }
+.sig-title { font-family:var(--serif); font-size:1.12rem; font-weight:400; line-height:1.32;
+             letter-spacing:-.005em; text-wrap:balance; }
+.sig-sub { font-size:.79rem; color:var(--ink-2); margin-top:5px; }
+.sig-where { font-family:var(--mono); font-size:.68rem; color:var(--mute); margin-top:5px; }
+.sig-right { display:flex; align-items:center; gap:11px; }
+@media (max-width:680px){ .sig-right{ justify-content:flex-start } }
+.chev { font-family:var(--mono); color:var(--faint); font-size:.85rem;
+        transition:transform .16s ease; }
+.sig[open] .chev, .sig.open .chev { transform:rotate(90deg); }
+
+.sig-body { display:none; padding:0 0 24px; }
+.sig.open .sig-body { display:block; }
+.sig-grid { display:grid; grid-template-columns:132px minmax(0,1fr); gap:20px; }
+@media (max-width:680px){ .sig-grid{ grid-template-columns:1fr } }
+.sig-fields { display:flex; flex-direction:column; gap:15px; max-width:var(--measure); }
+.field-k { font-family:var(--mono); font-size:.62rem; letter-spacing:.13em;
+           text-transform:uppercase; color:var(--mute); margin-bottom:4px; }
+.field-v { font-size:.87rem; color:var(--ink); line-height:1.62; }
+.field-v.caveat { color:var(--ink-2); }
+
+/* ── Confidence ────────────────────────────────────────────────────────── */
+.conf { font-family:var(--mono); font-size:.6rem; letter-spacing:.11em; text-transform:uppercase;
+        padding:3px 7px; border:1px solid var(--rule-2); border-radius:2px;
+        color:var(--ink-2); white-space:nowrap; }
+.conf[data-c="strong"]   { color:var(--rise); border-color:var(--rise); background:var(--rise-bg); }
+.conf[data-c="moderate"] { color:var(--accent); border-color:var(--accent); background:var(--accent-bg); }
+.conf[data-c="observed"] { color:var(--ink-2); }
+.conf[data-c="early"]    { color:var(--mute); border-style:dashed; }
+
+/* ── Tables ────────────────────────────────────────────────────────────── */
+.tbl-wrap { overflow-x:auto; border-top:1px solid var(--rule-2); }
+table { width:100%; border-collapse:collapse; font-size:.83rem; }
+th { font-family:var(--mono); font-size:.62rem; letter-spacing:.1em; text-transform:uppercase;
+     color:var(--mute); text-align:left; font-weight:500; padding:9px 12px 9px 0;
+     border-bottom:1px solid var(--rule); white-space:nowrap; }
+th.num, td.num { text-align:right; }
+th.sortable { cursor:pointer; user-select:none; }
+th.sortable:hover { color:var(--ink); }
+th .dir { color:var(--accent); }
+td { padding:8px 12px 8px 0; border-bottom:1px solid var(--rule); vertical-align:baseline; }
+tbody tr:hover { background:var(--accent-bg); }
+td.num, .mono { font-family:var(--mono); font-variant-numeric:tabular-nums; }
+td a { color:var(--ink); text-decoration:none; border-bottom:1px solid var(--rule-2); }
+td a:hover { color:var(--accent); border-bottom-color:var(--accent); }
+.code { font-family:var(--mono); font-size:.76rem; color:var(--accent); }
+.dim { color:var(--mute); }
+.faint { color:var(--faint); }
+.unknown { color:var(--mute); font-style:italic; font-size:.8rem; }
+
+/* Share bar sits behind the number, not beside it */
+.barcell { position:relative; }
+.barcell .fill { position:absolute; right:0; top:50%; transform:translateY(-50%);
+                 height:15px; background:var(--accent-bg); border-right:2px solid var(--accent);
+                 pointer-events:none; }
+.barcell span { position:relative; }
+
+/* ── Charts ────────────────────────────────────────────────────────────── */
+.chart { display:flex; align-items:flex-end; gap:2px; height:150px;
+         border-bottom:1px solid var(--rule-2); padding-top:8px; }
+.cbar { flex:1; min-width:3px; display:flex; flex-direction:column; justify-content:flex-end;
+        height:100%; position:relative; }
+.cbar i { display:block; background:var(--ink-2); width:100%; }
+.cbar.hi i { background:var(--accent); }
+.cbar.partial i { background:repeating-linear-gradient(45deg,var(--faint),var(--faint) 2px,transparent 2px,transparent 4px); }
+.cbar:hover i { background:var(--accent); }
+.caxis { display:flex; gap:2px; margin-top:6px; }
+.caxis span { flex:1; min-width:3px; font-family:var(--mono); font-size:.6rem;
+              color:var(--faint); text-align:center; overflow:hidden; white-space:nowrap; }
+
+/* ── Hierarchy browser ─────────────────────────────────────────────────── */
+.hier { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:0 26px; }
+.hcol { border-top:1px solid var(--rule-2); }
+.hcol h3 { font-family:var(--mono); font-size:.63rem; letter-spacing:.13em; text-transform:uppercase;
+           color:var(--mute); font-weight:500; padding:10px 0; border-bottom:1px solid var(--rule); }
+.hrow { display:flex; justify-content:space-between; align-items:baseline; gap:10px;
+        padding:7px 0; border-bottom:1px solid var(--rule); text-decoration:none; font-size:.84rem; }
+.hrow:hover { color:var(--accent); }
+.hrow.on { color:var(--accent); font-weight:500; }
+.hrow b { font-weight:inherit; }
+.hrow .n { font-family:var(--mono); font-size:.76rem; color:var(--mute); }
+
+/* ── Buttons / controls ────────────────────────────────────────────────── */
+.btn {
+  font-family:var(--mono); font-size:.7rem; letter-spacing:.07em; text-transform:uppercase;
+  background:none; border:1px solid var(--rule-2); border-radius:2px;
+  padding:7px 13px; cursor:pointer; text-decoration:none; display:inline-block;
+  color:var(--ink); white-space:nowrap;
+}
+.btn:hover { border-color:var(--accent); color:var(--accent); }
+.btn.primary { background:var(--ink); color:var(--bg); border-color:var(--ink); }
+.btn.primary:hover { background:var(--accent); border-color:var(--accent); color:var(--bg); }
+.btn:disabled { opacity:.45; cursor:default; }
+
+.controls { display:grid; grid-template-columns:repeat(auto-fit,minmax(158px,1fr)); gap:14px;
+            padding:18px 0; border-top:1px solid var(--rule-2); border-bottom:1px solid var(--rule); }
+.ctl label { display:block; font-family:var(--mono); font-size:.61rem; letter-spacing:.12em;
+             text-transform:uppercase; color:var(--mute); margin-bottom:6px; }
+.ctl select { width:100%; background:var(--surface); border:1px solid var(--rule-2);
+              border-radius:2px; padding:7px 9px; font-size:.82rem; }
+
+/* ── SQL ───────────────────────────────────────────────────────────────── */
+.sql-box { background:var(--sunken); border:1px solid var(--rule); border-radius:3px;
+           padding:13px 15px; font-family:var(--mono); font-size:.76rem; line-height:1.65;
+           white-space:pre; overflow-x:auto; color:var(--ink-2); }
+textarea.sql-box { width:100%; resize:vertical; min-height:132px; color:var(--ink);
+                   white-space:pre; tab-size:2; }
+.chips { display:flex; flex-wrap:wrap; gap:7px; margin-bottom:16px; }
+.chip { font-size:.77rem; padding:6px 11px; border:1px solid var(--rule-2); border-radius:14px;
+        background:none; cursor:pointer; color:var(--ink-2); text-align:left; }
+.chip:hover { border-color:var(--accent); color:var(--accent); }
+
+/* ── Notices ───────────────────────────────────────────────────────────── */
+.notice { border-left:2px solid var(--accent); background:var(--accent-bg);
+          padding:13px 16px; font-size:.83rem; color:var(--ink-2);
+          max-width:var(--measure); line-height:1.6; }
+.notice.warn { border-left-color:var(--fall); background:var(--fall-bg); }
+.notice b { color:var(--ink); font-weight:600; }
+.status { font-family:var(--mono); font-size:.7rem; color:var(--mute); padding:9px 0; }
+.empty { font-family:var(--mono); font-size:.76rem; color:var(--mute); padding:26px 0;
+         border-bottom:1px solid var(--rule); }
+
+/* ── Boot ──────────────────────────────────────────────────────────────── */
+#boot { position:fixed; inset:0; z-index:900; background:var(--bg);
+        display:flex; align-items:center; justify-content:center; }
+#boot.gone { display:none; }
+.boot-in { text-align:center; }
+.boot-rings { width:52px; height:52px; margin:0 auto 18px; border-radius:50%;
+              border:1px solid var(--rule-2); position:relative; }
+.boot-rings::after { content:''; position:absolute; inset:11px; border-radius:50%;
+                     border:1px solid var(--accent); animation:ping 1.8s ease-out infinite; }
+@keyframes ping { 0%{transform:scale(.4);opacity:1} 100%{transform:scale(1.5);opacity:0} }
+.boot-t { font-family:var(--mono); font-size:.72rem; letter-spacing:.14em;
+          text-transform:uppercase; color:var(--mute); }
+
+.dl { display:flex; flex-direction:column; gap:0; border-top:1px solid var(--rule-2); }
+.dl-row { display:flex; justify-content:space-between; align-items:baseline; gap:14px;
+          padding:11px 0; border-bottom:1px solid var(--rule); flex-wrap:wrap; }
+.dl-row .meta { font-family:var(--mono); font-size:.7rem; color:var(--mute); }
+.prose p { margin-bottom:13px; font-size:.9rem; line-height:1.68; }
+.prose h3 { margin:26px 0 7px; font-family:var(--mono); font-size:.68rem; letter-spacing:.13em;
+            text-transform:uppercase; color:var(--accent); }
+.prose ul { margin:0 0 13px 1.1em; max-width:var(--measure); }
+.prose li { font-size:.9rem; margin-bottom:5px; line-height:1.62; }
+</style>
 </head>
 <body>
 
-<nav id="nav">
-  <span class="brand">OVRHEAD</span>
-  <span class="location">Aarhus, Denmark · 56.16°N 10.20°E</span>
-  <span id="freshness">initialising…</span>
-</nav>
+<div id="boot"><div class="boot-in">
+  <div class="boot-rings"></div>
+  <div class="boot-t" id="boot-t">Reading the record</div>
+</div></div>
 
-<div id="init-overlay">
-  <div class="init-inner">
-    <div class="init-logo">✈</div>
-    <div class="init-msg" id="init-msg">Loading data warehouse…</div>
-    <div class="init-sub">DuckDB-Wasm · first load ~5 s</div>
-  </div>
-</div>
-
-<div id="error-box"></div>
-
-<div id="app" hidden>
-  <div id="stats-strip">
-    <div class="stat-card"><div class="stat-val mono" id="stat-flights">—</div><div class="stat-lbl">Flights tracked</div></div>
-    <div class="stat-card"><div class="stat-val mono" id="stat-operators">—</div><div class="stat-lbl">Operators seen</div></div>
-    <div class="stat-card"><div class="stat-val mono" id="stat-days">—</div><div class="stat-lbl">Days of data</div></div>
-    <div class="stat-card"><div class="stat-val mono" id="stat-daily">—</div><div class="stat-lbl">Avg flights / day</div></div>
-  </div>
-
-  <div id="main-cols">
-    <section class="panel" id="panel-operators">
-      <div class="panel-title">Operators overhead</div>
-      <div id="operators-body"><div class="empty">Loading…</div></div>
-    </section>
-    <section class="panel" id="panel-hourly">
-      <div class="panel-title">Traffic by hour <span class="panel-subtitle">(UTC, all days combined)</span></div>
-      <div id="hourly-body"><div class="empty">Loading…</div></div>
-    </section>
-  </div>
-
-  <div id="main-cols">
-    <section class="panel" id="panel-daily">
-      <div class="panel-title">Daily traffic</div>
-      <div id="daily-body"><div class="empty">Loading…</div></div>
-    </section>
-    <section class="panel" id="panel-types">
-      <div class="panel-title">Aircraft types</div>
-      <div id="types-body"><div class="empty">Loading…</div></div>
-    </section>
-  </div>
-
-  <section class="panel">
-    <div class="panel-title">Recent flights <span id="recent-count" class="panel-subtitle"></span></div>
-    <div style="overflow-x:auto"><div id="recent-body"><div class="empty">Loading…</div></div></div>
-  </section>
-
-  <section class="panel">
-    <div class="panel-title">Explore <span class="panel-subtitle">— DuckDB SQL against live parquet</span></div>
-    <div class="explore-bar">
-      <textarea id="sql-input" class="sql-input" rows="5" spellcheck="false">SELECT
-  a.name  AS airline,
-  a.country,
-  COUNT(*) AS flights
-FROM flights f
-LEFT JOIN airlines a ON a.prefix = f.airline_prefix
-GROUP BY 1, 2
-ORDER BY 3 DESC
-LIMIT 20;</textarea>
-      <button id="run-btn" class="run-btn">Run ▶</button>
+<div id="shell">
+  <aside id="rail">
+    <a class="mark" href="#/"><b>OVRHEAD</b><span>Aarhus · 56.16°N 10.20°E</span></a>
+    <div id="search-wrap">
+      <input id="search" type="search" placeholder="Country, airline, aircraft…" autocomplete="off" spellcheck="false">
+      <div id="results"></div>
     </div>
-    <div id="explore-status"></div>
-    <div id="explore-results"></div>
-  </section>
-
-  <div id="schema-hint">
-    <span class="schema-label">Available tables:</span>
-    <code>flights</code>
-    <code>airlines</code>
-    <code>airports</code>
-    <code>aircraft_db</code>
-    <span style="color:var(--mute);margin-left:4px">— see <a href="data/adsb/manifest.json" target="_blank" style="color:var(--brass-d)">manifest.json</a> for file list</span>
-  </div>
+    <nav id="nav">
+      <a href="#/"        data-r="/"       ><i>01</i>Signals</a>
+      <a href="#/explore" data-r="/explore"><i>02</i>Explore</a>
+      <a href="#/ask"     data-r="/ask"    ><i>03</i>Ask</a>
+      <a href="#/data"    data-r="/data"   ><i>04</i>Data</a>
+      <a href="#/method"  data-r="/method" ><i>05</i>Method</a>
+    </nav>
+    <div id="rail-foot">
+      <div class="stamp" id="stamp"></div>
+    </div>
+  </aside>
+  <main id="main"><div class="wrap" id="view"></div></main>
 </div>
 
 <script type="module">
-// ─────────────────────────────────────────────────────────
-// DuckDB-Wasm initialisation
-// ─────────────────────────────────────────────────────────
-import * as duckdb from 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@latest/+esm';
+const BASE = new URL('./data/adsb/', location.href).href;
 
-const BASE_URL   = new URL('./data/adsb/', location.href).href;
-const MANIFEST   = BASE_URL + 'manifest.json';
+/* ── State ───────────────────────────────────────────────────────────────
+   Two layers. `S` is the precomputed summary and arrives in one small fetch,
+   which is what every page paints from. `deep` is DuckDB with the real flight
+   table, loaded only when a page actually needs to run a query. */
+let S = null, TAX = null;
+let deep = null, deepPromise = null;
 
-function setMsg(txt) { document.getElementById('init-msg').textContent = txt; }
-function fmt(n)  { return Number(n).toLocaleString(); }
-function esc(s)  { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function tsHuman(unix) {
-  if (!unix) return '—';
-  const d = new Date(Number(unix) * 1000);
-  return d.toISOString().slice(0, 16).replace('T', ' ');
-}
+const $  = s => document.querySelector(s);
+const el = document.getElementById.bind(document);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const n = v => Number(v ?? 0).toLocaleString('en-US');
+const pct = v => (v > 0 ? '+' : '') + Number(v).toFixed(0) + '%';
 
-async function initDuckDB() {
-  setMsg('Selecting WASM bundle…');
-  const bundles = duckdb.getJsDelivrBundles();
-  const bundle  = await duckdb.selectBundle(bundles);
-  const workerUrl = URL.createObjectURL(
-    new Blob([`importScripts("${bundle.mainWorker}");`], { type: 'text/javascript' })
-  );
-  const worker = new Worker(workerUrl);
-  const db = new duckdb.AsyncDuckDB(new duckdb.ConsoleLogger(), worker);
-  setMsg('Instantiating DuckDB-Wasm…');
-  await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
-  URL.revokeObjectURL(workerUrl);
-  return db;
-}
-
-async function registerViews(db, conn, manifest) {
-  // DuckDB-Wasm cannot make HTTP requests on its own in the browser.
-  // Pre-fetch each parquet file via the browser's fetch() and register it
-  // in DuckDB's in-memory virtual filesystem before creating views.
-  async function loadParquet(name, url) {
-    const resp = await fetch(url);
-    if (!resp.ok) throw new Error(`fetch ${url}: ${resp.status}`);
-    const buf = await resp.arrayBuffer();
-    await db.registerFileBuffer(name, new Uint8Array(buf));
+/** Arrow hands timestamps back as epoch milliseconds, Dates, or strings
+ *  depending on the column. Normalise all three to "YYYY-MM-DD HH:MM". */
+function ts(v) {
+  if (v == null) return '—';
+  let d;
+  if (v instanceof Date) d = v;
+  else if (typeof v === 'number' || typeof v === 'bigint') {
+    const ms = Number(v);
+    d = new Date(ms < 1e12 ? ms * 1000 : ms);   // seconds vs milliseconds
+  } else {
+    d = new Date(String(v));
+    if (isNaN(d)) return String(v).slice(0, 16);
   }
+  return isNaN(d) ? '—' : d.toISOString().slice(0, 16).replace('T', ' ');
+}
+const looksLikeTime = c => /(_at|_seen|^ts$|time|date|day)$/i.test(c);
+const boot = t => { const b = el('boot-t'); if (b) b.textContent = t; };
 
-  const toUrl = entry => BASE_URL + entry.path.replace(/^data\/adsb\//, '');
+const CONF_TEXT = {
+  strong:   'Large, consistent and well sampled.',
+  moderate: 'Enough history and volume to be worth attention.',
+  observed: 'Directly counted. No inference involved.',
+  early:    'Real, but the record is too short to call it a trend.',
+};
 
-  if (manifest.flights.length) {
-    for (const entry of manifest.flights) {
-      setMsg(`Downloading ${entry.name}…`);
-      await loadParquet(entry.name, toUrl(entry));
+/* ── Deep layer: DuckDB-Wasm ─────────────────────────────────────────────
+   Loaded on demand. We deliberately do NOT load aircraft_db.parquet (4.7 MB):
+   type, registration and description are already denormalised onto each
+   flight row, so the browser never needs the full 636k-aircraft table. */
+async function getDeep() {
+  if (deep) return deep;
+  if (deepPromise) return deepPromise;
+  deepPromise = (async () => {
+    const duckdb = await import('https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/+esm');
+    const bundle = await duckdb.selectBundle(duckdb.getJsDelivrBundles());
+    const workerUrl = URL.createObjectURL(
+      new Blob([`importScripts("${bundle.mainWorker}");`], { type: 'text/javascript' }));
+    const worker = new Worker(workerUrl);
+    const db = new duckdb.AsyncDuckDB(new duckdb.VoidLogger(), worker);
+    await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
+    URL.revokeObjectURL(workerUrl);
+    const conn = await db.connect();
+
+    const man = await fetch(BASE + 'manifest.json').then(r => r.json());
+    for (const f of man.flights) {
+      const buf = await fetch(BASE + f.path.replace(/^data\/adsb\//, '')).then(r => r.arrayBuffer());
+      await db.registerFileBuffer(f.name, new Uint8Array(buf));
     }
-    const names = manifest.flights.map(e => `'${e.name}'`).join(', ');
-    await conn.query(`CREATE OR REPLACE VIEW flights AS
-      SELECT * FROM read_parquet([${names}], union_by_name=true)`);
-  }
+    const names = man.flights.map(f => `'${f.name}'`).join(',');
 
-  for (const entry of manifest.enrichment) {
-    setMsg(`Downloading ${entry.name}…`);
-    try { await loadParquet(entry.name, toUrl(entry)); }
-    catch (e) { console.warn('enrichment load failed:', entry.name, e); continue; }
-  }
+    // Country attribution as a pure range join. ICAO addresses are always six
+    // lowercase hex digits, so comparing them as strings is equivalent to
+    // comparing the integers — no casting needed. Narrowest block wins, which
+    // is how sub-allocations (Iceland inside Ireland's range) resolve.
+    const blocks = TAX.blocks.map(b =>
+      `('${b.lo_hex}','${b.hi_hex}','${b.cc}',${b.width})`).join(',');
+    await conn.query(`CREATE TABLE country_block(lo VARCHAR, hi VARCHAR, cc VARCHAR, width BIGINT)`);
+    await conn.query(`INSERT INTO country_block VALUES ${blocks}`);
 
-  const enrNames = manifest.enrichment.map(e => e.name);
-  if (enrNames.includes('airlines.parquet'))
-    await conn.query("CREATE OR REPLACE VIEW airlines AS SELECT * FROM read_parquet('airlines.parquet')");
-  if (enrNames.includes('airports.parquet'))
-    await conn.query("CREATE OR REPLACE VIEW airports AS SELECT * FROM read_parquet('airports.parquet')");
-  if (enrNames.includes('aircraft_db.parquet'))
-    await conn.query("CREATE OR REPLACE VIEW aircraft_db AS SELECT * FROM read_parquet('aircraft_db.parquet')");
+    const cRows = Object.entries(TAX.countries).map(([cc, m]) =>
+      `('${cc}',${q(m.name)},${q(m.region)},${q(m.continent)})`).join(',');
+    await conn.query(`CREATE TABLE country(cc VARCHAR, name VARCHAR, region VARCHAR, continent VARCHAR)`);
+    await conn.query(`INSERT INTO country VALUES ${cRows}`);
+
+    await conn.query(`CREATE VIEW _raw AS SELECT * FROM read_parquet([${names}], union_by_name=true)`);
+    await conn.query(`
+      CREATE VIEW flights AS
+      SELECT r.*,
+             c.cc         AS reg_country,
+             ct.name      AS reg_country_name,
+             ct.region    AS reg_region,
+             ct.continent AS reg_continent,
+             CASE WHEN r.ac_type SIMILAR TO '(A30|A31|A33|A34|A35|A38|B74|B76|B77|B78|IL9|MD11|A124).*'
+                  THEN 'widebody' ELSE 'narrowbody' END AS body,
+             r.airline_prefix IN ('FDX','UPS','GTI','CLX','CKS','ABW','CAO','CKK','GEC','BOX',
+                                  'SQC','MPH','TAY','ICV','RCF') AS is_cargo,
+             TO_TIMESTAMP(r.first_seen) AS seen_at
+      FROM _raw r
+      LEFT JOIN country_block c
+             ON r.hex >= c.lo AND r.hex <= c.hi
+            AND c.width = (SELECT MIN(b2.width) FROM country_block b2
+                           WHERE r.hex >= b2.lo AND r.hex <= b2.hi)
+      LEFT JOIN country ct ON ct.cc = c.cc`);
+    deep = { db, conn };
+    return deep;
+  })();
+  return deepPromise;
+}
+const q = v => v == null ? 'NULL' : `'${String(v).replace(/'/g, "''")}'`;
+
+async function query(sql) {
+  const { conn } = await getDeep();
+  const r = await conn.query(sql);
+  return { rows: r.toArray().map(x => x.toJSON ? x.toJSON() : x),
+           cols: (r.schema?.fields ?? []).map(f => f.name) };
 }
 
-// ─────────────────────────────────────────────────────────
-// Stats strip
-// ─────────────────────────────────────────────────────────
-async function renderStats(conn) {
-  const r = await conn.query(`
-    SELECT
-      COUNT(*) AS total_flights,
-      COUNT(DISTINCT airline_prefix) AS operators,
-      COUNT(DISTINCT strftime(TO_TIMESTAMP(first_seen), '%Y-%m-%d')) AS days,
-      ROUND(COUNT(*) / NULLIF(COUNT(DISTINCT strftime(TO_TIMESTAMP(first_seen),'%Y-%m-%d')),0), 0) AS daily_avg
-    FROM flights
-  `);
-  const row = r.toArray()[0];
-  if (!row) return;
-  document.getElementById('stat-flights').textContent   = fmt(row.total_flights);
-  document.getElementById('stat-operators').textContent = fmt(row.operators);
-  document.getElementById('stat-days').textContent      = fmt(row.days);
-  document.getElementById('stat-daily').textContent     = fmt(row.daily_avg);
+/* ── Shared components ───────────────────────────────────────────────── */
+const confChip = c => `<span class="conf" data-c="${esc(c)}" title="${esc(CONF_TEXT[c] || '')}">${esc(c)}</span>`;
+
+function readout(items) {
+  return `<div class="readout">${items.map(i => `
+    <div class="ro">
+      <div class="ro-v">${i.v}</div>
+      <div class="ro-l">${esc(i.l)}</div>
+      ${i.s ? `<div class="ro-s">${esc(i.s)}</div>` : ''}
+    </div>`).join('')}</div>`;
 }
 
-// ─────────────────────────────────────────────────────────
-// Operator leaderboard
-// ─────────────────────────────────────────────────────────
-async function renderOperators(conn) {
-  const r = await conn.query(`
-    SELECT f.airline_prefix, a.name AS airline_name, COUNT(*) AS flights
-    FROM flights f
-    LEFT JOIN airlines a ON a.prefix = f.airline_prefix
-    WHERE f.airline_prefix IS NOT NULL AND f.airline_prefix != ''
-    GROUP BY 1, 2
-    ORDER BY 3 DESC
-    LIMIT 20
-  `);
-  const rows = r.toArray();
-  if (!rows.length) {
-    document.getElementById('operators-body').innerHTML = '<div class="empty">No data yet.</div>';
-    return;
-  }
-  const max = Number(rows[0].flights);
-  let html = `<table class="op-table">
-    <thead><tr>
-      <th>#</th><th>ICAO</th><th>Airline</th><th style="text-align:right">Flights</th><th></th>
-    </tr></thead><tbody>`;
-  rows.forEach((row, i) => {
-    const pct = max ? (Number(row.flights) / max * 100).toFixed(1) : 0;
-    html += `<tr>
-      <td class="op-rank">${i + 1}</td>
-      <td class="op-prefix">${esc(row.airline_prefix)}</td>
-      <td class="op-name">${esc(row.airline_name ?? '—')}</td>
-      <td class="op-count">${fmt(row.flights)}</td>
-      <td class="op-bar-cell">
-        <div class="op-bar-wrap"><div class="op-bar" style="width:${pct}%"></div></div>
-      </td>
-    </tr>`;
-  });
-  html += '</tbody></table>';
-  document.getElementById('operators-body').innerHTML = html;
+/** Bar chart. Partial buckets are hatched so an incomplete day never reads
+ *  as a genuine dip. */
+function chart(data, { key, val, partial, labelEvery = 1 } = {}) {
+  if (!data.length) return `<div class="empty">Nothing recorded yet.</div>`;
+  const max = Math.max(...data.map(d => +d[val]), 1);
+  const peak = data.reduce((a, b) => (+b[val] > +a[val] ? b : a));
+  const bars = data.map(d => {
+    const isP = partial && d[partial];
+    return `<div class="cbar ${d === peak ? 'hi' : ''} ${isP ? 'partial' : ''}"
+      title="${esc(d[key])} — ${n(d[val])}${isP ? ' (partial coverage)' : ''}">
+      <i style="height:${(+d[val] / max * 100).toFixed(1)}%"></i></div>`;
+  }).join('');
+  const axis = data.map((d, i) =>
+    `<span>${i % labelEvery === 0 ? esc(String(d[key]).slice(-5)) : ''}</span>`).join('');
+  return `<div class="chart">${bars}</div><div class="caxis">${axis}</div>`;
 }
 
-// ─────────────────────────────────────────────────────────
-// Hourly traffic chart
-// ─────────────────────────────────────────────────────────
-async function renderHourly(conn) {
-  const r = await conn.query(`
-    SELECT
-      CAST(strftime(TO_TIMESTAMP(first_seen), '%H') AS INTEGER) AS hour,
-      COUNT(*) AS flights
-    FROM flights
-    GROUP BY 1
-    ORDER BY 1
-  `);
-  const rows = r.toArray();
-  if (!rows.length) {
-    document.getElementById('hourly-body').innerHTML = '<div class="empty">No data yet.</div>';
-    return;
-  }
-  // Fill all 24 hours
-  const byHour = new Array(24).fill(0);
-  rows.forEach(row => { byHour[Number(row.hour)] = Number(row.flights); });
-  const max = Math.max(...byHour, 1);
+/** A sortable, drillable entity table. `cols` describe how to read each row. */
+function table(rows, cols, { max = 40, sortKey, sortDir = -1, id = 't' } = {}) {
+  if (!rows.length) return `<div class="empty">No rows.</div>`;
+  const sorted = sortKey
+    ? [...rows].sort((a, b) => {
+        const x = a[sortKey], y = b[sortKey];
+        if (typeof x === 'number' || typeof y === 'number')
+          return ((y ?? -Infinity) - (x ?? -Infinity)) * -sortDir * -1;
+        return String(x ?? '').localeCompare(String(y ?? '')) * sortDir * -1;
+      })
+    : rows;
+  const top = Math.max(...rows.map(r => +r[cols.find(c => c.bar)?.k] || 0), 1);
+  const head = cols.map(c =>
+    `<th class="${c.num ? 'num' : ''} sortable" data-t="${id}" data-k="${esc(c.k)}">
+      ${esc(c.h)}${sortKey === c.k ? `<span class="dir"> ${sortDir > 0 ? '↑' : '↓'}</span>` : ''}
+     </th>`).join('');
+  const body = sorted.slice(0, max).map(r => `<tr>${cols.map(c => {
+    const v = c.render ? c.render(r) : esc(r[c.k] ?? '—');
+    if (c.bar) return `<td class="num barcell">
+        <div class="fill" style="width:${(+r[c.k] / top * 100).toFixed(1)}%"></div>
+        <span>${v}</span></td>`;
+    return `<td class="${c.num ? 'num' : ''}">${v}</td>`;
+  }).join('')}</tr>`).join('');
+  const more = rows.length > max
+    ? `<div class="status">Showing ${max} of ${n(rows.length)}.</div>` : '';
+  return `<div class="tbl-wrap"><table data-tid="${id}">
+    <thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>${more}`;
+}
 
-  let html = '<div class="hour-chart">';
-  byHour.forEach((count, h) => {
-    const pct = (count / max * 100).toFixed(1);
-    const label = h % 6 === 0 ? String(h).padStart(2, '0') : '';
-    html += `<div class="hour-bar-wrap" title="${h}:00 UTC — ${fmt(count)} flights">
-      <div class="hour-spacer"></div>
-      <div class="hour-bar" style="height:${pct}%"></div>
-      <div class="hour-label">${label}</div>
+/* Sorting is delegated: tables re-render through the view that owns them. */
+const sortState = {};
+document.addEventListener('click', e => {
+  const th = e.target.closest('th.sortable');
+  if (!th) return;
+  const t = th.dataset.t, k = th.dataset.k;
+  const cur = sortState[t] || {};
+  sortState[t] = { key: k, dir: cur.key === k ? -(cur.dir || -1) : -1 };
+  route();
+});
+
+function changeCell(v) {
+  if (v == null) return `<span class="faint" title="Not enough baseline to compare">—</span>`;
+  return `<span style="color:var(--${v >= 0 ? 'rise' : 'fall'})">${pct(v)}</span>`;
+}
+const countryName = cc => TAX?.countries?.[cc]?.name || cc;
+
+/* ── Signals view ────────────────────────────────────────────────────── */
+function viewSignals() {
+  const t = S.totals, w = S.window;
+  const stale = (Date.now() - new Date(S.generated_at)) / 3.6e6;
+
+  const sigs = S.signals.map((s, i) => {
+    const dir = /up |↑|\+/.test(s.metric) && s.metric.startsWith('+') ? 'up'
+              : s.metric.startsWith('-') ? 'down' : '';
+    return `<div class="sig" id="${esc(s.id)}">
+      <button class="sig-top" data-sig="${i}" aria-expanded="false">
+        <div>
+          <div class="sig-metric ${dir}">${esc(s.metric)}</div>
+          <div class="sig-mlabel">${esc(s.metric_label)}</div>
+        </div>
+        <div>
+          <div class="sig-title">${esc(s.title)}</div>
+          ${s.comparison ? `<div class="sig-sub">${esc(s.comparison)}</div>` : ''}
+          ${s.where ? `<div class="sig-where">${esc(s.where)}</div>` : ''}
+        </div>
+        <div class="sig-right">${confChip(s.confidence)}<span class="chev">›</span></div>
+      </button>
+      <div class="sig-body"><div class="sig-grid"><div></div><div class="sig-fields">
+        <div><div class="field-k">What it might mean</div>
+             <div class="field-v">${esc(s.interpretation)}</div></div>
+        <div><div class="field-k">What it does not show</div>
+             <div class="field-v caveat">${esc(s.caveat)}</div></div>
+        <div><div class="field-k">Confidence — ${esc(s.confidence)}</div>
+             <div class="field-v caveat">${esc(CONF_TEXT[s.confidence] || '')}</div></div>
+        <div><div class="field-k">Reproduce this</div>
+             <div class="sql-box">${esc(s.sql)}</div>
+             <div style="margin-top:10px"><a class="btn" href="#/ask?sql=${
+               encodeURIComponent(s.sql)}">Run this query →</a></div></div>
+      </div></div></div>
     </div>`;
-  });
-  html += '</div>';
-  document.getElementById('hourly-body').innerHTML = html;
+  }).join('');
+
+  const nordic = S.regions.find(r => r.key === 'Nordics');
+  return `
+  <header class="page-head">
+    <div class="crumbs"><em>Observatory</em></div>
+    <h1>Read the world from the sky above <span class="q">Aarhus</span>.</h1>
+    <p class="lede">One antenna records every aircraft that passes overhead. These are the
+      signals we can honestly draw from that record — each one with its evidence, its
+      limits and the query that produced it attached.</p>
+  </header>
+
+  ${stale > 30 ? `<div class="notice warn" style="margin-bottom:34px">
+    <b>The record is behind.</b> Last updated ${stale.toFixed(0)} hours ago — the receiver
+    or the nightly ingest may have stopped.</div>` : ''}
+
+  <section>
+    ${readout([
+      { v: n(t.flights),   l: 'Flights recorded', s: `${w.days_observed} days` },
+      { v: n(t.aircraft),  l: 'Distinct aircraft' },
+      { v: n(t.countries), l: 'Registration countries' },
+      { v: n(t.widebody),  l: 'Wide-body movements',
+        s: `${(t.widebody / t.flights * 100).toFixed(0)}% of traffic` },
+      { v: n(t.operators), l: 'Operators' },
+    ])}
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <div><div class="eyebrow">What the data is telling us</div>
+        <h2>Signals</h2></div>
+      <p class="sec-note">Every claim carries a confidence level. Open one to see the
+        interpretation, the limits, and the SQL behind it.</p>
+    </div>
+    <div class="signals">${sigs}</div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <div><div class="eyebrow">Coverage</div><h2>Daily record</h2></div>
+      <p class="sec-note">Hatched bars are days the receiver was only up for part of the
+        time. They are excluded from every comparison.</p>
+    </div>
+    ${chart(S.daily, { key: 'day', val: 'flights', partial: 'partial' })}
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <div><div class="eyebrow">Where the traffic is registered</div>
+        <h2>Top countries</h2></div>
+      <a class="btn" href="#/explore">Explore all →</a>
+    </div>
+    ${table(S.countries.slice(0, 12), COUNTRY_COLS, { id: 'home-c', max: 12,
+       ...(sortState['home-c'] || { sortKey: 'flights', sortDir: -1 }) })}
+  </section>
+
+  <section>
+    <div class="sec-head"><div><div class="eyebrow">Rhythm</div>
+      <h2>Traffic by hour</h2></div>
+      <p class="sec-note">All days combined, UTC. The shape of the day is the most
+        stable pattern in the record.</p></div>
+    ${chart(S.hourly, { key: 'hour', val: 'flights', labelEvery: 3 })}
+  </section>`;
 }
 
-// ─────────────────────────────────────────────────────────
-// Daily traffic trend
-// ─────────────────────────────────────────────────────────
-async function renderDaily(conn) {
-  const r = await conn.query(`
-    SELECT strftime(TO_TIMESTAMP(first_seen), '%Y-%m-%d') AS day,
-           COUNT(*) AS flights
-    FROM flights
-    GROUP BY 1 ORDER BY 1
-  `);
-  const rows = r.toArray();
-  if (!rows.length) {
-    document.getElementById('daily-body').innerHTML = '<div class="empty">No data yet.</div>';
-    return;
-  }
-  const max = Math.max(...rows.map(r => Number(r.flights)), 1);
-  let html = '<div class="hour-chart">';
-  rows.forEach(row => {
-    const pct = (Number(row.flights) / max * 100).toFixed(1);
-    const label = String(row.day ?? '').slice(5); // MM-DD
-    html += `<div class="hour-bar-wrap" title="${esc(row.day)} — ${fmt(row.flights)} flights" style="flex:1;min-width:40px">
-      <div class="hour-spacer"></div>
-      <div class="hour-bar" style="height:${pct}%"></div>
-      <div class="hour-label" style="font-size:.65rem">${esc(label)}</div>
+const COUNTRY_COLS = [
+  { k: 'name', h: 'Country', render: r =>
+      `<a href="#/place/${esc(r.key)}">${esc(r.name)}</a>` },
+  { k: 'region', h: 'Region', render: r =>
+      r.region ? `<a href="#/region/${encodeURIComponent(r.region)}" class="dim">${esc(r.region)}</a>` : '—' },
+  { k: 'flights', h: 'Flights', num: true, bar: true, render: r => n(r.flights) },
+  { k: 'aircraft', h: 'Aircraft', num: true, render: r => n(r.aircraft) },
+  { k: 'widebody', h: 'Wide-body', num: true, render: r =>
+      `${n(r.widebody)} <span class="faint">${(r.widebody / r.flights * 100).toFixed(0)}%</span>` },
+  { k: 'change_pct', h: 'Δ 24h', num: true, render: r => changeCell(r.change_pct) },
+];
+
+/* ── Explore: the hierarchy ──────────────────────────────────────────── */
+function viewExplore() {
+  const cont = S.continents, reg = S.regions;
+  const col = (title, rows, href, keyName = 'key') => `
+    <div class="hcol"><h3>${esc(title)}</h3>
+      ${rows.map(r => `<a class="hrow" href="${href(r)}">
+        <b>${esc(r.name || r[keyName])}</b>
+        <span class="n">${n(r.flights)}</span></a>`).join('')}
     </div>`;
-  });
-  html += '</div>';
-  document.getElementById('daily-body').innerHTML = html;
+
+  return `
+  <header class="page-head">
+    <div class="crumbs"><a href="#/">Signals</a> <em>/</em> Explore</div>
+    <h1>Where the traffic is registered</h1>
+    <p class="lede">Every aircraft carries a 24-bit address allocated to a state. That makes
+      registration country the one geographic fact we can read off almost every observation —
+      99% of them. Start anywhere and drill down.</p>
+  </header>
+
+  <div class="notice" style="margin-bottom:34px">
+    <b>This is registration, not routing.</b> A Chinese-registered 777 overhead tells you a
+    Chinese aircraft crossed this sky. It does not tell you where the flight began or where
+    it is going — we cannot see that, so we do not claim it.
+  </div>
+
+  <section>
+    <div class="hier">
+      ${col('Continent', cont, r => `#/continent/${encodeURIComponent(r.key)}`)}
+      ${col('Economic region', reg.slice(0, 14), r => `#/region/${encodeURIComponent(r.key)}`)}
+      ${col('Country', S.countries.slice(0, 14), r => `#/place/${r.key}`, 'name')}
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><div><div class="eyebrow">Full table</div>
+      <h2>All ${S.countries.length} countries</h2></div></div>
+    ${table(S.countries, COUNTRY_COLS, { id: 'exp-c', max: 200,
+      ...(sortState['exp-c'] || { sortKey: 'flights', sortDir: -1 }) })}
+  </section>
+
+  <section>
+    <div class="sec-head"><div><div class="eyebrow">Operators</div><h2>Airlines seen</h2></div></div>
+    ${table(S.operators, [
+      { k: 'key', h: 'Code', render: r => `<a href="#/operator/${esc(r.key)}" class="code">${esc(r.key)}</a>` },
+      { k: 'name', h: 'Airline', render: r => r.name
+          ? esc(r.name) + (r.cargo_operator ? ' <span class="faint">· all-cargo</span>' : '')
+          : `<span class="unknown">Not in our airline table</span>` },
+      { k: 'flights', h: 'Flights', num: true, bar: true, render: r => n(r.flights) },
+      { k: 'aircraft', h: 'Aircraft', num: true, render: r => n(r.aircraft) },
+      { k: 'widebody', h: 'Wide-body', num: true, render: r => n(r.widebody) },
+    ], { id: 'exp-o', max: 60, ...(sortState['exp-o'] || { sortKey: 'flights', sortDir: -1 }) })}
+  </section>
+
+  <section>
+    <div class="sec-head"><div><div class="eyebrow">Fleet</div><h2>Aircraft types</h2></div></div>
+    ${table(S.types, [
+      { k: 'key', h: 'Type', render: r => `<a href="#/type/${esc(r.key)}" class="code">${esc(r.key)}</a>` },
+      { k: 'desc', h: 'Aircraft', render: r => esc(r.desc || '—') },
+      { k: 'flights', h: 'Flights', num: true, bar: true, render: r => n(r.flights) },
+      { k: 'aircraft', h: 'Airframes', num: true, render: r => n(r.aircraft) },
+      { k: 'widebody_type', h: 'Class', render: r =>
+          r.widebody_type ? '<span class="code">wide-body</span>' : '<span class="dim">narrow-body</span>' },
+    ], { id: 'exp-t', max: 60, ...(sortState['exp-t'] || { sortKey: 'flights', sortDir: -1 }) })}
+  </section>`;
 }
 
-// ─────────────────────────────────────────────────────────
-// Aircraft types
-// ─────────────────────────────────────────────────────────
-async function renderTypes(conn) {
-  const r = await conn.query(`
-    SELECT ac_type, ac_desc, COUNT(*) AS flights
-    FROM flights
-    WHERE ac_type IS NOT NULL AND ac_type != ''
-    GROUP BY 1, 2
-    ORDER BY 3 DESC
-    LIMIT 12
-  `);
-  const rows = r.toArray();
-  if (!rows.length) {
-    document.getElementById('types-body').innerHTML = '<div class="empty">No type data yet.</div>';
-    return;
-  }
-  const max = Number(rows[0].flights);
-  let html = '<table class="op-table"><thead><tr><th>#</th><th>Type</th><th>Description</th><th style="text-align:right">Flights</th></tr></thead><tbody>';
-  rows.forEach((row, i) => {
-    const pct = (Number(row.flights) / max * 100).toFixed(1);
-    html += `<tr>
-      <td class="rank">${i + 1}</td>
-      <td class="op-prefix">${esc(row.ac_type ?? '—')}</td>
-      <td style="color:var(--text-2);font-size:.78rem">${esc(row.ac_desc ?? '—')}</td>
-      <td style="text-align:right;white-space:nowrap">
-        <span style="font-family:var(--mono);font-size:.8rem">${fmt(row.flights)}</span>
-        <span class="op-bar" style="width:${pct}%"></span>
-      </td>
-    </tr>`;
-  });
-  html += '</tbody></table>';
-  document.getElementById('types-body').innerHTML = html;
+/* ── Entity pages ────────────────────────────────────────────────────── */
+function entityShell({ crumbs, title, lede, stats, body }) {
+  return `<header class="page-head">
+    <div class="crumbs">${crumbs}</div>
+    <h1>${title}</h1>
+    ${lede ? `<p class="lede">${lede}</p>` : ''}
+  </header>
+  ${stats ? `<section>${stats}</section>` : ''}
+  ${body}`;
 }
 
-// ─────────────────────────────────────────────────────────
-// Recent flights
-// ─────────────────────────────────────────────────────────
-async function renderRecent(conn) {
-  const r = await conn.query(`
-    SELECT callsign, airline_prefix, ac_type, first_seen, last_seen,
-           ROUND(max_alt) AS max_alt, ROUND(max_gs) AS max_gs,
-           ROUND(duration_sec / 60.0) AS duration_min,
-           near_first_airport, near_last_airport
-    FROM flights
-    ORDER BY first_seen DESC
-    LIMIT 80
-  `);
-  const rows = r.toArray();
-  if (!rows.length) {
-    document.getElementById('recent-body').innerHTML = '<div class="empty">No flights yet.</div>';
-    return;
-  }
-  document.getElementById('recent-count').textContent = `— last ${rows.length}`;
-  let html = `<table class="flights-table">
-    <thead><tr>
-      <th>Callsign</th><th>Prefix</th><th>Type</th><th>First seen (UTC)</th><th>Duration</th>
-      <th>Max alt (ft)</th><th>Max GS (kt)</th><th>Near (dep)</th><th>Near (arr)</th>
-    </tr></thead><tbody>`;
-  rows.forEach(row => {
-    const cs = row.callsign;
-    const csCell = cs
-      ? `<a href="https://www.flightradar24.com/data/flights/${esc(cs)}" target="_blank" rel="noopener" class="cs-link">${esc(cs)}</a>`
-      : '<span style="color:var(--mute)">—</span>';
-    html += `<tr>
-      <td class="cs">${csCell}</td>
-      <td class="op-prefix">${esc(row.airline_prefix ?? '—')}</td>
-      <td style="font-family:var(--mono);font-size:.72rem;color:var(--brass-d)">${esc(row.ac_type ?? '—')}</td>
-      <td class="ts-val">${tsHuman(row.first_seen)}</td>
-      <td class="alt-val">${row.duration_min ? fmt(row.duration_min) + ' min' : '—'}</td>
-      <td class="alt-val">${row.max_alt ? fmt(row.max_alt) : '—'}</td>
-      <td class="alt-val">${row.max_gs ? fmt(row.max_gs) : '—'}</td>
-      <td style="color:var(--dim);font-size:.72rem">${esc(row.near_first_airport ?? '—')}</td>
-      <td style="color:var(--dim);font-size:.72rem">${esc(row.near_last_airport ?? '—')}</td>
-    </tr>`;
+function viewPlace(cc) {
+  const c = S.countries.find(x => x.key === cc);
+  if (!c) return notFound(`No aircraft registered in ${esc(countryName(cc))} have been recorded yet.`);
+  const share = (c.flights / S.totals.flights * 100).toFixed(1);
+  const wbShare = c.flights ? (c.widebody / c.flights * 100).toFixed(0) : 0;
+  const isFar = c.continent && c.continent !== 'Europe';
+
+  return entityShell({
+    crumbs: `<a href="#/explore">Explore</a> <em>/</em>
+             <a href="#/continent/${encodeURIComponent(c.continent)}">${esc(c.continent)}</a> <em>/</em>
+             <a href="#/region/${encodeURIComponent(c.region)}">${esc(c.region)}</a> <em>/</em> ${esc(c.name)}`,
+    title: `${esc(c.name)}`,
+    lede: isFar
+      ? `${esc(c.name)} has no scheduled service to Aarhus. Everything below is aircraft at
+         cruise altitude on intercontinental routings, passing through this antenna's range.`
+      : `Aircraft registered in ${esc(c.name)}, as recorded passing over Aarhus.`,
+    stats: readout([
+      { v: n(c.flights),  l: 'Flights', s: `${share}% of all traffic` },
+      { v: n(c.aircraft), l: 'Distinct aircraft' },
+      { v: n(c.widebody), l: 'Wide-body', s: `${wbShare}% of its traffic` },
+      { v: c.change_pct == null ? '—' : pct(c.change_pct), l: 'Change vs prev. 24h',
+        s: c.change_pct == null ? 'baseline too short' : null },
+      { v: esc(c.region), l: 'Economic region' },
+    ]),
+    body: `
+      <section>
+        <div class="sec-head"><div><div class="eyebrow">Evidence</div>
+          <h2>Every ${esc(c.name)} flight on record</h2></div>
+          <a class="btn" href="#/ask?sql=${encodeURIComponent(
+            `SELECT callsign, ac_type, ac_desc, reg, seen_at, airline\nFROM flights\nWHERE reg_country = '${cc}'\nORDER BY first_seen DESC;`)}">Open in Ask →</a>
+        </div>
+        <div id="lazy" data-kind="place" data-arg="${esc(cc)}">
+          <div class="status">Loading the flight table…</div></div>
+      </section>
+
+      <section>
+        <div class="sec-head"><div><div class="eyebrow">Context</div>
+          <h2>How ${esc(c.name)} compares in ${esc(c.region)}</h2></div></div>
+        ${table(S.countries.filter(x => x.region === c.region), COUNTRY_COLS,
+          { id: 'pl-c', max: 20, sortKey: 'flights', sortDir: -1 })}
+      </section>`,
   });
-  html += '</tbody></table>';
-  document.getElementById('recent-body').innerHTML = html;
 }
 
-// ─────────────────────────────────────────────────────────
-// SQL Explorer
-// ─────────────────────────────────────────────────────────
-function renderExploreResults(r, elapsed) {
-  const rows = r.toArray();
-  const schema = r.schema?.fields ?? [];
-  const statusEl = document.getElementById('explore-status');
-  const resultsEl = document.getElementById('explore-results');
-  statusEl.textContent = `${rows.length.toLocaleString()} rows · ${elapsed} ms`;
-  if (!rows.length) {
-    resultsEl.innerHTML = '<div class="empty">Query returned no rows.</div>';
-    return;
-  }
-  const cols = schema.map(f => f.name);
-  let html = '<div class="explore-table-wrap"><table class="explore-table"><thead><tr>';
-  cols.forEach(c => { html += `<th>${esc(c)}</th>`; });
-  html += '</tr></thead><tbody>';
-  rows.slice(0, 500).forEach(row => {
-    html += '<tr>';
-    cols.forEach(c => { html += `<td>${esc(row[c] ?? '')}</td>`; });
-    html += '</tr>';
+function viewGroup(kind, name) {
+  const list = kind === 'region' ? S.regions : S.continents;
+  const g = list.find(x => x.key === name);
+  if (!g) return notFound(`Nothing recorded for ${esc(name)} yet.`);
+  const kids = S.countries.filter(c => (kind === 'region' ? c.region : c.continent) === name);
+  return entityShell({
+    crumbs: `<a href="#/explore">Explore</a> <em>/</em> ${esc(name)}`,
+    title: esc(name),
+    lede: `${kids.length} registration countries, aggregated. Counts roll up from the
+           country level, so the hierarchy always adds up.`,
+    stats: readout([
+      { v: n(g.flights), l: 'Flights', s: `${g.share}% of all traffic` },
+      { v: n(g.aircraft), l: 'Distinct aircraft' },
+      { v: n(g.widebody), l: 'Wide-body' },
+      { v: n(kids.length), l: 'Countries' },
+      { v: g.change_pct == null ? '—' : pct(g.change_pct), l: 'Change vs prev. 24h' },
+    ]),
+    body: `<section>
+      <div class="sec-head"><div><div class="eyebrow">Breakdown</div>
+        <h2>Countries in ${esc(name)}</h2></div></div>
+      ${table(kids, COUNTRY_COLS, { id: 'grp', max: 60, sortKey: 'flights', sortDir: -1 })}
+    </section>`,
   });
-  html += '</tbody></table></div>';
-  if (rows.length > 500) html += `<div class="empty" style="padding-top:8px">Showing first 500 of ${fmt(rows.length)} rows.</div>`;
-  resultsEl.innerHTML = html;
 }
 
-// ─────────────────────────────────────────────────────────
-// Main
-// ─────────────────────────────────────────────────────────
-async function main() {
-  let conn;
+function viewOperator(code) {
+  const o = S.operators.find(x => x.key === code);
+  if (!o) return notFound(`No flights recorded for operator ${esc(code)}.`);
+  return entityShell({
+    crumbs: `<a href="#/explore">Explore</a> <em>/</em> Operators <em>/</em> ${esc(code)}`,
+    title: o.name ? esc(o.name) : `Operator ${esc(code)}`,
+    lede: o.name
+      ? `ICAO code ${esc(code)}.${o.cargo_operator ? ' An all-cargo operator — the closest thing in this record to a trade signal.' : ''}`
+      : `We see the ICAO prefix ${esc(code)} on these flights but it is not in our airline
+         table yet, so we cannot name the operator. The flights themselves are real.`,
+    stats: readout([
+      { v: n(o.flights), l: 'Flights', s: `${o.share}% of all traffic` },
+      { v: n(o.aircraft), l: 'Distinct aircraft' },
+      { v: n(o.widebody), l: 'Wide-body' },
+      { v: o.change_pct == null ? '—' : pct(o.change_pct), l: 'Change vs prev. 24h' },
+    ]),
+    body: `<section>
+      <div class="sec-head"><div><div class="eyebrow">Evidence</div><h2>Flights recorded</h2></div>
+        <a class="btn" href="#/ask?sql=${encodeURIComponent(
+          `SELECT callsign, ac_type, reg, reg_country_name, seen_at\nFROM flights\nWHERE airline_prefix = '${code}'\nORDER BY first_seen DESC;`)}">Open in Ask →</a></div>
+      <div id="lazy" data-kind="operator" data-arg="${esc(code)}">
+        <div class="status">Loading the flight table…</div></div>
+    </section>`,
+  });
+}
+
+function viewType(code) {
+  const t = S.types.find(x => x.key === code);
+  if (!t) return notFound(`No flights recorded for aircraft type ${esc(code)}.`);
+  return entityShell({
+    crumbs: `<a href="#/explore">Explore</a> <em>/</em> Types <em>/</em> ${esc(code)}`,
+    title: esc(t.desc || code),
+    lede: `ICAO type code ${esc(code)} · ${t.widebody_type ? 'wide-body' : 'narrow-body'} airframe.
+           ${t.widebody_type ? 'Wide-bodies over Aarhus are almost always intercontinental routings at cruise.' : ''}`,
+    stats: readout([
+      { v: n(t.flights), l: 'Flights', s: `${t.share}% of all traffic` },
+      { v: n(t.aircraft), l: 'Distinct airframes' },
+      { v: t.change_pct == null ? '—' : pct(t.change_pct), l: 'Change vs prev. 24h' },
+    ]),
+    body: `<section>
+      <div class="sec-head"><div><div class="eyebrow">Evidence</div><h2>Flights recorded</h2></div>
+        <a class="btn" href="#/ask?sql=${encodeURIComponent(
+          `SELECT callsign, reg, reg_country_name, airline, seen_at\nFROM flights\nWHERE ac_type = '${code}'\nORDER BY first_seen DESC;`)}">Open in Ask →</a></div>
+      <div id="lazy" data-kind="type" data-arg="${esc(code)}">
+        <div class="status">Loading the flight table…</div></div>
+    </section>`,
+  });
+}
+
+const notFound = msg => `<header class="page-head">
+  <div class="crumbs"><a href="#/">Signals</a> <em>/</em> Not found</div>
+  <h1>Nothing here yet</h1><p class="lede">${msg}</p></header>
+  <a class="btn" href="#/explore">Browse what we do have →</a>`;
+
+/** Entity pages paint instantly from the summary, then fill their evidence
+ *  table from DuckDB once it is up. */
+async function fillLazy() {
+  const host = el('lazy');
+  if (!host) return;
+  const { kind, arg } = host.dataset;
+  const where = { place: `reg_country = ${q(arg)}`,
+                  operator: `airline_prefix = ${q(arg)}`,
+                  type: `ac_type = ${q(arg)}` }[kind];
   try {
-    // 1. Fetch manifest
-    setMsg('Fetching data manifest…');
-    const manifest = await fetch(MANIFEST).then(r => {
-      if (!r.ok) throw new Error(`manifest fetch failed: ${r.status}`);
-      return r.json();
-    });
-
-    // 2. Init DuckDB
-    const db = await initDuckDB();
-    conn = await db.connect();
-
-    // 3. Register views
-    setMsg('Fetching parquet files…');
-    await registerViews(db, conn, manifest);
-
-    // 4. Render freshness
-    const freshnessEl = document.getElementById('freshness');
-    if (manifest.generated_at) {
-      const age = (Date.now() - new Date(manifest.generated_at)) / 3600000;
-      freshnessEl.textContent = `Updated ${manifest.generated_at.slice(0,16).replace('T',' ')} UTC`;
-      freshnessEl.className = age < 26 ? 'ok' : 'stale';
-    }
-
-    // 5. Show app, hide overlay
-    document.getElementById('init-overlay').classList.add('hidden');
-    document.getElementById('app').hidden = false;
-
-    // 6. Render panels in parallel
-    setMsg('Querying…');
-    await Promise.all([
-      renderStats(conn),
-      renderOperators(conn),
-      renderHourly(conn),
-      renderDaily(conn),
-      renderTypes(conn),
-      renderRecent(conn),
-    ]);
-
-  } catch (err) {
-    const box = document.getElementById('error-box');
-    box.style.display = 'block';
-    box.textContent = String(err);
-    document.getElementById('init-overlay').classList.add('hidden');
-    console.error(err);
-    return;
+    const { rows } = await query(`
+      SELECT callsign, ac_type, ac_desc, reg, reg_country_name, airline,
+             airline_prefix, seen_at, ROUND(duration_sec/60.0) AS mins
+      FROM flights WHERE ${where} ORDER BY first_seen DESC LIMIT 300`);
+    host.innerHTML = table(rows, FLIGHT_COLS,
+      { id: 'lz', max: 100, ...(sortState['lz'] || {}) });
+  } catch (e) {
+    host.innerHTML = `<div class="notice warn">Could not load the flight table: ${esc(e.message)}</div>`;
   }
-
-  // SQL Explorer
-  const runBtn  = document.getElementById('run-btn');
-  const sqlInput = document.getElementById('sql-input');
-  const statusEl = document.getElementById('explore-status');
-
-  async function runSQL() {
-    const sql = sqlInput.value.trim();
-    if (!sql) return;
-    runBtn.disabled = true;
-    statusEl.textContent = 'Running…';
-    document.getElementById('explore-results').innerHTML = '';
-    const t0 = Date.now();
-    try {
-      const r = await conn.query(sql);
-      renderExploreResults(r, Date.now() - t0);
-    } catch (err) {
-      statusEl.textContent = '';
-      document.getElementById('explore-results').innerHTML =
-        `<div class="empty" style="color:var(--down)">${esc(String(err))}</div>`;
-    } finally {
-      runBtn.disabled = false;
-    }
-  }
-
-  runBtn.addEventListener('click', runSQL);
-  sqlInput.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); runSQL(); }
-  });
 }
 
-main();
+const FLIGHT_COLS = [
+  { k: 'callsign', h: 'Callsign', render: r => r.callsign
+      ? `<a class="code" href="https://www.flightradar24.com/data/flights/${esc(r.callsign)}"
+           target="_blank" rel="noopener">${esc(r.callsign)}</a>`
+      : `<span class="unknown">No callsign transmitted</span>` },
+  { k: 'ac_desc', h: 'Aircraft', render: r => r.ac_desc
+      ? `${esc(r.ac_desc)} <a href="#/type/${esc(r.ac_type)}" class="code">${esc(r.ac_type)}</a>`
+      : `<span class="unknown">Unidentified airframe</span>` },
+  { k: 'reg', h: 'Registration', render: r => r.reg ? `<span class="mono">${esc(r.reg)}</span>` : '—' },
+  { k: 'reg_country_name', h: 'Registered in', render: r => r.reg_country_name
+      ? esc(r.reg_country_name) : `<span class="unknown">Unallocated block</span>` },
+  { k: 'airline', h: 'Operator', render: r => r.airline ? esc(r.airline)
+      : (r.airline_prefix ? `<span class="code">${esc(r.airline_prefix)}</span>`
+                          : `<span class="unknown">Unknown</span>`) },
+  { k: 'seen_at', h: 'Seen (UTC)', render: r => `<span class="mono">${esc(ts(r.seen_at))}</span>` },
+  { k: 'mins', h: 'In range', num: true, render: r => r.mins ? `${n(r.mins)} min` : '—' },
+];
+
+/* ── Ask ─────────────────────────────────────────────────────────────── */
+const MEASURES = {
+  flights:  { sql: 'COUNT(*)',                     label: 'Flights' },
+  aircraft: { sql: 'COUNT(DISTINCT hex)',          label: 'Distinct aircraft' },
+  widebody: { sql: "SUM(CASE WHEN body='widebody' THEN 1 ELSE 0 END)", label: 'Wide-body movements' },
+  cargo:    { sql: 'SUM(CASE WHEN is_cargo THEN 1 ELSE 0 END)',        label: 'All-cargo flights' },
+  operators:{ sql: 'COUNT(DISTINCT airline_prefix)', label: 'Operators' },
+};
+const DIMS = {
+  country:   { sql: 'reg_country_name', label: 'Country' },
+  region:    { sql: 'reg_region',       label: 'Economic region' },
+  continent: { sql: 'reg_continent',    label: 'Continent' },
+  operator:  { sql: 'airline',          label: 'Airline' },
+  type:      { sql: 'ac_type',          label: 'Aircraft type' },
+  day:       { sql: "strftime(seen_at, '%Y-%m-%d')", label: 'Day' },
+  hour:      { sql: "strftime(seen_at, '%H')",       label: 'Hour of day' },
+};
+const QUESTIONS = [
+  ['Which countries send the most aircraft over Aarhus?',
+   "SELECT reg_country_name AS country, reg_region AS region,\n       COUNT(*) AS flights, COUNT(DISTINCT hex) AS aircraft\nFROM flights\nWHERE reg_country_name IS NOT NULL\nGROUP BY 1,2 ORDER BY 3 DESC;"],
+  ['Which aircraft are here from outside Europe?',
+   "SELECT reg_country_name AS country, ac_type, ac_desc,\n       COUNT(*) AS flights\nFROM flights\nWHERE reg_continent NOT IN ('Europe') AND reg_continent IS NOT NULL\nGROUP BY 1,2,3 ORDER BY 4 DESC;"],
+  ['What does a day look like, hour by hour?',
+   "SELECT strftime(seen_at, '%H') AS hour,\n       COUNT(*) AS flights,\n       SUM(CASE WHEN body='widebody' THEN 1 ELSE 0 END) AS widebody\nFROM flights GROUP BY 1 ORDER BY 1;"],
+  ['Which wide-bodies pass overhead most often?',
+   "SELECT ac_type, ac_desc, COUNT(*) AS flights,\n       COUNT(DISTINCT hex) AS airframes\nFROM flights WHERE body = 'widebody'\nGROUP BY 1,2 ORDER BY 3 DESC;"],
+  ['What is the rarest thing recorded?',
+   "SELECT ac_type, ac_desc, reg, reg_country_name, callsign, seen_at\nFROM flights\nWHERE ac_type IN (SELECT ac_type FROM flights GROUP BY 1 HAVING COUNT(*) = 1)\nORDER BY seen_at DESC;"],
+  ['Which flights hide their identity?',
+   "SELECT hex, reg, reg_country_name, ac_type, ac_desc, seen_at\nFROM flights\nWHERE callsign IS NULL\nORDER BY first_seen DESC;"],
+  ['Is anything flying all-cargo over Aarhus?',
+   "SELECT airline_prefix, airline, ac_type, COUNT(*) AS flights\nFROM flights WHERE is_cargo\nGROUP BY 1,2,3 ORDER BY 4 DESC;"],
+];
+
+function viewAsk() {
+  const preset = new URLSearchParams(location.hash.split('?')[1] || '').get('sql');
+  return `
+  <header class="page-head">
+    <div class="crumbs"><a href="#/">Signals</a> <em>/</em> Ask</div>
+    <h1>Ask the data</h1>
+    <p class="lede">The whole record is in your browser. Build a question with the controls,
+      start from an example, or write the SQL yourself — it is the same engine either way,
+      and nothing is hidden behind an API.</p>
+  </header>
+
+  <section>
+    <div class="sec-head"><div><div class="eyebrow">Start from a question</div>
+      <h2>Examples</h2></div></div>
+    <div class="chips">${QUESTIONS.map((qq, i) =>
+      `<button class="chip" data-ex="${i}">${esc(qq[0])}</button>`).join('')}</div>
+  </section>
+
+  <section>
+    <div class="sec-head"><div><div class="eyebrow">Or build one</div>
+      <h2>Compose a query</h2></div></div>
+    <div class="controls">
+      <div class="ctl"><label for="c-measure">Measure</label>
+        <select id="c-measure">${Object.entries(MEASURES).map(([k, v]) =>
+          `<option value="${k}">${esc(v.label)}</option>`).join('')}</select></div>
+      <div class="ctl"><label for="c-dim">Grouped by</label>
+        <select id="c-dim">${Object.entries(DIMS).map(([k, v]) =>
+          `<option value="${k}"${k === 'country' ? ' selected' : ''}>${esc(v.label)}</option>`).join('')}</select></div>
+      <div class="ctl"><label for="c-filter">Limited to</label>
+        <select id="c-filter">
+          <option value="">Everything</option>
+          <option value="body='widebody'">Wide-body only</option>
+          <option value="is_cargo">All-cargo only</option>
+          <option value="reg_continent<>'Europe'">Non-European registration</option>
+          <option value="callsign IS NULL">No callsign transmitted</option>
+        </select></div>
+      <div class="ctl"><label for="c-win">Window</label>
+        <select id="c-win">
+          <option value="">All observations</option>
+          <option value="24">Last 24 hours</option>
+          <option value="72">Last 3 days</option>
+          <option value="168">Last 7 days</option>
+        </select></div>
+      <div class="ctl" style="display:flex;align-items:flex-end">
+        <button class="btn primary" id="c-build" style="width:100%">Build &amp; run</button></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><div><div class="eyebrow">The query</div><h2>SQL</h2></div>
+      <button class="btn primary" id="run">Run ▶ <span class="faint">⌘↵</span></button></div>
+    <textarea class="sql-box" id="sql" spellcheck="false">${esc(preset || QUESTIONS[0][1])}</textarea>
+    <div class="status" id="qstatus">DuckDB loads on your first run — a second or two, once.</div>
+    <div id="qout"></div>
+  </section>
+
+  <section>
+    <div class="sec-head"><div><div class="eyebrow">Reference</div><h2>What you can query</h2></div></div>
+    <div class="tbl-wrap"><table><thead><tr><th>Column</th><th>Meaning</th></tr></thead><tbody>
+      ${[['hex','24-bit ICAO address. Present on every observation.'],
+         ['callsign','Flight identifier, when transmitted. Null on ~11% of flights.'],
+         ['reg / ac_type / ac_desc','Registration, ICAO type code, and full aircraft name.'],
+         ['reg_country / reg_country_name','Country of registration, derived from the hex block.'],
+         ['reg_region / reg_continent','Economic region and continent that country rolls up to.'],
+         ['airline / airline_prefix','Operator, where the ICAO prefix is in our airline table.'],
+         ['body','wide-body or narrow-body, from the type code.'],
+         ['is_cargo','True when the operator is an all-cargo carrier.'],
+         ['seen_at / first_seen / last_seen','When the aircraft was in range.'],
+         ['duration_sec / n_obs','How long it was tracked, and how many samples.'],
+         ['first_lat / first_lon / last_lat / last_lon','Position at first and last contact.']]
+        .map(([c, d]) => `<tr><td class="code">${esc(c)}</td><td class="dim">${esc(d)}</td></tr>`).join('')}
+    </tbody></table></div>
+  </section>`;
+}
+
+function wireAsk() {
+  const ta = el('sql'), out = el('qout'), st = el('qstatus');
+  if (!ta) return;
+
+  const run = async () => {
+    const sql = ta.value.trim();
+    if (!sql) return;
+    st.textContent = 'Running…'; out.innerHTML = '';
+    const t0 = performance.now();
+    try {
+      const { rows, cols } = await query(sql);
+      const ms = (performance.now() - t0).toFixed(0);
+      st.textContent = `${n(rows.length)} rows · ${ms} ms · computed in your browser`;
+      out.innerHTML = rows.length
+        ? renderResult(rows, cols)
+        : `<div class="empty">The query ran and returned no rows.</div>`;
+    } catch (e) {
+      st.textContent = '';
+      out.innerHTML = `<div class="notice warn"><b>That query did not run.</b><br>${esc(e.message)}</div>`;
+    }
+  };
+
+  el('run').onclick = run;
+  ta.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); run(); }
+  });
+  document.querySelectorAll('[data-ex]').forEach(b =>
+    b.onclick = () => { ta.value = QUESTIONS[+b.dataset.ex][1]; run(); });
+
+  el('c-build').onclick = () => {
+    const m = MEASURES[el('c-measure').value], d = DIMS[el('c-dim').value];
+    const f = el('c-filter').value, w = el('c-win').value;
+    const conds = [`${d.sql} IS NOT NULL`];
+    if (f) conds.push(f);
+    if (w) conds.push(`first_seen >= (SELECT MAX(first_seen) FROM flights) - ${+w * 3600}`);
+    const alias = s => s.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+    ta.value =
+      `SELECT ${d.sql} AS ${alias(d.label)},\n` +
+      `       ${m.sql} AS ${alias(m.label)}\n` +
+      `FROM flights\nWHERE ${conds.join('\n  AND ')}\n` +
+      `GROUP BY 1\nORDER BY 2 DESC;`;
+    run();
+  };
+
+  if (new URLSearchParams(location.hash.split('?')[1] || '').get('sql')) run();
+}
+
+/** Result rendering picks a chart when the shape is label + one number. */
+function renderResult(rows, cols) {
+  let chartHtml = '';
+  if (cols.length >= 2 && rows.length > 1 && rows.length <= 60) {
+    const numCol = cols.slice(1).find(c => typeof rows[0][c] === 'number' || typeof rows[0][c] === 'bigint');
+    if (numCol) {
+      const data = rows.map(r => ({ k: String(r[cols[0]]), v: Number(r[numCol]) }));
+      chartHtml = `<div style="margin-bottom:22px">${
+        chart(data, { key: 'k', val: 'v', labelEvery: Math.ceil(data.length / 14) })}</div>`;
+    }
+  }
+  const cells = rows.slice(0, 400).map(r => `<tr>${cols.map(c => {
+    const v = r[c];
+    if (v == null) return `<td class="faint">—</td>`;
+    // Only reformat genuine temporal values. A strftime() result is already
+    // a formatted string and must be left exactly as the query produced it.
+    if (v instanceof Date || (looksLikeTime(c) && typeof v !== 'string'))
+      return `<td class="mono">${esc(ts(v))}</td>`;
+    const num = typeof v === 'number' || typeof v === 'bigint';
+    return `<td class="${num ? 'num' : ''}">${num ? n(v) : esc(String(v).slice(0, 60))}</td>`;
+  }).join('')}</tr>`).join('');
+  return chartHtml + `<div class="tbl-wrap"><table><thead><tr>${
+    cols.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${cells}</tbody></table></div>` +
+    (rows.length > 400 ? `<div class="status">Showing 400 of ${n(rows.length)} rows.</div>` : '');
+}
+
+/* ── Data & Method ───────────────────────────────────────────────────── */
+function viewData() {
+  const files = [...(S._manifest?.flights || []), ...(S._manifest?.snapshots || []),
+                 ...(S._manifest?.enrichment || [])];
+  return `
+  <header class="page-head">
+    <div class="crumbs"><a href="#/">Signals</a> <em>/</em> Data</div>
+    <h1>We don't ask you to trust us</h1>
+    <p class="lede">Every number on this site comes from these files. They are the same files
+      the site itself downloads — plain Parquet, served as static assets. Take them.</p>
+  </header>
+
+  <section>
+    <div class="sec-head"><div><div class="eyebrow">Pipeline</div><h2>How an observation becomes a row</h2></div></div>
+    <div class="prose">
+      <p>A Raspberry Pi with a software-defined radio listens on 1090 MHz, the frequency
+      aircraft transponders broadcast on. Every 15 seconds a poller on a laptop takes a
+      snapshot of everything currently visible and appends it to a Parquet file. Each night,
+      those snapshots are stitched into flight sessions — one row per aircraft visit — enriched
+      with registration and type, and pushed to this repository. Nothing else touches the data.</p>
+    </div>
+    <div class="sql-box" style="margin-top:14px;white-space:pre-wrap">1090 MHz antenna  →  readsb / tar1090  →  poller.py (15 s)
+  →  snapshots/*.parquet  →  reconstruct.py  →  flights/*.parquet
+  →  build_summary.py  →  summary.json  →  this page</div>
+  </section>
+
+  <section>
+    <div class="sec-head"><div><div class="eyebrow">Download</div><h2>The files</h2></div>
+      <p class="sec-note">Parquet opens directly in DuckDB, pandas, Polars and R.</p></div>
+    <div class="dl">
+      ${files.map(f => `<div class="dl-row">
+        <a href="${esc(BASE + f.path.replace(/^data\/adsb\//, ''))}" class="code">${esc(f.name)}</a>
+        <span class="meta">${(f.bytes / 1024).toFixed(0)} KB</span></div>`).join('')}
+      <div class="dl-row"><a href="${esc(BASE)}summary.json" class="code">summary.json</a>
+        <span class="meta">precomputed rollups &amp; signals</span></div>
+      <div class="dl-row"><a href="${esc(BASE)}taxonomy.json" class="code">taxonomy.json</a>
+        <span class="meta">ICAO address blocks → country → region</span></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><div><div class="eyebrow">Try it</div><h2>Query these files yourself</h2></div></div>
+    <div class="sql-box">-- In DuckDB, against the live files. No download step needed.
+INSTALL httpfs; LOAD httpfs;
+
+SELECT ac_type, ac_desc, COUNT(*) AS flights
+FROM read_parquet('${BASE}flights/flights_2026-08.parquet')
+GROUP BY 1, 2
+ORDER BY 3 DESC;</div>
+  </section>`;
+}
+
+function viewMethod() {
+  const t = S.totals, w = S.window;
+  return `
+  <header class="page-head">
+    <div class="crumbs"><a href="#/">Signals</a> <em>/</em> Method</div>
+    <h1>What we can and cannot see</h1>
+    <p class="lede">This page exists so you can argue with us. Everything below is a limit on
+      what this antenna can honestly support.</p>
+  </header>
+
+  <section class="prose">
+    <h3>Collection</h3>
+    <p>A single antenna in Aarhus (56.16°N, 10.20°E) receives ADS-B broadcasts on 1090 MHz.
+    Range is line-of-sight: roughly 250–400 km for aircraft at cruise, far less for anything
+    low. We sample the receiver every 15 seconds. An aircraft seen across consecutive samples
+    becomes one flight session; a gap of more than 30 minutes starts a new one.</p>
+
+    <h3>Country attribution</h3>
+    <p>Every transponder broadcasts a 24-bit ICAO address, and those addresses are allocated
+    to states in fixed blocks. We resolve each address against that allocation table, falling
+    back to the registration prefix when an address sits outside a known block. On the current
+    record the two methods agree on <b>100%</b> of the flights where both are available, and
+    together they resolve <b>${(100 - t.unresolved_country / t.flights * 100).toFixed(1)}%</b>
+    of all flights.</p>
+    <p>This identifies where an aircraft is <em>registered</em>. It is not where the flight
+    departed, where it is going, or the nationality of anyone on board. A Ryanair aircraft is
+    Irish-registered wherever it happens to be flying.</p>
+
+    <h3>What we deliberately do not claim</h3>
+    <ul>
+      <li><b>Routes.</b> We know the nearest airport to where an aircraft entered and left our
+      range. For something at 38,000 feet crossing Denmark, that is a fact about our antenna,
+      not about the flight. We do not present it as an origin or a destination.</li>
+      <li><b>Cargo, per aircraft.</b> A freighter and a passenger jet can share a type code.
+      We only mark cargo where the <em>operator</em> is an all-cargo carrier.</li>
+      <li><b>Economic conclusions.</b> Aircraft counts are an input to an economic question,
+      never the answer. We publish the observation and let you weigh it.</li>
+    </ul>
+
+    <h3>Known gaps in the current record</h3>
+    <ul>
+      <li><b>Altitude and speed are missing.</b> The receiver is returning these under field
+      names our poller does not read. Affects every row so far; the fix is in the collector,
+      not the data already gathered.</li>
+      <li><b>${n(t.no_callsign)} flights carry no callsign</b>
+      (${(t.no_callsign / t.flights * 100).toFixed(0)}%). Military, state and some private
+      aircraft suppress it. They still carry a registration and a type.</li>
+      <li><b>${n(t.unresolved_country)} flights could not be attributed to a country</b> —
+      addresses outside any allocated block we hold.</li>
+      <li><b>Some operators are unnamed.</b> We see the ICAO prefix but our airline table
+      does not cover it. The flights are real; only the label is missing.</li>
+      <li><b>The record is ${w.days_observed} days long</b>, with ${w.complete_days} complete
+      day${w.complete_days === 1 ? '' : 's'}. That is why almost nothing here is presented
+      as a trend.</li>
+    </ul>
+
+    <h3>Confidence levels</h3>
+    <ul>
+      <li><b>Observed</b> — a direct count. No inference. Wrong only if the receiver is wrong.</li>
+      <li><b>Early</b> — real, but the record is too short to separate it from noise.</li>
+      <li><b>Moderate</b> — enough history and volume to be worth attention.</li>
+      <li><b>Strong</b> — large, consistent, well sampled. Nothing qualifies yet.</li>
+    </ul>
+
+    <h3>Coverage bias</h3>
+    <p>This antenna sees what passes over one point in Jutland. High-altitude traffic on
+    Scandinavia–Europe and Europe–Asia routings is over-represented; anything routed around
+    Denmark is invisible to us. Terrain, weather and receiver downtime all remove observations
+    we would otherwise have. Absence of a signal here is not evidence of absence in the sky.</p>
+  </section>`;
+}
+
+/* ── Search ──────────────────────────────────────────────────────────── */
+function buildIndex() {
+  const ix = [];
+  S.countries.forEach(c => ix.push({ t: c.name, k: 'Country', h: `#/place/${c.key}`, n: c.flights,
+                                     s: (c.name + ' ' + c.key + ' ' + (c.region || '')).toLowerCase() }));
+  S.regions.forEach(r => ix.push({ t: r.key, k: 'Region', h: `#/region/${encodeURIComponent(r.key)}`,
+                                   n: r.flights, s: r.key.toLowerCase() }));
+  S.continents.forEach(r => ix.push({ t: r.key, k: 'Continent', h: `#/continent/${encodeURIComponent(r.key)}`,
+                                      n: r.flights, s: r.key.toLowerCase() }));
+  S.operators.forEach(o => ix.push({ t: o.name || o.key, k: 'Airline', h: `#/operator/${o.key}`,
+                                     n: o.flights, s: ((o.name || '') + ' ' + o.key).toLowerCase() }));
+  S.types.forEach(t => ix.push({ t: t.desc || t.key, k: 'Aircraft', h: `#/type/${t.key}`,
+                                 n: t.flights, s: ((t.desc || '') + ' ' + t.key).toLowerCase() }));
+  return ix;
+}
+function wireSearch(ix) {
+  const box = el('search'), out = el('results');
+  let cursor = -1, hits = [];
+  const close = () => { out.classList.remove('open'); cursor = -1; };
+  box.addEventListener('input', () => {
+    const v = box.value.trim().toLowerCase();
+    if (v.length < 2) return close();
+    hits = ix.filter(x => x.s.includes(v))
+             .sort((a, b) => (b.s.startsWith(v) - a.s.startsWith(v)) || b.n - a.n)
+             .slice(0, 12);
+    out.innerHTML = hits.length
+      ? hits.map((x, i) => `<a href="${x.h}" data-i="${i}">
+          <span>${esc(x.t)}</span>
+          <span class="k">${esc(x.k)} · ${n(x.n)}</span></a>`).join('')
+      : `<a><span class="dim">Nothing matches “${esc(box.value)}”.</span></a>`;
+    out.classList.add('open');
+  });
+  box.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { close(); box.blur(); }
+    if (!hits.length) return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      cursor = (cursor + (e.key === 'ArrowDown' ? 1 : -1) + hits.length) % hits.length;
+      out.querySelectorAll('a').forEach((a, i) => a.classList.toggle('cursor', i === cursor));
+    }
+    if (e.key === 'Enter' && cursor >= 0) { location.hash = hits[cursor].h; box.value = ''; close(); }
+  });
+  out.addEventListener('click', () => { box.value = ''; close(); });
+  document.addEventListener('click', e => { if (!e.target.closest('#search-wrap')) close(); });
+}
+
+/* ── Router ──────────────────────────────────────────────────────────── */
+function route() {
+  const raw = (location.hash.replace(/^#/, '') || '/').split('?')[0];
+  const p = raw.split('/').filter(Boolean);
+  const view = el('view');
+  let html;
+  try {
+    if (!p.length)                     html = viewSignals();
+    else if (p[0] === 'explore')       html = viewExplore();
+    else if (p[0] === 'ask')           html = viewAsk();
+    else if (p[0] === 'data')          html = viewData();
+    else if (p[0] === 'method')        html = viewMethod();
+    else if (p[0] === 'place')         html = viewPlace(p[1]);
+    else if (p[0] === 'region')        html = viewGroup('region', decodeURIComponent(p[1] || ''));
+    else if (p[0] === 'continent')     html = viewGroup('continent', decodeURIComponent(p[1] || ''));
+    else if (p[0] === 'operator')      html = viewOperator(p[1]);
+    else if (p[0] === 'type')          html = viewType(p[1]);
+    else                               html = notFound('That page does not exist.');
+  } catch (e) {
+    console.error(e);
+    html = notFound(`Something broke rendering this page: ${esc(e.message)}`);
+  }
+  view.innerHTML = html;
+
+  const base = '/' + (p[0] || '');
+  document.querySelectorAll('#nav a').forEach(a =>
+    a.classList.toggle('on', a.dataset.r === base));
+
+  view.querySelectorAll('[data-sig]').forEach(b => b.onclick = () => {
+    const s = b.closest('.sig');
+    const open = s.classList.toggle('open');
+    b.setAttribute('aria-expanded', String(open));
+  });
+
+  if (p[0] === 'ask') wireAsk();
+  if (el('lazy')) fillLazy();
+  window.scrollTo(0, 0);
+}
+
+/* ── Boot ────────────────────────────────────────────────────────────── */
+(async function main() {
+  try {
+    boot('Fetching the record');
+    const [summary, tax, manifest] = await Promise.all([
+      fetch(BASE + 'summary.json').then(r => { if (!r.ok) throw new Error(`summary.json — ${r.status}`); return r.json(); }),
+      fetch(BASE + 'taxonomy.json').then(r => r.json()),
+      fetch(BASE + 'manifest.json').then(r => r.json()).catch(() => null),
+    ]);
+    S = summary; TAX = tax; S._manifest = manifest;
+
+    const age = (Date.now() - new Date(S.generated_at)) / 3.6e6;
+    el('stamp').innerHTML =
+      `<b>${n(S.totals.flights)}</b> flights · <b>${S.window.days_observed}</b> days<br>` +
+      `updated ${age < 1 ? 'just now' : age < 48 ? `${age.toFixed(0)} h ago`
+        : `${(age / 24).toFixed(0)} d ago`}<br>` +
+      `<span style="color:var(--faint)">one antenna · 1090 MHz</span>`;
+
+    wireSearch(buildIndex());
+    addEventListener('hashchange', route);
+    route();
+    el('boot').classList.add('gone');
+  } catch (e) {
+    console.error(e);
+    el('boot').innerHTML =
+      `<div class="boot-in" style="max-width:440px;padding:26px">
+         <div class="boot-t" style="color:var(--fall);margin-bottom:12px">The record would not load</div>
+         <div style="font-size:.85rem;color:var(--ink-2);line-height:1.6">${esc(e.message)}</div>
+       </div>`;
+  }
+})();
 </script>
 </body>
 </html>

@@ -1,0 +1,1314 @@
+{
+ "note": "Country attribution is derived from the aircraft's 24-bit ICAO address, allocated to states in fixed blocks by ICAO Annex 10. Registration prefixes corroborate the same fact and act as a fallback. This identifies where an aircraft is REGISTERED - not where the flight departed from or is going to.",
+ "blocks": [
+  {
+   "lo": 134144,
+   "hi": 135167,
+   "cc": "MA",
+   "lo_hex": "020c00",
+   "hi_hex": "020fff",
+   "width": 1023
+  },
+  {
+   "lo": 409600,
+   "hi": 410623,
+   "cc": "NG",
+   "lo_hex": "064000",
+   "hi_hex": "0643ff",
+   "width": 1023
+  },
+  {
+   "lo": 434176,
+   "hi": 435199,
+   "cc": "QA",
+   "lo_hex": "06a000",
+   "hi_hex": "06a3ff",
+   "width": 1023
+  },
+  {
+   "lo": 5046272,
+   "hi": 5047295,
+   "cc": "LU",
+   "lo_hex": "4d0000",
+   "hi_hex": "4d03ff",
+   "width": 1023
+  },
+  {
+   "lo": 5054464,
+   "hi": 5055487,
+   "cc": "MT",
+   "lo_hex": "4d2000",
+   "hi_hex": "4d23ff",
+   "width": 1023
+  },
+  {
+   "lo": 5062656,
+   "hi": 5063679,
+   "cc": "MC",
+   "lo_hex": "4d4000",
+   "hi_hex": "4d43ff",
+   "width": 1023
+  },
+  {
+   "lo": 5242880,
+   "hi": 5243903,
+   "cc": "SM",
+   "lo_hex": "500000",
+   "hi_hex": "5003ff",
+   "width": 1023
+  },
+  {
+   "lo": 5246976,
+   "hi": 5247999,
+   "cc": "AL",
+   "lo_hex": "501000",
+   "hi_hex": "5013ff",
+   "width": 1023
+  },
+  {
+   "lo": 5250048,
+   "hi": 5251071,
+   "cc": "HR",
+   "lo_hex": "501c00",
+   "hi_hex": "501fff",
+   "width": 1023
+  },
+  {
+   "lo": 5254144,
+   "hi": 5255167,
+   "cc": "LV",
+   "lo_hex": "502c00",
+   "hi_hex": "502fff",
+   "width": 1023
+  },
+  {
+   "lo": 5258240,
+   "hi": 5259263,
+   "cc": "LT",
+   "lo_hex": "503c00",
+   "hi_hex": "503fff",
+   "width": 1023
+  },
+  {
+   "lo": 5262336,
+   "hi": 5263359,
+   "cc": "MD",
+   "lo_hex": "504c00",
+   "hi_hex": "504fff",
+   "width": 1023
+  },
+  {
+   "lo": 5266432,
+   "hi": 5267455,
+   "cc": "SK",
+   "lo_hex": "505c00",
+   "hi_hex": "505fff",
+   "width": 1023
+  },
+  {
+   "lo": 5270528,
+   "hi": 5271551,
+   "cc": "SI",
+   "lo_hex": "506c00",
+   "hi_hex": "506fff",
+   "width": 1023
+  },
+  {
+   "lo": 5274624,
+   "hi": 5275647,
+   "cc": "UZ",
+   "lo_hex": "507c00",
+   "hi_hex": "507fff",
+   "width": 1023
+  },
+  {
+   "lo": 5308416,
+   "hi": 5309439,
+   "cc": "BY",
+   "lo_hex": "510000",
+   "hi_hex": "5103ff",
+   "width": 1023
+  },
+  {
+   "lo": 5312512,
+   "hi": 5313535,
+   "cc": "EE",
+   "lo_hex": "511000",
+   "hi_hex": "5113ff",
+   "width": 1023
+  },
+  {
+   "lo": 5316608,
+   "hi": 5317631,
+   "cc": "MK",
+   "lo_hex": "512000",
+   "hi_hex": "5123ff",
+   "width": 1023
+  },
+  {
+   "lo": 5320704,
+   "hi": 5321727,
+   "cc": "BA",
+   "lo_hex": "513000",
+   "hi_hex": "5133ff",
+   "width": 1023
+  },
+  {
+   "lo": 5324800,
+   "hi": 5325823,
+   "cc": "GE",
+   "lo_hex": "514000",
+   "hi_hex": "5143ff",
+   "width": 1023
+  },
+  {
+   "lo": 5328896,
+   "hi": 5329919,
+   "cc": "TJ",
+   "lo_hex": "515000",
+   "hi_hex": "5153ff",
+   "width": 1023
+  },
+  {
+   "lo": 5332992,
+   "hi": 5334015,
+   "cc": "ME",
+   "lo_hex": "516000",
+   "hi_hex": "5163ff",
+   "width": 1023
+  },
+  {
+   "lo": 7348224,
+   "hi": 7349247,
+   "cc": "BD",
+   "lo_hex": "702000",
+   "hi_hex": "7023ff",
+   "width": 1023
+  },
+  {
+   "lo": 7364608,
+   "hi": 7365631,
+   "cc": "BH",
+   "lo_hex": "706000",
+   "hi_hex": "7063ff",
+   "width": 1023
+  },
+  {
+   "lo": 7367680,
+   "hi": 7368703,
+   "cc": "KW",
+   "lo_hex": "706c00",
+   "hi_hex": "706fff",
+   "width": 1023
+  },
+  {
+   "lo": 7389184,
+   "hi": 7390207,
+   "cc": "OM",
+   "lo_hex": "70c000",
+   "hi_hex": "70c3ff",
+   "width": 1023
+  },
+  {
+   "lo": 7733248,
+   "hi": 7734271,
+   "cc": "PK",
+   "lo_hex": "760000",
+   "hi_hex": "7603ff",
+   "width": 1023
+  },
+  {
+   "lo": 9015296,
+   "hi": 9016319,
+   "cc": "TW",
+   "lo_hex": "899000",
+   "hi_hex": "8993ff",
+   "width": 1023
+  },
+  {
+   "lo": 15220736,
+   "hi": 15221759,
+   "cc": "PE",
+   "lo_hex": "e84000",
+   "hi_hex": "e843ff",
+   "width": 1023
+  },
+  {
+   "lo": 253952,
+   "hi": 258047,
+   "cc": "TN",
+   "lo_hex": "03e000",
+   "hi_hex": "03efff",
+   "width": 4095
+  },
+  {
+   "lo": 720896,
+   "hi": 724991,
+   "cc": "CR",
+   "lo_hex": "0b0000",
+   "hi_hex": "0b0fff",
+   "width": 4095
+  },
+  {
+   "lo": 786432,
+   "hi": 790527,
+   "cc": "CU",
+   "lo_hex": "0c0000",
+   "hi_hex": "0c0fff",
+   "width": 4095
+  },
+  {
+   "lo": 884736,
+   "hi": 888831,
+   "cc": "PA",
+   "lo_hex": "0d8000",
+   "hi_hex": "0d8fff",
+   "width": 4095
+  },
+  {
+   "lo": 5029888,
+   "hi": 5033983,
+   "cc": "IS",
+   "lo_hex": "4cc000",
+   "hi_hex": "4ccfff",
+   "width": 4095
+  },
+  {
+   "lo": 5357568,
+   "hi": 5361663,
+   "cc": "CY",
+   "lo_hex": "51c000",
+   "hi_hex": "51cfff",
+   "width": 4095
+  },
+  {
+   "lo": 7340032,
+   "hi": 7344127,
+   "cc": "AF",
+   "lo_hex": "700000",
+   "hi_hex": "700fff",
+   "width": 4095
+  },
+  {
+   "lo": 9003008,
+   "hi": 9007103,
+   "cc": "AE",
+   "lo_hex": "896000",
+   "hi_hex": "896fff",
+   "width": 4095
+  },
+  {
+   "lo": 15204352,
+   "hi": 15208447,
+   "cc": "CL",
+   "lo_hex": "e80000",
+   "hi_hex": "e80fff",
+   "width": 4095
+  },
+  {
+   "lo": 311296,
+   "hi": 327679,
+   "cc": "KE",
+   "lo_hex": "04c000",
+   "hi_hex": "04ffff",
+   "width": 16383
+  },
+  {
+   "lo": 7372800,
+   "hi": 7389183,
+   "cc": "IR",
+   "lo_hex": "708000",
+   "hi_hex": "70bfff",
+   "width": 16383
+  },
+  {
+   "lo": 7438336,
+   "hi": 7454719,
+   "cc": "KR",
+   "lo_hex": "718000",
+   "hi_hex": "71bfff",
+   "width": 16383
+  },
+  {
+   "lo": 7651328,
+   "hi": 7667711,
+   "cc": "LB",
+   "lo_hex": "74c000",
+   "hi_hex": "74ffff",
+   "width": 16383
+  },
+  {
+   "lo": 7766016,
+   "hi": 7782399,
+   "cc": "SG",
+   "lo_hex": "768000",
+   "hi_hex": "76bfff",
+   "width": 16383
+  },
+  {
+   "lo": 7782400,
+   "hi": 7798783,
+   "cc": "LK",
+   "lo_hex": "76c000",
+   "hi_hex": "76ffff",
+   "width": 16383
+  },
+  {
+   "lo": 32768,
+   "hi": 65535,
+   "cc": "ZA",
+   "lo_hex": "008000",
+   "hi_hex": "00ffff",
+   "width": 32767
+  },
+  {
+   "lo": 65536,
+   "hi": 98303,
+   "cc": "EG",
+   "lo_hex": "010000",
+   "hi_hex": "017fff",
+   "width": 32767
+  },
+  {
+   "lo": 98304,
+   "hi": 131071,
+   "cc": "LY",
+   "lo_hex": "018000",
+   "hi_hex": "01ffff",
+   "width": 32767
+  },
+  {
+   "lo": 131072,
+   "hi": 163839,
+   "cc": "DZ",
+   "lo_hex": "020000",
+   "hi_hex": "027fff",
+   "width": 32767
+  },
+  {
+   "lo": 262144,
+   "hi": 294911,
+   "cc": "ET",
+   "lo_hex": "040000",
+   "hi_hex": "047fff",
+   "width": 32767
+  },
+  {
+   "lo": 688128,
+   "hi": 720895,
+   "cc": "CO",
+   "lo_hex": "0a8000",
+   "hi_hex": "0affff",
+   "width": 32767
+  },
+  {
+   "lo": 851968,
+   "hi": 884735,
+   "cc": "MX",
+   "lo_hex": "0d0000",
+   "hi_hex": "0d7fff",
+   "width": 32767
+  },
+  {
+   "lo": 4456448,
+   "hi": 4489215,
+   "cc": "AT",
+   "lo_hex": "440000",
+   "hi_hex": "447fff",
+   "width": 32767
+  },
+  {
+   "lo": 4489216,
+   "hi": 4521983,
+   "cc": "BE",
+   "lo_hex": "448000",
+   "hi_hex": "44ffff",
+   "width": 32767
+  },
+  {
+   "lo": 4521984,
+   "hi": 4554751,
+   "cc": "BG",
+   "lo_hex": "450000",
+   "hi_hex": "457fff",
+   "width": 32767
+  },
+  {
+   "lo": 4554752,
+   "hi": 4587519,
+   "cc": "DK",
+   "lo_hex": "458000",
+   "hi_hex": "45ffff",
+   "width": 32767
+  },
+  {
+   "lo": 4587520,
+   "hi": 4620287,
+   "cc": "FI",
+   "lo_hex": "460000",
+   "hi_hex": "467fff",
+   "width": 32767
+  },
+  {
+   "lo": 4620288,
+   "hi": 4653055,
+   "cc": "GR",
+   "lo_hex": "468000",
+   "hi_hex": "46ffff",
+   "width": 32767
+  },
+  {
+   "lo": 4653056,
+   "hi": 4685823,
+   "cc": "HU",
+   "lo_hex": "470000",
+   "hi_hex": "477fff",
+   "width": 32767
+  },
+  {
+   "lo": 4685824,
+   "hi": 4718591,
+   "cc": "NO",
+   "lo_hex": "478000",
+   "hi_hex": "47ffff",
+   "width": 32767
+  },
+  {
+   "lo": 4718592,
+   "hi": 4751359,
+   "cc": "NL",
+   "lo_hex": "480000",
+   "hi_hex": "487fff",
+   "width": 32767
+  },
+  {
+   "lo": 4751360,
+   "hi": 4784127,
+   "cc": "PL",
+   "lo_hex": "488000",
+   "hi_hex": "48ffff",
+   "width": 32767
+  },
+  {
+   "lo": 4784128,
+   "hi": 4816895,
+   "cc": "PT",
+   "lo_hex": "490000",
+   "hi_hex": "497fff",
+   "width": 32767
+  },
+  {
+   "lo": 4816896,
+   "hi": 4849663,
+   "cc": "CZ",
+   "lo_hex": "498000",
+   "hi_hex": "49ffff",
+   "width": 32767
+  },
+  {
+   "lo": 4849664,
+   "hi": 4882431,
+   "cc": "RO",
+   "lo_hex": "4a0000",
+   "hi_hex": "4a7fff",
+   "width": 32767
+  },
+  {
+   "lo": 4882432,
+   "hi": 4915199,
+   "cc": "SE",
+   "lo_hex": "4a8000",
+   "hi_hex": "4affff",
+   "width": 32767
+  },
+  {
+   "lo": 4915200,
+   "hi": 4947967,
+   "cc": "CH",
+   "lo_hex": "4b0000",
+   "hi_hex": "4b7fff",
+   "width": 32767
+  },
+  {
+   "lo": 4947968,
+   "hi": 4980735,
+   "cc": "TR",
+   "lo_hex": "4b8000",
+   "hi_hex": "4bffff",
+   "width": 32767
+  },
+  {
+   "lo": 4980736,
+   "hi": 5013503,
+   "cc": "RS",
+   "lo_hex": "4c0000",
+   "hi_hex": "4c7fff",
+   "width": 32767
+  },
+  {
+   "lo": 5013504,
+   "hi": 5046271,
+   "cc": "IE",
+   "lo_hex": "4c8000",
+   "hi_hex": "4cffff",
+   "width": 32767
+  },
+  {
+   "lo": 5275648,
+   "hi": 5308415,
+   "cc": "UA",
+   "lo_hex": "508000",
+   "hi_hex": "50ffff",
+   "width": 32767
+  },
+  {
+   "lo": 7405568,
+   "hi": 7438335,
+   "cc": "SA",
+   "lo_hex": "710000",
+   "hi_hex": "717fff",
+   "width": 32767
+  },
+  {
+   "lo": 7503872,
+   "hi": 7536639,
+   "cc": "IQ",
+   "lo_hex": "728000",
+   "hi_hex": "72ffff",
+   "width": 32767
+  },
+  {
+   "lo": 7569408,
+   "hi": 7602175,
+   "cc": "IL",
+   "lo_hex": "738000",
+   "hi_hex": "73ffff",
+   "width": 32767
+  },
+  {
+   "lo": 7667712,
+   "hi": 7700479,
+   "cc": "MY",
+   "lo_hex": "750000",
+   "hi_hex": "757fff",
+   "width": 32767
+  },
+  {
+   "lo": 7700480,
+   "hi": 7733247,
+   "cc": "PH",
+   "lo_hex": "758000",
+   "hi_hex": "75ffff",
+   "width": 32767
+  },
+  {
+   "lo": 7831552,
+   "hi": 7864319,
+   "cc": "JO",
+   "lo_hex": "778000",
+   "hi_hex": "77ffff",
+   "width": 32767
+  },
+  {
+   "lo": 8912896,
+   "hi": 8945663,
+   "cc": "TH",
+   "lo_hex": "880000",
+   "hi_hex": "887fff",
+   "width": 32767
+  },
+  {
+   "lo": 8945664,
+   "hi": 8978431,
+   "cc": "VN",
+   "lo_hex": "888000",
+   "hi_hex": "88ffff",
+   "width": 32767
+  },
+  {
+   "lo": 9043968,
+   "hi": 9076735,
+   "cc": "ID",
+   "lo_hex": "8a0000",
+   "hi_hex": "8a7fff",
+   "width": 32767
+  },
+  {
+   "lo": 13107200,
+   "hi": 13139967,
+   "cc": "NZ",
+   "lo_hex": "c80000",
+   "hi_hex": "c87fff",
+   "width": 32767
+  },
+  {
+   "lo": 3145728,
+   "hi": 3407871,
+   "cc": "IT",
+   "lo_hex": "300000",
+   "hi_hex": "33ffff",
+   "width": 262143
+  },
+  {
+   "lo": 3407872,
+   "hi": 3670015,
+   "cc": "ES",
+   "lo_hex": "340000",
+   "hi_hex": "37ffff",
+   "width": 262143
+  },
+  {
+   "lo": 3670016,
+   "hi": 3932159,
+   "cc": "FR",
+   "lo_hex": "380000",
+   "hi_hex": "3bffff",
+   "width": 262143
+  },
+  {
+   "lo": 3932160,
+   "hi": 4194303,
+   "cc": "DE",
+   "lo_hex": "3c0000",
+   "hi_hex": "3fffff",
+   "width": 262143
+  },
+  {
+   "lo": 4194304,
+   "hi": 4456447,
+   "cc": "GB",
+   "lo_hex": "400000",
+   "hi_hex": "43ffff",
+   "width": 262143
+  },
+  {
+   "lo": 7864320,
+   "hi": 8126463,
+   "cc": "CN",
+   "lo_hex": "780000",
+   "hi_hex": "7bffff",
+   "width": 262143
+  },
+  {
+   "lo": 8126464,
+   "hi": 8388607,
+   "cc": "AU",
+   "lo_hex": "7c0000",
+   "hi_hex": "7fffff",
+   "width": 262143
+  },
+  {
+   "lo": 8388608,
+   "hi": 8650751,
+   "cc": "IN",
+   "lo_hex": "800000",
+   "hi_hex": "83ffff",
+   "width": 262143
+  },
+  {
+   "lo": 8650752,
+   "hi": 8912895,
+   "cc": "JP",
+   "lo_hex": "840000",
+   "hi_hex": "87ffff",
+   "width": 262143
+  },
+  {
+   "lo": 12582912,
+   "hi": 12845055,
+   "cc": "CA",
+   "lo_hex": "c00000",
+   "hi_hex": "c3ffff",
+   "width": 262143
+  },
+  {
+   "lo": 14680064,
+   "hi": 14942207,
+   "cc": "AR",
+   "lo_hex": "e00000",
+   "hi_hex": "e3ffff",
+   "width": 262143
+  },
+  {
+   "lo": 14942208,
+   "hi": 15204351,
+   "cc": "BR",
+   "lo_hex": "e40000",
+   "hi_hex": "e7ffff",
+   "width": 262143
+  },
+  {
+   "lo": 1048576,
+   "hi": 2097151,
+   "cc": "RU",
+   "lo_hex": "100000",
+   "hi_hex": "1fffff",
+   "width": 1048575
+  },
+  {
+   "lo": 10485760,
+   "hi": 11534335,
+   "cc": "US",
+   "lo_hex": "a00000",
+   "hi_hex": "afffff",
+   "width": 1048575
+  }
+ ],
+ "reg_prefixes": {
+  "OY": "DK",
+  "SE": "SE",
+  "LN": "NO",
+  "OH": "FI",
+  "TF": "IS",
+  "D": "DE",
+  "OE": "AT",
+  "HB": "CH",
+  "PH": "NL",
+  "OO": "BE",
+  "LX": "LU",
+  "G": "GB",
+  "EI": "IE",
+  "F": "FR",
+  "EC": "ES",
+  "CS": "PT",
+  "I": "IT",
+  "SP": "PL",
+  "OK": "CZ",
+  "OM": "SK",
+  "HA": "HU",
+  "YL": "LV",
+  "ES": "EE",
+  "LY": "LT",
+  "9H": "MT",
+  "5B": "CY",
+  "SX": "GR",
+  "YR": "RO",
+  "LZ": "BG",
+  "YU": "RS",
+  "9A": "HR",
+  "S5": "SI",
+  "Z3": "MK",
+  "T7": "SM",
+  "TC": "TR",
+  "UR": "UA",
+  "RA": "RU",
+  "RF": "RU",
+  "EW": "BY",
+  "N": "US",
+  "C": "CA",
+  "XA": "MX",
+  "XB": "MX",
+  "XC": "MX",
+  "B": "CN",
+  "JA": "JP",
+  "HL": "KR",
+  "VT": "IN",
+  "9V": "SG",
+  "HS": "TH",
+  "9M": "MY",
+  "PK": "ID",
+  "VN": "VN",
+  "RP": "PH",
+  "VH": "AU",
+  "ZK": "NZ",
+  "A6": "AE",
+  "A7": "QA",
+  "HZ": "SA",
+  "A9C": "BH",
+  "9K": "KW",
+  "A4O": "OM",
+  "4X": "IL",
+  "JY": "JO",
+  "OD": "LB",
+  "EP": "IR",
+  "ZS": "ZA",
+  "SU": "EG",
+  "7T": "DZ",
+  "CN": "MA",
+  "5A": "LY",
+  "ET": "ET",
+  "5Y": "KE",
+  "5N": "NG",
+  "TS": "TN",
+  "PP": "BR",
+  "PR": "BR",
+  "PT": "BR",
+  "LV": "AR",
+  "CC": "CL",
+  "HK": "CO",
+  "OB": "PE",
+  "HP": "PA"
+ },
+ "countries": {
+  "DK": {
+   "name": "Denmark",
+   "region": "Nordics",
+   "continent": "Europe"
+  },
+  "SE": {
+   "name": "Sweden",
+   "region": "Nordics",
+   "continent": "Europe"
+  },
+  "NO": {
+   "name": "Norway",
+   "region": "Nordics",
+   "continent": "Europe"
+  },
+  "FI": {
+   "name": "Finland",
+   "region": "Nordics",
+   "continent": "Europe"
+  },
+  "IS": {
+   "name": "Iceland",
+   "region": "Nordics",
+   "continent": "Europe"
+  },
+  "DE": {
+   "name": "Germany",
+   "region": "DACH",
+   "continent": "Europe"
+  },
+  "AT": {
+   "name": "Austria",
+   "region": "DACH",
+   "continent": "Europe"
+  },
+  "CH": {
+   "name": "Switzerland",
+   "region": "DACH",
+   "continent": "Europe"
+  },
+  "NL": {
+   "name": "Netherlands",
+   "region": "Benelux",
+   "continent": "Europe"
+  },
+  "BE": {
+   "name": "Belgium",
+   "region": "Benelux",
+   "continent": "Europe"
+  },
+  "LU": {
+   "name": "Luxembourg",
+   "region": "Benelux",
+   "continent": "Europe"
+  },
+  "GB": {
+   "name": "United Kingdom",
+   "region": "British Isles",
+   "continent": "Europe"
+  },
+  "IE": {
+   "name": "Ireland",
+   "region": "British Isles",
+   "continent": "Europe"
+  },
+  "FR": {
+   "name": "France",
+   "region": "Western Europe",
+   "continent": "Europe"
+  },
+  "ES": {
+   "name": "Spain",
+   "region": "Southern Europe",
+   "continent": "Europe"
+  },
+  "PT": {
+   "name": "Portugal",
+   "region": "Southern Europe",
+   "continent": "Europe"
+  },
+  "IT": {
+   "name": "Italy",
+   "region": "Southern Europe",
+   "continent": "Europe"
+  },
+  "GR": {
+   "name": "Greece",
+   "region": "Southern Europe",
+   "continent": "Europe"
+  },
+  "MT": {
+   "name": "Malta",
+   "region": "Southern Europe",
+   "continent": "Europe"
+  },
+  "CY": {
+   "name": "Cyprus",
+   "region": "Southern Europe",
+   "continent": "Europe"
+  },
+  "MC": {
+   "name": "Monaco",
+   "region": "Western Europe",
+   "continent": "Europe"
+  },
+  "SM": {
+   "name": "San Marino",
+   "region": "Southern Europe",
+   "continent": "Europe"
+  },
+  "PL": {
+   "name": "Poland",
+   "region": "Central Europe",
+   "continent": "Europe"
+  },
+  "CZ": {
+   "name": "Czechia",
+   "region": "Central Europe",
+   "continent": "Europe"
+  },
+  "SK": {
+   "name": "Slovakia",
+   "region": "Central Europe",
+   "continent": "Europe"
+  },
+  "HU": {
+   "name": "Hungary",
+   "region": "Central Europe",
+   "continent": "Europe"
+  },
+  "SI": {
+   "name": "Slovenia",
+   "region": "Central Europe",
+   "continent": "Europe"
+  },
+  "HR": {
+   "name": "Croatia",
+   "region": "Southern Europe",
+   "continent": "Europe"
+  },
+  "RS": {
+   "name": "Serbia",
+   "region": "Southern Europe",
+   "continent": "Europe"
+  },
+  "BA": {
+   "name": "Bosnia & Herz.",
+   "region": "Southern Europe",
+   "continent": "Europe"
+  },
+  "ME": {
+   "name": "Montenegro",
+   "region": "Southern Europe",
+   "continent": "Europe"
+  },
+  "MK": {
+   "name": "North Macedonia",
+   "region": "Southern Europe",
+   "continent": "Europe"
+  },
+  "AL": {
+   "name": "Albania",
+   "region": "Southern Europe",
+   "continent": "Europe"
+  },
+  "RO": {
+   "name": "Romania",
+   "region": "Central Europe",
+   "continent": "Europe"
+  },
+  "BG": {
+   "name": "Bulgaria",
+   "region": "Central Europe",
+   "continent": "Europe"
+  },
+  "MD": {
+   "name": "Moldova",
+   "region": "Eastern Europe",
+   "continent": "Europe"
+  },
+  "LV": {
+   "name": "Latvia",
+   "region": "Baltics",
+   "continent": "Europe"
+  },
+  "EE": {
+   "name": "Estonia",
+   "region": "Baltics",
+   "continent": "Europe"
+  },
+  "LT": {
+   "name": "Lithuania",
+   "region": "Baltics",
+   "continent": "Europe"
+  },
+  "UA": {
+   "name": "Ukraine",
+   "region": "Eastern Europe",
+   "continent": "Europe"
+  },
+  "BY": {
+   "name": "Belarus",
+   "region": "Eastern Europe",
+   "continent": "Europe"
+  },
+  "RU": {
+   "name": "Russia",
+   "region": "Eastern Europe",
+   "continent": "Europe"
+  },
+  "GE": {
+   "name": "Georgia",
+   "region": "Eastern Europe",
+   "continent": "Europe"
+  },
+  "TR": {
+   "name": "Turkey",
+   "region": "Turkey",
+   "continent": "Europe"
+  },
+  "US": {
+   "name": "United States",
+   "region": "North America",
+   "continent": "North America"
+  },
+  "CA": {
+   "name": "Canada",
+   "region": "North America",
+   "continent": "North America"
+  },
+  "MX": {
+   "name": "Mexico",
+   "region": "North America",
+   "continent": "North America"
+  },
+  "CR": {
+   "name": "Costa Rica",
+   "region": "Central America",
+   "continent": "North America"
+  },
+  "PA": {
+   "name": "Panama",
+   "region": "Central America",
+   "continent": "North America"
+  },
+  "CU": {
+   "name": "Cuba",
+   "region": "Caribbean",
+   "continent": "North America"
+  },
+  "CN": {
+   "name": "China",
+   "region": "East Asia",
+   "continent": "Asia"
+  },
+  "TW": {
+   "name": "Taiwan",
+   "region": "East Asia",
+   "continent": "Asia"
+  },
+  "JP": {
+   "name": "Japan",
+   "region": "East Asia",
+   "continent": "Asia"
+  },
+  "KR": {
+   "name": "South Korea",
+   "region": "East Asia",
+   "continent": "Asia"
+  },
+  "SG": {
+   "name": "Singapore",
+   "region": "Southeast Asia",
+   "continent": "Asia"
+  },
+  "TH": {
+   "name": "Thailand",
+   "region": "Southeast Asia",
+   "continent": "Asia"
+  },
+  "MY": {
+   "name": "Malaysia",
+   "region": "Southeast Asia",
+   "continent": "Asia"
+  },
+  "ID": {
+   "name": "Indonesia",
+   "region": "Southeast Asia",
+   "continent": "Asia"
+  },
+  "VN": {
+   "name": "Vietnam",
+   "region": "Southeast Asia",
+   "continent": "Asia"
+  },
+  "PH": {
+   "name": "Philippines",
+   "region": "Southeast Asia",
+   "continent": "Asia"
+  },
+  "IN": {
+   "name": "India",
+   "region": "South Asia",
+   "continent": "Asia"
+  },
+  "PK": {
+   "name": "Pakistan",
+   "region": "South Asia",
+   "continent": "Asia"
+  },
+  "BD": {
+   "name": "Bangladesh",
+   "region": "South Asia",
+   "continent": "Asia"
+  },
+  "LK": {
+   "name": "Sri Lanka",
+   "region": "South Asia",
+   "continent": "Asia"
+  },
+  "AF": {
+   "name": "Afghanistan",
+   "region": "South Asia",
+   "continent": "Asia"
+  },
+  "UZ": {
+   "name": "Uzbekistan",
+   "region": "Central Asia",
+   "continent": "Asia"
+  },
+  "TJ": {
+   "name": "Tajikistan",
+   "region": "Central Asia",
+   "continent": "Asia"
+  },
+  "AE": {
+   "name": "United Arab Em.",
+   "region": "Gulf",
+   "continent": "Asia"
+  },
+  "QA": {
+   "name": "Qatar",
+   "region": "Gulf",
+   "continent": "Asia"
+  },
+  "SA": {
+   "name": "Saudi Arabia",
+   "region": "Gulf",
+   "continent": "Asia"
+  },
+  "BH": {
+   "name": "Bahrain",
+   "region": "Gulf",
+   "continent": "Asia"
+  },
+  "KW": {
+   "name": "Kuwait",
+   "region": "Gulf",
+   "continent": "Asia"
+  },
+  "OM": {
+   "name": "Oman",
+   "region": "Gulf",
+   "continent": "Asia"
+  },
+  "IL": {
+   "name": "Israel",
+   "region": "Levant",
+   "continent": "Asia"
+  },
+  "JO": {
+   "name": "Jordan",
+   "region": "Levant",
+   "continent": "Asia"
+  },
+  "LB": {
+   "name": "Lebanon",
+   "region": "Levant",
+   "continent": "Asia"
+  },
+  "IQ": {
+   "name": "Iraq",
+   "region": "Levant",
+   "continent": "Asia"
+  },
+  "IR": {
+   "name": "Iran",
+   "region": "Middle East",
+   "continent": "Asia"
+  },
+  "ZA": {
+   "name": "South Africa",
+   "region": "Southern Africa",
+   "continent": "Africa"
+  },
+  "EG": {
+   "name": "Egypt",
+   "region": "North Africa",
+   "continent": "Africa"
+  },
+  "DZ": {
+   "name": "Algeria",
+   "region": "North Africa",
+   "continent": "Africa"
+  },
+  "MA": {
+   "name": "Morocco",
+   "region": "North Africa",
+   "continent": "Africa"
+  },
+  "TN": {
+   "name": "Tunisia",
+   "region": "North Africa",
+   "continent": "Africa"
+  },
+  "LY": {
+   "name": "Libya",
+   "region": "North Africa",
+   "continent": "Africa"
+  },
+  "ET": {
+   "name": "Ethiopia",
+   "region": "East Africa",
+   "continent": "Africa"
+  },
+  "KE": {
+   "name": "Kenya",
+   "region": "East Africa",
+   "continent": "Africa"
+  },
+  "NG": {
+   "name": "Nigeria",
+   "region": "West Africa",
+   "continent": "Africa"
+  },
+  "BR": {
+   "name": "Brazil",
+   "region": "South America",
+   "continent": "South America"
+  },
+  "AR": {
+   "name": "Argentina",
+   "region": "South America",
+   "continent": "South America"
+  },
+  "CL": {
+   "name": "Chile",
+   "region": "South America",
+   "continent": "South America"
+  },
+  "CO": {
+   "name": "Colombia",
+   "region": "South America",
+   "continent": "South America"
+  },
+  "PE": {
+   "name": "Peru",
+   "region": "South America",
+   "continent": "South America"
+  },
+  "AU": {
+   "name": "Australia",
+   "region": "Oceania",
+   "continent": "Oceania"
+  },
+  "NZ": {
+   "name": "New Zealand",
+   "region": "Oceania",
+   "continent": "Oceania"
+  }
+ }
+}

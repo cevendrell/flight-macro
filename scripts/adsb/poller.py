@@ -117,14 +117,27 @@ def to_rows(payload: dict) -> list[dict]:
             "flight":   (a.get("flight") or "").strip() or None,
             "lat":      a.get("lat"),
             "lon":      a.get("lon"),
-            "alt_baro": _int_or_none(a.get("alt_baro")),
-            "gs":       _float_or_none(a.get("gs")),
-            "track":    _float_or_none(a.get("track")),
+            # readsb, dump1090 and the various tar1090 builds disagree on the
+            # names of these two. We were reading only the readsb spelling,
+            # which is why every altitude and speed in the record so far came
+            # out null. Take the first key that is actually present.
+            "alt_baro": _int_or_none(_first(a, "alt_baro", "altitude", "alt", "alt_geom")),
+            "gs":       _float_or_none(_first(a, "gs", "speed", "ground_speed", "gsp")),
+            "track":    _float_or_none(_first(a, "track", "trak", "heading")),
             "squawk":   a.get("squawk"),
             "category": a.get("category"),
             "seen_pos": _float_or_none(seen_pos),
         })
     return rows
+
+
+def _first(d: dict, *keys):
+    """First key present with a non-null value, so we tolerate feed variants."""
+    for k in keys:
+        v = d.get(k)
+        if v is not None:
+            return v
+    return None
 
 
 def _int_or_none(v):
