@@ -111,7 +111,7 @@ def build_flights(con, day_filter: str | None) -> int:
     airport_first = nearest_airport_sql("f", "f.first_lat", "f.first_lon") if have_airports else "NULL"
     airport_last  = nearest_airport_sql("f", "f.last_lat",  "f.last_lon")  if have_airports else "NULL"
     ac_join       = "LEFT JOIN aircraft_db ac ON ac.hex = f.hex" if have_aircraft else ""
-    ac_select     = ", ac.reg, ac.type AS ac_type, ac.desc AS ac_desc, ac.ownop AS ac_ownop" if have_aircraft else ""
+    ac_select     = ", ac.reg, ac.type AS ac_type, ac.desc AS ac_desc" if have_aircraft else ""
     airline_join  = "LEFT JOIN airlines al ON al.prefix = f.airline_prefix" if have_airlines else ""
     airline_select= ", al.name AS airline, al.country AS airline_country" if have_airlines else ""
 
