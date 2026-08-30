@@ -1,0 +1,45 @@
+{
+  "generated_at": "2026-08-30T10:37:07+00:00",
+  "origin": {
+    "name": "Aarhus, Denmark",
+    "lat": 56.16,
+    "lng": 10.2,
+    "note": "One antenna. One sky. Everything that flies overhead."
+  },
+  "snapshots": [
+    {
+      "name": "snapshots_2026-08-28.parquet",
+      "path": "data/adsb/snapshots/snapshots_2026-08-28.parquet",
+      "bytes": 5739
+    },
+    {
+      "name": "snapshots_2026-08-29.parquet",
+      "path": "data/adsb/snapshots/snapshots_2026-08-29.parquet",
+      "bytes": 573492
+    },
+    {
+      "name": "snapshots_2026-08-30.parquet",
+      "path": "data/adsb/snapshots/snapshots_2026-08-30.parquet",
+      "bytes": 290289
+    }
+  ],
+  "flights": [
+    {
+      "name": "flights_2026-08.parquet",
+      "path": "data/adsb/flights/flights_2026-08.parquet",
+      "bytes": 82969
+    }
+  ],
+  "enrichment": [
+    {
+      "name": "airlines.parquet",
+      "path": "data/adsb/enrichment/airlines.parquet",
+      "bytes": 2659
+    },
+    {
+      "name": "airports.parquet",
+      "path": "data/adsb/enrichment/airports.parquet",
+      "bytes": 272940
+    }
+  ]
+}
