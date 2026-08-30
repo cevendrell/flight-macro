@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="OvrHead — one ADS-B antenna over Aarhus, Denmark. Real flight data, live from the sky.">
+  <title>OvrHead</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230a1119'/%3E%3Cpath d='M6 22 L26 10 M6 10 L26 22' stroke='%23c9a86a' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:      #080e17;
+      --bg-2:    #0b1420;
+      --surface: #101929;
+      --panel:   #16202f;
+      --raised:  #1d2837;
+      --line:    rgba(201,180,140,.09);
+      --line-2:  rgba(201,180,140,.17);
+      --line-3:  rgba(201,180,140,.30);
+      --text:    #ece4d6;
+      --text-2:  #b9b3a6;
+      --dim:     #8d8878;
+      --mute:    #5a5648;
+      --brass:   #c9a86a;
+      --brass-l: #e0c79c;
+      --brass-d: #8f7748;
+      --up:      #7fa88c;
+      --up-l:    #a8c8b3;
+      --down:    #b87857;
+      --down-l:  #d59c7e;
+      --steel:   #6b8caf;
+      --display: 'Space Grotesk', -apple-system, sans-serif;
+      --sans:    'Inter', -apple-system, sans-serif;
+      --mono:    'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
+      --nav-h:   52px;
+      --gutter:  20px;
+    }
+
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+    ::selection { background: var(--brass); color: var(--bg); }
+
+    /* ── Nav ── */
+    #nav {
+      position: sticky; top: 0; z-index: 100;
+      height: var(--nav-h);
+      display: flex; align-items: center; gap: 16px;
+      padding: 0 var(--gutter);
+      background: var(--bg-2);
+      border-bottom: 1px solid var(--line-2);
+    }
+    .brand {
+      font-family: var(--display);
+      font-size: .95rem; font-weight: 700;
+      letter-spacing: .18em;
+      color: var(--brass);
+    }
+    .location {
+      font-size: .75rem;
+      color: var(--dim);
+      letter-spacing: .04em;
+    }
+    #freshness {
+      margin-left: auto;
+      font-family: var(--mono);
+      font-size: .7rem;
+      color: var(--mute);
+    }
+    #freshness.ok { color: var(--up); }
+    #freshness.stale { color: var(--down); }
+
+    /* ── Init overlay ── */
+    #init-overlay {
+      position: fixed; inset: 0; z-index: 200;
+      background: var(--bg);
+      display: flex; align-items: center; justify-content: center;
+    }
+    #init-overlay.hidden { display: none; }
+    .init-inner { text-align: center; }
+    .init-logo {
+      font-size: 2.5rem;
+      color: var(--brass);
+      margin-bottom: 20px;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100% { opacity:.5 } 50% { opacity:1 } }
+    .init-msg {
+      font-family: var(--display);
+      font-size: 1rem; font-weight: 500;
+      color: var(--text-2);
+      margin-bottom: 6px;
+    }
+    .init-sub {
+      font-size: .72rem;
+      color: var(--mute);
+      font-family: var(--mono);
+    }
+    #error-box {
+      display: none;
+      margin: 20px auto; max-width: 640px;
+      background: rgba(184,120,87,.1);
+      border: 1px solid var(--down);
+      border-radius: 8px;
+      padding: 14px 18px;
+      font-family: var(--mono);
+      font-size: .75rem;
+      color: var(--down-l);
+    }
+
+    /* ── App shell ── */
+    #app { max-width: 1200px; margin: 0 auto; padding: var(--gutter); }
+
+    /* ── Stats strip ── */
+    #stats-strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: var(--gutter);
+    }
+    @media (max-width: 700px) { #stats-strip { grid-template-columns: repeat(2,1fr); } }
+    .stat-card {
+      background: var(--panel);
+      border: 1px solid var(--line-2);
+      border-radius: 8px;
+      padding: 14px 18px;
+    }
+    .stat-val {
+      font-family: var(--mono);
+      font-size: 1.55rem;
+      font-weight: 500;
+      color: var(--brass-l);
+      line-height: 1;
+      margin-bottom: 5px;
+    }
+    .stat-lbl {
+      font-size: .7rem;
+      color: var(--dim);
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    /* ── Panels ── */
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line-2);
+      border-radius: 10px;
+      padding: 18px 20px;
+      margin-bottom: 14px;
+    }
+    .panel-title {
+      font-family: var(--display);
+      font-size: .85rem;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: .04em;
+      margin-bottom: 14px;
+      display: flex; align-items: baseline; gap: 8px;
+    }
+    .panel-subtitle {
+      font-family: var(--sans);
+      font-size: .72rem;
+      font-weight: 400;
+      color: var(--dim);
+    }
+
+    /* Two-col layout */
+    #main-cols {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+    @media (max-width: 860px) { #main-cols { grid-template-columns: 1fr; } }
+
+    /* ── Operator table ── */
+    .op-table { width: 100%; border-collapse: collapse; }
+    .op-table th {
+      font-family: var(--mono);
+      font-size: .65rem;
+      color: var(--mute);
+      text-align: left;
+      padding: 0 8px 8px 0;
+      border-bottom: 1px solid var(--line);
+      letter-spacing: .06em;
+    }
+    .op-table th:last-child { text-align: right; }
+    .op-table td {
+      padding: 6px 8px 6px 0;
+      border-bottom: 1px solid var(--line);
+      font-size: .8rem;
+      vertical-align: middle;
+    }
+    .op-table tr:last-child td { border-bottom: none; }
+    .op-rank {
+      font-family: var(--mono);
+      color: var(--mute);
+      font-size: .7rem;
+      width: 24px;
+    }
+    .op-prefix {
+      font-family: var(--mono);
+      font-weight: 500;
+      color: var(--brass-l);
+      font-size: .8rem;
+    }
+    .op-name { color: var(--text-2); max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .op-count {
+      font-family: var(--mono);
+      text-align: right;
+      color: var(--text);
+      font-size: .8rem;
+    }
+    .op-bar-cell { width: 80px; padding-right: 0 !important; }
+    .op-bar-wrap { height: 4px; background: var(--raised); border-radius: 2px; }
+    .op-bar { height: 4px; background: var(--brass-d); border-radius: 2px; transition: width .4s; }
+
+    /* ── Hourly chart ── */
+    #hourly-body { overflow-x: auto; }
+    .hour-chart { display: flex; align-items: flex-end; gap: 3px; height: 100px; padding-bottom: 20px; position: relative; }
+    .hour-bar-wrap {
+      flex: 1; display: flex; flex-direction: column; align-items: center;
+      gap: 3px; height: 100%;
+    }
+    .hour-spacer { flex: 1; }
+    .hour-bar {
+      width: 100%; background: var(--brass-d);
+      border-radius: 2px 2px 0 0;
+      transition: height .3s;
+      min-height: 2px;
+    }
+    .hour-bar-wrap:hover .hour-bar { background: var(--brass); }
+    .hour-label {
+      font-family: var(--mono);
+      font-size: .55rem;
+      color: var(--mute);
+      width: 100%;
+      text-align: center;
+    }
+    .hour-tip {
+      position: absolute; top: 0; left: 0;
+      background: var(--raised);
+      border: 1px solid var(--line-2);
+      border-radius: 5px;
+      padding: 4px 8px;
+      font-family: var(--mono);
+      font-size: .7rem;
+      color: var(--text);
+      pointer-events: none;
+      display: none;
+    }
+
+    /* ── Recent flights table ── */
+    .flights-table { width: 100%; border-collapse: collapse; font-size: .78rem; }
+    .flights-table th {
+      font-family: var(--mono);
+      font-size: .62rem;
+      color: var(--mute);
+      text-align: left;
+      padding: 0 12px 8px 0;
+      border-bottom: 1px solid var(--line);
+      letter-spacing: .06em;
+    }
+    .flights-table td {
+      padding: 5px 12px 5px 0;
+      border-bottom: 1px solid var(--line);
+      color: var(--text-2);
+      vertical-align: middle;
+    }
+    .flights-table tr:last-child td { border-bottom: none; }
+    .flights-table tr:hover td { background: var(--raised); }
+    .cs { font-family: var(--mono); font-size: .78rem; color: var(--brass-l); font-weight: 500; }
+    .alt-val { font-family: var(--mono); font-size: .75rem; color: var(--steel); }
+    .ts-val { font-family: var(--mono); font-size: .7rem; color: var(--dim); }
+
+    /* ── SQL Explorer ── */
+    .explore-bar { display: flex; gap: 10px; align-items: flex-start; }
+    .sql-input {
+      flex: 1;
+      background: var(--bg-2);
+      border: 1px solid var(--line-3);
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-family: var(--mono);
+      font-size: .78rem;
+      color: var(--text);
+      resize: vertical;
+      outline: none;
+      line-height: 1.55;
+    }
+    .sql-input:focus { border-color: var(--brass-d); }
+    .run-btn {
+      background: var(--brass-d);
+      border: none;
+      border-radius: 6px;
+      color: var(--bg);
+      font-family: var(--display);
+      font-size: .78rem;
+      font-weight: 600;
+      padding: 10px 16px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background .15s;
+    }
+    .run-btn:hover { background: var(--brass); }
+    .run-btn:disabled { opacity: .4; cursor: not-allowed; }
+    #explore-status {
+      font-family: var(--mono);
+      font-size: .7rem;
+      color: var(--dim);
+      margin: 8px 0 4px;
+      min-height: 16px;
+    }
+    .explore-table-wrap { overflow-x: auto; margin-top: 8px; }
+    .explore-table { width: 100%; border-collapse: collapse; font-size: .77rem; }
+    .explore-table th {
+      font-family: var(--mono);
+      font-size: .62rem;
+      color: var(--mute);
+      text-align: left;
+      padding: 0 12px 6px 0;
+      border-bottom: 1px solid var(--line-2);
+      letter-spacing: .05em;
+      white-space: nowrap;
+    }
+    .explore-table td {
+      font-family: var(--mono);
+      font-size: .75rem;
+      padding: 4px 12px 4px 0;
+      border-bottom: 1px solid var(--line);
+      color: var(--text-2);
+      white-space: nowrap;
+    }
+    .explore-table tr:last-child td { border-bottom: none; }
+    .explore-table tr:hover td { background: var(--raised); }
+
+    /* ── Schema hint ── */
+    #schema-hint {
+      font-family: var(--mono);
+      font-size: .7rem;
+      color: var(--mute);
+      padding: 10px 0 30px;
+      display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+    }
+    #schema-hint code {
+      background: var(--raised);
+      border: 1px solid var(--line-2);
+      border-radius: 4px;
+      padding: 2px 7px;
+      color: var(--brass-d);
+    }
+    .schema-label { color: var(--mute); }
+
+    /* ── Empty / loading states ── */
+    .empty {
+      color: var(--mute);
+      font-size: .78rem;
+      padding: 20px 0;
+      text-align: center;
+      font-family: var(--mono);
+    }
+  </style>
+</head>
+<body>
+
+<nav id="nav">
+  <span class="brand">OVRHEAD</span>
+  <span class="location">Aarhus, Denmark · 56.16°N 10.20°E</span>
+  <span id="freshness">initialising…</span>
+</nav>
+
+<div id="init-overlay">
+  <div class="init-inner">
+    <div class="init-logo">✈</div>
+    <div class="init-msg" id="init-msg">Loading data warehouse…</div>
+    <div class="init-sub">DuckDB-Wasm · first load ~5 s</div>
+  </div>
+</div>
+
+<div id="error-box"></div>
+
+<div id="app" hidden>
+  <div id="stats-strip">
+    <div class="stat-card"><div class="stat-val mono" id="stat-flights">—</div><div class="stat-lbl">Flights tracked</div></div>
+    <div class="stat-card"><div class="stat-val mono" id="stat-operators">—</div><div class="stat-lbl">Operators seen</div></div>
+    <div class="stat-card"><div class="stat-val mono" id="stat-days">—</div><div class="stat-lbl">Days of data</div></div>
+    <div class="stat-card"><div class="stat-val mono" id="stat-daily">—</div><div class="stat-lbl">Avg flights / day</div></div>
+  </div>
+
+  <div id="main-cols">
+    <section class="panel" id="panel-operators">
+      <div class="panel-title">Operators overhead</div>
+      <div id="operators-body"><div class="empty">Loading…</div></div>
+    </section>
+    <section class="panel" id="panel-hourly">
+      <div class="panel-title">Traffic by hour <span class="panel-subtitle">(UTC, all days combined)</span></div>
+      <div id="hourly-body"><div class="empty">Loading…</div></div>
+    </section>
+  </div>
+
+  <section class="panel">
+    <div class="panel-title">Recent flights</div>
+    <div style="overflow-x:auto"><div id="recent-body"><div class="empty">Loading…</div></div></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-title">Explore <span class="panel-subtitle">— DuckDB SQL against live parquet</span></div>
+    <div class="explore-bar">
+      <textarea id="sql-input" class="sql-input" rows="5" spellcheck="false">SELECT
+  a.name  AS airline,
+  a.country,
+  COUNT(*) AS flights
+FROM flights f
+LEFT JOIN airlines a ON a.prefix = f.airline_prefix
+GROUP BY 1, 2
+ORDER BY 3 DESC
+LIMIT 20;</textarea>
+      <button id="run-btn" class="run-btn">Run ▶</button>
+    </div>
+    <div id="explore-status"></div>
+    <div id="explore-results"></div>
+  </section>
+
+  <div id="schema-hint">
+    <span class="schema-label">Available tables:</span>
+    <code>flights</code>
+    <code>airlines</code>
+    <code>airports</code>
+    <code>aircraft_db</code>
+    <span style="color:var(--mute);margin-left:4px">— see <a href="data/adsb/manifest.json" target="_blank" style="color:var(--brass-d)">manifest.json</a> for file list</span>
+  </div>
+</div>
+
+<script type="module">
+// ─────────────────────────────────────────────────────────
+// DuckDB-Wasm initialisation
+// ─────────────────────────────────────────────────────────
+import * as duckdb from 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@latest/+esm';
+
+const BASE_URL   = new URL('./data/adsb/', location.href).href;
+const MANIFEST   = BASE_URL + 'manifest.json';
+
+function setMsg(txt) { document.getElementById('init-msg').textContent = txt; }
+function fmt(n)  { return Number(n).toLocaleString(); }
+function esc(s)  { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function tsHuman(unix) {
+  if (!unix) return '—';
+  const d = new Date(Number(unix) * 1000);
+  return d.toISOString().slice(0, 16).replace('T', ' ');
+}
+
+async function initDuckDB() {
+  setMsg('Selecting WASM bundle…');
+  const bundles = duckdb.getJsDelivrBundles();
+  const bundle  = await duckdb.selectBundle(bundles);
+  const workerUrl = URL.createObjectURL(
+    new Blob([`importScripts("${bundle.mainWorker}");`], { type: 'text/javascript' })
+  );
+  const worker = new Worker(workerUrl);
+  const db = new duckdb.AsyncDuckDB(new duckdb.ConsoleLogger(), worker);
+  setMsg('Instantiating DuckDB-Wasm…');
+  await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
+  URL.revokeObjectURL(workerUrl);
+  return db;
+}
+
+async function registerViews(conn, manifest) {
+  // httpfs is bundled in duckdb-wasm; range requests work on GitHub Pages
+  try { await conn.query("LOAD httpfs;"); } catch (_) {}
+
+  const toUrl = entry => `'${BASE_URL + entry.path.replace(/^data\/adsb\//, '')}'`;
+
+  if (manifest.flights.length) {
+    const paths = manifest.flights.map(toUrl).join(', ');
+    await conn.query(`CREATE OR REPLACE VIEW flights AS
+      SELECT * FROM read_parquet([${paths}], union_by_name=true)`);
+  }
+  const enrNames = manifest.enrichment.map(e => e.name);
+  if (enrNames.includes('airlines.parquet'))
+    await conn.query(`CREATE OR REPLACE VIEW airlines AS
+      SELECT * FROM read_parquet('${BASE_URL}enrichment/airlines.parquet')`);
+  if (enrNames.includes('airports.parquet'))
+    await conn.query(`CREATE OR REPLACE VIEW airports AS
+      SELECT * FROM read_parquet('${BASE_URL}enrichment/airports.parquet')`);
+  if (enrNames.includes('aircraft_db.parquet'))
+    await conn.query(`CREATE OR REPLACE VIEW aircraft_db AS
+      SELECT * FROM read_parquet('${BASE_URL}enrichment/aircraft_db.parquet')`);
+}
+
+// ─────────────────────────────────────────────────────────
+// Stats strip
+// ─────────────────────────────────────────────────────────
+async function renderStats(conn) {
+  const r = await conn.query(`
+    SELECT
+      COUNT(*) AS total_flights,
+      COUNT(DISTINCT airline_prefix) AS operators,
+      COUNT(DISTINCT strftime(TO_TIMESTAMP(first_seen), '%Y-%m-%d')) AS days,
+      ROUND(COUNT(*) / NULLIF(COUNT(DISTINCT strftime(TO_TIMESTAMP(first_seen),'%Y-%m-%d')),0), 0) AS daily_avg
+    FROM flights
+  `);
+  const row = r.toArray()[0];
+  if (!row) return;
+  document.getElementById('stat-flights').textContent   = fmt(row.total_flights);
+  document.getElementById('stat-operators').textContent = fmt(row.operators);
+  document.getElementById('stat-days').textContent      = fmt(row.days);
+  document.getElementById('stat-daily').textContent     = fmt(row.daily_avg);
+}
+
+// ─────────────────────────────────────────────────────────
+// Operator leaderboard
+// ─────────────────────────────────────────────────────────
+async function renderOperators(conn) {
+  const r = await conn.query(`
+    SELECT f.airline_prefix, a.name AS airline_name, COUNT(*) AS flights
+    FROM flights f
+    LEFT JOIN airlines a ON a.prefix = f.airline_prefix
+    WHERE f.airline_prefix IS NOT NULL AND f.airline_prefix != ''
+    GROUP BY 1, 2
+    ORDER BY 3 DESC
+    LIMIT 20
+  `);
+  const rows = r.toArray();
+  if (!rows.length) {
+    document.getElementById('operators-body').innerHTML = '<div class="empty">No data yet.</div>';
+    return;
+  }
+  const max = Number(rows[0].flights);
+  let html = `<table class="op-table">
+    <thead><tr>
+      <th>#</th><th>ICAO</th><th>Airline</th><th style="text-align:right">Flights</th><th></th>
+    </tr></thead><tbody>`;
+  rows.forEach((row, i) => {
+    const pct = max ? (Number(row.flights) / max * 100).toFixed(1) : 0;
+    html += `<tr>
+      <td class="op-rank">${i + 1}</td>
+      <td class="op-prefix">${esc(row.airline_prefix)}</td>
+      <td class="op-name">${esc(row.airline_name ?? '—')}</td>
+      <td class="op-count">${fmt(row.flights)}</td>
+      <td class="op-bar-cell">
+        <div class="op-bar-wrap"><div class="op-bar" style="width:${pct}%"></div></div>
+      </td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  document.getElementById('operators-body').innerHTML = html;
+}
+
+// ─────────────────────────────────────────────────────────
+// Hourly traffic chart
+// ─────────────────────────────────────────────────────────
+async function renderHourly(conn) {
+  const r = await conn.query(`
+    SELECT
+      CAST(strftime(TO_TIMESTAMP(first_seen), '%H') AS INTEGER) AS hour,
+      COUNT(*) AS flights
+    FROM flights
+    GROUP BY 1
+    ORDER BY 1
+  `);
+  const rows = r.toArray();
+  if (!rows.length) {
+    document.getElementById('hourly-body').innerHTML = '<div class="empty">No data yet.</div>';
+    return;
+  }
+  // Fill all 24 hours
+  const byHour = new Array(24).fill(0);
+  rows.forEach(row => { byHour[Number(row.hour)] = Number(row.flights); });
+  const max = Math.max(...byHour, 1);
+
+  let html = '<div class="hour-chart">';
+  byHour.forEach((count, h) => {
+    const pct = (count / max * 100).toFixed(1);
+    const label = h % 6 === 0 ? String(h).padStart(2, '0') : '';
+    html += `<div class="hour-bar-wrap" title="${h}:00 UTC — ${fmt(count)} flights">
+      <div class="hour-spacer"></div>
+      <div class="hour-bar" style="height:${pct}%"></div>
+      <div class="hour-label">${label}</div>
+    </div>`;
+  });
+  html += '</div>';
+  document.getElementById('hourly-body').innerHTML = html;
+}
+
+// ─────────────────────────────────────────────────────────
+// Recent flights
+// ─────────────────────────────────────────────────────────
+async function renderRecent(conn) {
+  const r = await conn.query(`
+    SELECT callsign, airline_prefix, first_seen, last_seen,
+           ROUND(max_alt) AS max_alt, ROUND(max_gs) AS max_gs,
+           ROUND(duration_sec / 60.0) AS duration_min,
+           near_first_airport, near_last_airport
+    FROM flights
+    ORDER BY first_seen DESC
+    LIMIT 60
+  `);
+  const rows = r.toArray();
+  if (!rows.length) {
+    document.getElementById('recent-body').innerHTML = '<div class="empty">No flights yet.</div>';
+    return;
+  }
+  let html = `<table class="flights-table">
+    <thead><tr>
+      <th>Callsign</th><th>Prefix</th><th>First seen (UTC)</th><th>Duration</th>
+      <th>Max alt (ft)</th><th>Max GS (kt)</th><th>Near (dep)</th><th>Near (arr)</th>
+    </tr></thead><tbody>`;
+  rows.forEach(row => {
+    html += `<tr>
+      <td class="cs">${esc(row.callsign ?? '—')}</td>
+      <td class="op-prefix">${esc(row.airline_prefix ?? '—')}</td>
+      <td class="ts-val">${tsHuman(row.first_seen)}</td>
+      <td class="alt-val">${row.duration_min ? fmt(row.duration_min) + ' min' : '—'}</td>
+      <td class="alt-val">${row.max_alt ? fmt(row.max_alt) : '—'}</td>
+      <td class="alt-val">${row.max_gs ? fmt(row.max_gs) : '—'}</td>
+      <td style="color:var(--dim);font-size:.72rem">${esc(row.near_first_airport ?? '—')}</td>
+      <td style="color:var(--dim);font-size:.72rem">${esc(row.near_last_airport ?? '—')}</td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  document.getElementById('recent-body').innerHTML = html;
+}
+
+// ─────────────────────────────────────────────────────────
+// SQL Explorer
+// ─────────────────────────────────────────────────────────
+function renderExploreResults(r, elapsed) {
+  const rows = r.toArray();
+  const schema = r.schema?.fields ?? [];
+  const statusEl = document.getElementById('explore-status');
+  const resultsEl = document.getElementById('explore-results');
+  statusEl.textContent = `${rows.length.toLocaleString()} rows · ${elapsed} ms`;
+  if (!rows.length) {
+    resultsEl.innerHTML = '<div class="empty">Query returned no rows.</div>';
+    return;
+  }
+  const cols = schema.map(f => f.name);
+  let html = '<div class="explore-table-wrap"><table class="explore-table"><thead><tr>';
+  cols.forEach(c => { html += `<th>${esc(c)}</th>`; });
+  html += '</tr></thead><tbody>';
+  rows.slice(0, 500).forEach(row => {
+    html += '<tr>';
+    cols.forEach(c => { html += `<td>${esc(row[c] ?? '')}</td>`; });
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+  if (rows.length > 500) html += `<div class="empty" style="padding-top:8px">Showing first 500 of ${fmt(rows.length)} rows.</div>`;
+  resultsEl.innerHTML = html;
+}
+
+// ─────────────────────────────────────────────────────────
+// Main
+// ─────────────────────────────────────────────────────────
+async function main() {
+  let conn;
+  try {
+    // 1. Fetch manifest
+    setMsg('Fetching data manifest…');
+    const manifest = await fetch(MANIFEST).then(r => {
+      if (!r.ok) throw new Error(`manifest fetch failed: ${r.status}`);
+      return r.json();
+    });
+
+    // 2. Init DuckDB
+    const db = await initDuckDB();
+    conn = await db.connect();
+
+    // 3. Register views
+    setMsg('Registering parquet views…');
+    await registerViews(conn, manifest);
+
+    // 4. Render freshness
+    const freshnessEl = document.getElementById('freshness');
+    if (manifest.generated_at) {
+      const age = (Date.now() - new Date(manifest.generated_at)) / 3600000;
+      freshnessEl.textContent = `Updated ${manifest.generated_at.slice(0,16).replace('T',' ')} UTC`;
+      freshnessEl.className = age < 26 ? 'ok' : 'stale';
+    }
+
+    // 5. Show app, hide overlay
+    document.getElementById('init-overlay').classList.add('hidden');
+    document.getElementById('app').hidden = false;
+
+    // 6. Render panels in parallel
+    setMsg('Querying…');
+    await Promise.all([
+      renderStats(conn),
+      renderOperators(conn),
+      renderHourly(conn),
+      renderRecent(conn),
+    ]);
+
+  } catch (err) {
+    const box = document.getElementById('error-box');
+    box.style.display = 'block';
+    box.textContent = String(err);
+    document.getElementById('init-overlay').classList.add('hidden');
+    console.error(err);
+    return;
+  }
+
+  // SQL Explorer
+  const runBtn  = document.getElementById('run-btn');
+  const sqlInput = document.getElementById('sql-input');
+  const statusEl = document.getElementById('explore-status');
+
+  async function runSQL() {
+    const sql = sqlInput.value.trim();
+    if (!sql) return;
+    runBtn.disabled = true;
+    statusEl.textContent = 'Running…';
+    document.getElementById('explore-results').innerHTML = '';
+    const t0 = Date.now();
+    try {
+      const r = await conn.query(sql);
+      renderExploreResults(r, Date.now() - t0);
+    } catch (err) {
+      statusEl.textContent = '';
+      document.getElementById('explore-results').innerHTML =
+        `<div class="empty" style="color:var(--down)">${esc(String(err))}</div>`;
+    } finally {
+      runBtn.disabled = false;
+    }
+  }
+
+  runBtn.addEventListener('click', runSQL);
+  sqlInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); runSQL(); }
+  });
+}
+
+main();
+</script>
+</body>
+</html>
