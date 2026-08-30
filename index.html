@@ -64,6 +64,7 @@
   --rail:  212px;
   --pad:   clamp(20px, 3.5vw, 44px);
   --measure: 68ch;
+  color-scheme: light;   /* native controls follow the theme */
 }
 
 /* Night: navy becomes the ground. */
@@ -91,6 +92,7 @@
     --cta-fg:       #1a0f05;
     --cta-hover-fg: #1a0f05;
     --bar:          #5f7cb0;
+    color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
@@ -102,6 +104,7 @@
   --rise:#5cc191; --fall:#d97b73;
   --rise-bg:rgba(92,193,145,.14); --fall-bg:rgba(217,123,115,.14);
   --cta-bg:#d2955c; --cta-fg:#1a0f05; --cta-hover-fg:#1a0f05; --bar:#5f7cb0;
+  color-scheme: dark;
 }
 
 *,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
@@ -117,65 +120,58 @@ button, input, textarea, select { font:inherit; color:inherit; }
 @media (prefers-reduced-motion:reduce) { *{animation:none!important;transition:none!important} }
 
 /* ── Shell ─────────────────────────────────────────────────────────────── */
-#shell { display:grid; grid-template-columns:var(--rail) minmax(0,1fr); min-height:100vh; }
-@media (max-width:900px){ #shell{ grid-template-columns:1fr; } }
+#shell { min-height:100vh; }
 
-/* The rail carries LayOvr's navy. Everything inside it uses that project's
-   on-navy pair, so the two products read as siblings at a glance. */
-#rail {
-  background:var(--navy); color:var(--on-navy);
-  padding:26px 0 24px 20px; position:sticky; top:0; height:100vh;
-  display:flex; flex-direction:column; gap:24px; overflow-y:auto;
-}
-@media (max-width:900px){
-  #rail{ position:static; height:auto;
-         flex-direction:row; align-items:center; flex-wrap:wrap; gap:12px; padding:12px var(--pad); }
-}
-.mark { display:flex; flex-direction:column; gap:2px; text-decoration:none; }
-.mark b {
-  font-family:var(--mono); font-size:.8rem; font-weight:600;
-  letter-spacing:.26em; color:var(--on-navy);
-}
-.mark span { font-size:.65rem; color:var(--on-navy-2); letter-spacing:.03em; }
-@media (max-width:900px){ .mark span{ display:none } }
+/* Top bar in LayOvr's navy, using that project's on-navy pair. */
+#topbar { position:sticky; top:0; z-index:80; background:var(--navy); color:var(--on-navy); }
+.bar { max-width:1240px; margin:0 auto; padding:0 var(--pad);
+       display:flex; align-items:center; gap:20px; min-height:56px; flex-wrap:wrap; }
+@media (max-width:760px){ .bar{ padding:10px var(--pad); gap:10px } }
 
-#nav { display:flex; flex-direction:column; gap:2px; padding-right:20px; }
-@media (max-width:900px){ #nav{ flex-direction:row; gap:3px; margin-left:auto; flex-wrap:wrap; padding-right:0 } }
-#nav a {
-  font-size:.84rem; color:var(--on-navy-2); text-decoration:none;
-  padding:7px 11px; display:flex; align-items:center; gap:9px;
-  border-radius:var(--r-control);
-}
-#nav a:hover { color:var(--on-navy); background:rgba(238,241,248,.07); }
+.mark { display:flex; align-items:baseline; gap:9px; text-decoration:none; flex-shrink:0; }
+.mark b { font-family:var(--mono); font-size:.82rem; font-weight:600;
+          letter-spacing:.24em; color:var(--on-navy); }
+.mark span { font-size:.68rem; color:var(--on-navy-2); }
+@media (max-width:520px){ .mark span{ display:none } }
+
+#nav { display:flex; gap:2px; flex-wrap:wrap; }
+#nav a { font-size:.85rem; color:var(--on-navy-2); text-decoration:none;
+         padding:7px 12px; border-radius:var(--r-control); white-space:nowrap; }
+#nav a:hover { color:var(--on-navy); background:rgba(238,241,248,.09); }
 #nav a.on { color:var(--navy); background:var(--on-navy); font-weight:600; }
-#nav a i { font-family:var(--mono); font-size:.6rem; font-style:normal; opacity:.5; }
-@media (max-width:900px){ #nav a i{ display:none } }
 
-#rail-foot { margin-top:auto; padding-right:20px; display:flex; flex-direction:column; gap:8px; }
-@media (max-width:900px){ #rail-foot{ display:none } }
-.stamp { font-family:var(--mono); font-size:.62rem; color:var(--on-navy-2);
-         line-height:1.55; opacity:.72; }
-.stamp b { color:var(--on-navy); font-weight:500; }
+/* Freshness is a permanent fixture of the chrome, not a footnote — every page
+   should say how current the record is without the reader going looking. */
+.freshness { margin-left:auto; font-family:var(--mono); font-size:.68rem;
+             color:var(--on-navy-2); text-decoration:none; white-space:nowrap;
+             display:flex; align-items:center; gap:7px;
+             padding:6px 11px; border-radius:var(--r-control);
+             border:1px solid rgba(130,165,214,.28); }
+.freshness:hover { border-color:var(--on-navy-2); color:var(--on-navy); }
+.freshness .dot { width:6px; height:6px; border-radius:50%; background:var(--rise);
+                  flex-shrink:0; box-shadow:0 0 0 3px rgba(46,135,94,.22); }
+.freshness.stale .dot { background:var(--fall); box-shadow:0 0 0 3px rgba(217,123,115,.22); }
+.freshness b { font-weight:500; color:var(--on-navy); }
+@media (max-width:760px){ .freshness{ margin-left:0; order:4 } }
 
 #main { padding:0 var(--pad) 100px; min-width:0; }
-.wrap { max-width:1040px; }
+.wrap { max-width:1240px; margin:0 auto; }
 
 /* ── Search ────────────────────────────────────────────────────────────── */
-#search-wrap { position:relative; padding-right:20px; }
-@media (max-width:900px){ #search-wrap{ padding-right:0; flex:1 1 180px; order:3; width:100% } }
+#search-wrap { position:relative; flex:0 1 210px; }
+@media (max-width:760px){ #search-wrap{ flex:1 1 160px; order:3 } }
 #search {
-  width:100%; background:rgba(238,241,248,.09); border:1px solid rgba(130,165,214,.32);
-  border-radius:var(--r-control); padding:8px 11px; font-size:.78rem; color:var(--on-navy);
+  width:100%; background:rgba(238,241,248,.09); border:1px solid rgba(130,165,214,.28);
+  border-radius:var(--r-control); padding:7px 11px; font-size:.78rem; color:var(--on-navy);
 }
 #search::placeholder { color:var(--on-navy-2); opacity:.68; }
 #search:focus { border-color:var(--on-navy-2); background:rgba(238,241,248,.14); }
 #results {
-  position:absolute; z-index:60; left:0; right:20px; top:calc(100% + 5px);
+  position:absolute; z-index:60; left:0; right:0; top:calc(100% + 7px); min-width:240px;
   background:var(--surface); border:1px solid var(--rule);
   border-radius:var(--r-card); max-height:340px; overflow-y:auto; display:none;
   box-shadow:0 10px 34px rgba(5,22,77,.20); padding:5px;
 }
-@media (max-width:900px){ #results{ right:0 } }
 #results.open { display:block; }
 #results a {
   display:flex; justify-content:space-between; gap:10px; align-items:baseline;
@@ -314,6 +310,47 @@ td a:hover { color:var(--accent); border-bottom-color:var(--accent); }
 .caxis span { flex:1; min-width:3px; font-family:var(--mono); font-size:.6rem;
               color:var(--mute); text-align:center; overflow:hidden; white-space:nowrap; }
 
+/* ── Globe ─────────────────────────────────────────────────────────────── */
+#globe-layout { display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:26px;
+                align-items:start; }
+@media (max-width:960px){ #globe-layout{ grid-template-columns:1fr } }
+
+#globe-stage { position:relative; aspect-ratio:1/1;
+               width:100%; max-width:min(100%, 540px); margin:0 auto; }
+#globe-canvas { width:100%; height:100%; cursor:grab; touch-action:none; display:block; }
+#globe-canvas.dragging { cursor:grabbing; }
+
+/* Labels are positioned each frame from the projected point, so they track
+   the sphere as it turns and disappear round the back. */
+#globe-overlay { position:absolute; inset:0; pointer-events:none; }
+.gl-label { position:absolute; transform:translate(-50%,-50%);
+            font-size:.7rem; font-weight:600; letter-spacing:-.01em;
+            background:var(--bg); color:var(--ink);
+            border:1px solid var(--rule-2); border-radius:var(--r-control);
+            padding:3px 8px; white-space:nowrap; pointer-events:auto;
+            cursor:pointer; text-decoration:none; display:flex; align-items:center; gap:6px; }
+.gl-label:hover { border-color:var(--accent); color:var(--accent); }
+.gl-label b { font-family:var(--mono); font-weight:500; color:var(--mute); font-size:.66rem; }
+.gl-label:hover b { color:var(--accent); }
+.gl-label.hot { border-color:var(--accent); background:var(--accent); color:#fff; }
+.gl-label.hot b { color:rgba(255,255,255,.8); }
+
+.globe-legend { display:flex; gap:16px; flex-wrap:wrap; justify-content:center;
+                margin-top:10px; font-size:.72rem; color:var(--mute); }
+.globe-legend i { display:inline-block; width:8px; height:8px; border-radius:50%;
+                  background:var(--accent); margin-right:6px; vertical-align:middle; }
+.globe-legend i.home { background:var(--fall); }
+
+.gl-list { display:flex; flex-direction:column; border-top:1px solid var(--ink); }
+.gl-item { display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:11px;
+           align-items:baseline; padding:10px 6px; border-bottom:1px solid var(--rule);
+           text-decoration:none; color:var(--ink); cursor:pointer; }
+.gl-item:hover, .gl-item.hot { background:var(--surface); }
+.gl-item .rank { font-family:var(--mono); font-size:.66rem; color:var(--faint); }
+.gl-item .nm { font-size:.86rem; font-weight:500; }
+.gl-item .sub { font-size:.71rem; color:var(--mute); margin-top:2px; }
+.gl-item .n { font-family:var(--mono); font-size:.8rem; color:var(--ink-2); }
+
 /* ── Hierarchy browser ─────────────────────────────────────────────────── */
 .hier { display:grid; grid-template-columns:repeat(auto-fit,minmax(228px,1fr)); gap:0 24px; }
 .hcol { border-top:1px solid var(--ink); }
@@ -342,13 +379,34 @@ td a:hover { color:var(--accent); border-bottom-color:var(--accent); }
 .btn.primary:hover { background:var(--accent); border-color:var(--accent); color:var(--cta-hover-fg); }
 .btn:disabled { opacity:.45; cursor:default; }
 
-.controls { display:grid; grid-template-columns:repeat(auto-fit,minmax(158px,1fr)); gap:14px;
-            border-top:1px solid var(--ink); border-bottom:1px solid var(--rule);
-            padding:16px 0; }
-.ctl label { display:block; font-size:.64rem; font-weight:600; letter-spacing:.11em;
-             text-transform:uppercase; color:var(--mute); margin-bottom:7px; }
-.ctl select { width:100%; background:var(--bg); border:1px solid var(--rule-2);
-              border-radius:var(--r-control); padding:9px 10px; font-size:.82rem; }
+/* The query builder reads as a sentence, so the controls sit inline in the
+   prose rather than in a labelled form grid. */
+.qb { border-top:1px solid var(--ink); border-bottom:1px solid var(--rule);
+      padding:20px 0; margin-bottom:6px; }
+.qb-line { display:flex; flex-wrap:wrap; align-items:center; gap:9px;
+           font-size:1.06rem; line-height:2.1; }
+.qb-t { color:var(--ink-2); }
+/* Native select chrome: the browser draws the arrow in the right colour for
+   whichever theme is active, which a hand-drawn SVG arrow cannot do without
+   a per-theme override that leaks into the un-stamped state. */
+.qb select {
+  font-family:inherit; font-size:1rem; font-weight:600; color:var(--accent);
+  background:var(--accent-bg); border:1px solid transparent;
+  border-radius:var(--r-control); padding:5px 8px; cursor:pointer; max-width:100%;
+}
+.qb select:hover { border-color:var(--accent); }
+
+/* SQL is available, not prominent. */
+.adv { margin-top:34px; border-top:1px solid var(--rule); padding-top:14px; }
+.adv summary { font-size:.8rem; color:var(--mute); cursor:pointer; list-style:none;
+               display:flex; align-items:center; gap:7px; padding:4px 0; }
+.adv summary::-webkit-details-marker { display:none; }
+.adv summary::before { content:'›'; font-family:var(--mono); transition:transform .16s ease;
+                       display:inline-block; }
+.adv[open] summary::before { transform:rotate(90deg); }
+.adv summary:hover { color:var(--accent); }
+.adv-note { font-size:.79rem; color:var(--mute); margin:10px 0 10px; max-width:var(--measure); }
+.adv-bar { display:flex; gap:8px; margin-top:11px; flex-wrap:wrap; }
 
 /* ── SQL ───────────────────────────────────────────────────────────────── */
 .sql-box { background:var(--sunken); border:1px solid var(--rule); border-radius:var(--r-control);
@@ -409,23 +467,24 @@ textarea.sql-box:focus { border-color:var(--accent); }
 </div></div>
 
 <div id="shell">
-  <aside id="rail">
-    <a class="mark" href="#/"><b>OVRHEAD</b><span>Aarhus · 56.16°N 10.20°E</span></a>
-    <div id="search-wrap">
-      <input id="search" type="search" placeholder="Country, airline, aircraft…" autocomplete="off" spellcheck="false">
-      <div id="results"></div>
+  <header id="topbar">
+    <div class="bar">
+      <a class="mark" href="#/"><b>OVRHEAD</b><span>Aarhus</span></a>
+      <nav id="nav">
+        <a href="#/"        data-r="/"       >Signals</a>
+        <a href="#/globe"   data-r="/globe"  >Globe</a>
+        <a href="#/explore" data-r="/explore">Explore</a>
+        <a href="#/ask"     data-r="/ask"    >Ask</a>
+        <a href="#/data"    data-r="/data"   >Data</a>
+        <a href="#/method"  data-r="/method" >Method</a>
+      </nav>
+      <div id="search-wrap">
+        <input id="search" type="search" placeholder="Country, airline, aircraft…" autocomplete="off" spellcheck="false">
+        <div id="results"></div>
+      </div>
+      <a class="freshness" href="#/data" id="stamp" title="When the record was last updated"></a>
     </div>
-    <nav id="nav">
-      <a href="#/"        data-r="/"       ><i>01</i>Signals</a>
-      <a href="#/explore" data-r="/explore"><i>02</i>Explore</a>
-      <a href="#/ask"     data-r="/ask"    ><i>03</i>Ask</a>
-      <a href="#/data"    data-r="/data"   ><i>04</i>Data</a>
-      <a href="#/method"  data-r="/method" ><i>05</i>Method</a>
-    </nav>
-    <div id="rail-foot">
-      <div class="stamp" id="stamp"></div>
-    </div>
-  </aside>
+  </header>
   <main id="main"><div class="wrap" id="view"></div></main>
 </div>
 
@@ -567,8 +626,14 @@ function chart(data, { key, val, partial, labelEvery = 1 } = {}) {
       title="${esc(d[key])} — ${n(d[val])}${isP ? ' (partial coverage)' : ''}">
       <i style="height:${(+d[val] / max * 100).toFixed(1)}%"></i></div>`;
   }).join('');
+  // Dates read best trimmed to MM-DD, but anything else has to keep its start
+  // or it turns to nonsense ("Sweden" -> "weden").
+  const tick = v => {
+    const t = String(v ?? '');
+    return /^\d{4}-\d{2}-\d{2}/.test(t) ? t.slice(5, 10) : t.slice(0, 8);
+  };
   const axis = data.map((d, i) =>
-    `<span>${i % labelEvery === 0 ? esc(String(d[key]).slice(-5)) : ''}</span>`).join('');
+    `<span title="${esc(d[key])}">${i % labelEvery === 0 ? esc(tick(d[key])) : ''}</span>`).join('');
   return `<div class="chart">${bars}</div><div class="caxis">${axis}</div>`;
 }
 
@@ -644,12 +709,8 @@ function viewSignals() {
              <div class="field-v">${esc(s.interpretation)}</div></div>
         <div><div class="field-k">What it does not show</div>
              <div class="field-v caveat">${esc(s.caveat)}</div></div>
-        <div><div class="field-k">Confidence — ${esc(s.confidence)}</div>
-             <div class="field-v caveat">${esc(CONF_TEXT[s.confidence] || '')}</div></div>
-        <div><div class="field-k">Reproduce this</div>
-             <div class="sql-box">${esc(s.sql)}</div>
-             <div style="margin-top:10px"><a class="btn" href="#/ask?sql=${
-               encodeURIComponent(s.sql)}">Run this query →</a></div></div>
+        <div><a class="btn" href="#/ask?sql=${
+               encodeURIComponent(s.sql)}">See the evidence →</a></div>
       </div></div></div>
     </div>`;
   }).join('');
@@ -660,8 +721,7 @@ function viewSignals() {
     <div class="crumbs"><em>Observatory</em></div>
     <h1>Read the world from the sky above <span class="q">Aarhus</span>.</h1>
     <p class="lede">One antenna records every aircraft that passes overhead. These are the
-      signals we can honestly draw from that record — each one with its evidence, its
-      limits and the query that produced it attached.</p>
+      signals we can honestly draw from it — evidence and limits attached.</p>
   </header>
 
   ${stale > 30 ? `<div class="notice warn" style="margin-bottom:34px">
@@ -682,8 +742,7 @@ function viewSignals() {
     <div class="sec-head">
       <div><div class="eyebrow">What the data is telling us</div>
         <h2>Signals</h2></div>
-      <p class="sec-note">Every claim carries a confidence level. Open one to see the
-        interpretation, the limits, and the SQL behind it.</p>
+      <p class="sec-note">Open one for what it might mean, and what it doesn't.</p>
     </div>
     <div class="signals">${sigs}</div>
   </section>
@@ -691,8 +750,7 @@ function viewSignals() {
   <section>
     <div class="sec-head">
       <div><div class="eyebrow">Coverage</div><h2>Daily record</h2></div>
-      <p class="sec-note">Hatched bars are days the receiver was only up for part of the
-        time. They are excluded from every comparison.</p>
+      <p class="sec-note">Hatched bars are partial days, excluded from comparisons.</p>
     </div>
     ${chart(S.daily, { key: 'day', val: 'flights', partial: 'partial' })}
   </section>
@@ -710,8 +768,7 @@ function viewSignals() {
   <section>
     <div class="sec-head"><div><div class="eyebrow">Rhythm</div>
       <h2>Traffic by hour</h2></div>
-      <p class="sec-note">All days combined, UTC. The shape of the day is the most
-        stable pattern in the record.</p></div>
+      <p class="sec-note">All days combined, UTC.</p></div>
     ${chart(S.hourly, { key: 'hour', val: 'flights', labelEvery: 3 })}
   </section>`;
 }
@@ -742,16 +799,10 @@ function viewExplore() {
   <header class="page-head">
     <div class="crumbs"><a href="#/">Signals</a> <em>/</em> Explore</div>
     <h1>Where the traffic is registered</h1>
-    <p class="lede">Every aircraft carries a 24-bit address allocated to a state. That makes
-      registration country the one geographic fact we can read off almost every observation —
-      99% of them. Start anywhere and drill down.</p>
+    <p class="lede">Every aircraft broadcasts an address allocated to a state, so we can tell
+      where 99% of them are registered — though not where they took off or where they're
+      headed. Start anywhere and drill down.</p>
   </header>
-
-  <div class="notice" style="margin-bottom:34px">
-    <b>This is registration, not routing.</b> A Chinese-registered 777 overhead tells you a
-    Chinese aircraft crossed this sky. It does not tell you where the flight began or where
-    it is going — we cannot see that, so we do not claim it.
-  </div>
 
   <section>
     <div class="hier">
@@ -792,6 +843,306 @@ function viewExplore() {
           r.widebody_type ? '<span class="code">wide-body</span>' : '<span class="dim">narrow-body</span>' },
     ], { id: 'exp-t', max: 60, ...(sortState['exp-t'] || { sortKey: 'flights', sortDir: -1 }) })}
   </section>`;
+}
+
+/* ── Globe ───────────────────────────────────────────────────────────────
+   An orthographic projection drawn straight to canvas. The previous version
+   of this site pulled three.js, globe.gl, topojson and world-atlas from a CDN
+   to do this; the coastline is now baked into land.json and the projection is
+   about forty lines of trigonometry. */
+let LAND = null, globeStop = null;
+
+function viewGlobe() {
+  const top = S.countries.filter(c => c.lat != null || TAX.countries[c.key]).slice(0, 40);
+  return `
+  <header class="page-head">
+    <div class="crumbs"><a href="#/">Signals</a> <em>/</em> Globe</div>
+    <h1>Where the aircraft <span class="q">come from</span></h1>
+    <p class="lede">Every country whose aircraft have passed over Aarhus, sized by how many.
+      Drag to spin.</p>
+  </header>
+
+  <div id="globe-layout">
+    <div>
+      <div id="globe-stage">
+        <canvas id="globe-canvas"></canvas>
+        <div id="globe-overlay"></div>
+      </div>
+      <div class="globe-legend">
+        <span><i class="home"></i>Aarhus — the antenna</span>
+        <span><i></i>Registration country, sized by flights</span>
+      </div>
+    </div>
+    <div>
+      <div class="sec-head" style="margin-bottom:12px">
+        <div><div class="eyebrow">Ranked</div><h2>Top origins</h2></div>
+      </div>
+      <div class="gl-list">
+        ${top.map((c, i) => `
+          <a class="gl-item" href="#/place/${esc(c.key)}" data-cc="${esc(c.key)}">
+            <span class="rank">${String(i + 1).padStart(2, '0')}</span>
+            <span><span class="nm">${esc(c.name)}</span>
+              <span class="sub">${esc(c.region || '')}${
+                c.widebody ? ` · ${Math.round(c.widebody / c.flights * 100)}% wide-body` : ''}</span></span>
+            <span class="n">${n(c.flights)}</span>
+          </a>`).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+
+async function initGlobe() {
+  const cv = el('globe-canvas'), overlay = el('globe-overlay');
+  if (!cv) return;
+  if (!LAND) {
+    try { LAND = await fetch(BASE + 'land.json').then(r => r.json()); }
+    catch { LAND = []; }
+  }
+
+  const pts = S.countries.map(c => {
+    const m = TAX.countries[c.key];
+    return m && m.lat != null
+      ? { ...c, lat: m.lat, lng: m.lng } : null;
+  }).filter(Boolean);
+  const HOME = { lat: S.origin?.lat ?? 56.16, lng: S.origin?.lng ?? 10.20 };
+  const maxF = Math.max(...pts.map(p => p.flights), 1);
+  const LABELLED = pts.slice(0, 8);
+
+  // rotP is the latitude at the centre of the disc. Aarhus sits at 56°N, so
+  // tilting to ~38° puts the antenna and its corridors in the upper half
+  // without pushing the southern hemisphere off the back entirely.
+  let rotL = -HOME.lng, rotP = 38, spin = true, hot = null;
+  let dragging = false, lastX = 0, lastY = 0;
+
+  const css = getComputedStyle(document.documentElement);
+  const tok = k => css.getPropertyValue(k).trim();
+
+  const ctx = cv.getContext('2d');
+  let R = 0, cx = 0, cy = 0;
+
+  function resize() {
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    const w = cv.clientWidth, h = cv.clientHeight;
+    cv.width = w * dpr; cv.height = h * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    R = Math.min(w, h) / 2 - 34; cx = w / 2; cy = h / 2;
+  }
+
+  /** Orthographic projection. Returns null when the point faces away. */
+  function project(lat, lng) {
+    const l = (lng + rotL) * Math.PI / 180, p = lat * Math.PI / 180;
+    const p0 = rotP * Math.PI / 180;
+    const cosc = Math.sin(p0) * Math.sin(p) + Math.cos(p0) * Math.cos(p) * Math.cos(l);
+    if (cosc < 0) return null;
+    return {
+      x: cx + R * Math.cos(p) * Math.sin(l),
+      y: cy - R * (Math.cos(p0) * Math.sin(p) - Math.sin(p0) * Math.cos(p) * Math.cos(l)),
+      z: cosc,
+    };
+  }
+
+  /** Spherical interpolation, so an arc follows the great circle. */
+  function arcPoints(a, b, steps = 48) {
+    const toXYZ = (lat, lng) => {
+      const p = lat * Math.PI / 180, l = lng * Math.PI / 180;
+      return [Math.cos(p) * Math.cos(l), Math.cos(p) * Math.sin(l), Math.sin(p)];
+    };
+    const A = toXYZ(a.lat, a.lng), B = toXYZ(b.lat, b.lng);
+    const dot = Math.max(-1, Math.min(1, A[0] * B[0] + A[1] * B[1] + A[2] * B[2]));
+    const om = Math.acos(dot);
+    const out = [];
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      let v;
+      if (om < 1e-6) v = A;
+      else {
+        const s1 = Math.sin((1 - t) * om) / Math.sin(om), s2 = Math.sin(t * om) / Math.sin(om);
+        v = [A[0] * s1 + B[0] * s2, A[1] * s1 + B[1] * s2, A[2] * s1 + B[2] * s2];
+      }
+      out.push({ lat: Math.asin(v[2]) * 180 / Math.PI,
+                 lng: Math.atan2(v[1], v[0]) * 180 / Math.PI });
+    }
+    return out;
+  }
+
+  function draw() {
+    const w = cv.clientWidth, h = cv.clientHeight;
+    ctx.clearRect(0, 0, w, h);
+
+    // Sphere
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2);
+    ctx.fillStyle = tok('--surface'); ctx.fill();
+    ctx.strokeStyle = tok('--rule-2'); ctx.lineWidth = 1; ctx.stroke();
+
+    // Graticule every 30°
+    ctx.strokeStyle = tok('--rule'); ctx.lineWidth = 1;
+    for (let lat = -60; lat <= 60; lat += 30) {
+      ctx.beginPath(); let started = false;
+      for (let lng = -180; lng <= 180; lng += 3) {
+        const q = project(lat, lng);
+        if (!q) { started = false; continue; }
+        started ? ctx.lineTo(q.x, q.y) : (ctx.moveTo(q.x, q.y), started = true);
+      }
+      ctx.stroke();
+    }
+    for (let lng = -180; lng < 180; lng += 30) {
+      ctx.beginPath(); let started = false;
+      for (let lat = -90; lat <= 90; lat += 3) {
+        const q = project(lat, lng);
+        if (!q) { started = false; continue; }
+        started ? ctx.lineTo(q.x, q.y) : (ctx.moveTo(q.x, q.y), started = true);
+      }
+      ctx.stroke();
+    }
+
+    // Land
+    ctx.fillStyle = tok('--sunken'); ctx.strokeStyle = tok('--rule-2'); ctx.lineWidth = .7;
+    for (const ring of LAND) {
+      ctx.beginPath(); let started = false, any = false;
+      for (const [lng, lat] of ring) {
+        const q = project(lat, lng);
+        if (!q) { started = false; continue; }
+        any = true;
+        started ? ctx.lineTo(q.x, q.y) : (ctx.moveTo(q.x, q.y), started = true);
+      }
+      if (any) { ctx.closePath(); ctx.fill(); ctx.stroke(); }
+    }
+
+    // Corridor arcs, faintest first so the busiest sit on top
+    const arcs = pts.slice(0, 22);
+    for (const p of arcs) {
+      const isHot = hot === p.key;
+      ctx.beginPath(); let started = false;
+      for (const s of arcPoints(p, HOME)) {
+        const q = project(s.lat, s.lng);
+        if (!q) { started = false; continue; }
+        started ? ctx.lineTo(q.x, q.y) : (ctx.moveTo(q.x, q.y), started = true);
+      }
+      ctx.strokeStyle = tok('--accent');
+      ctx.globalAlpha = isHot ? .95 : .13 + .3 * (p.flights / maxF);
+      ctx.lineWidth = isHot ? 2 : 1;
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
+    // Country markers
+    for (const p of pts) {
+      const q = project(p.lat, p.lng);
+      if (!q) continue;
+      const r = 2.5 + 9 * Math.sqrt(p.flights / maxF);
+      ctx.beginPath(); ctx.arc(q.x, q.y, r, 0, Math.PI * 2);
+      ctx.fillStyle = tok('--accent');
+      ctx.globalAlpha = hot === p.key ? 1 : .28 + .6 * q.z;
+      ctx.fill();
+      if (hot === p.key) {
+        ctx.globalAlpha = 1; ctx.lineWidth = 2;
+        ctx.strokeStyle = tok('--ink'); ctx.stroke();
+      }
+    }
+    ctx.globalAlpha = 1;
+
+    // The antenna
+    const hq = project(HOME.lat, HOME.lng);
+    if (hq) {
+      ctx.beginPath(); ctx.arc(hq.x, hq.y, 5, 0, Math.PI * 2);
+      ctx.fillStyle = tok('--fall'); ctx.fill();
+      ctx.beginPath(); ctx.arc(hq.x, hq.y, 11, 0, Math.PI * 2);
+      ctx.strokeStyle = tok('--fall'); ctx.globalAlpha = .45; ctx.lineWidth = 1.5;
+      ctx.stroke(); ctx.globalAlpha = 1;
+    }
+
+    positionLabels();
+  }
+
+  // Overlay labels are real DOM so they stay crisp, clickable and accessible.
+  const labelEls = new Map();
+  overlay.innerHTML = '';
+  for (const p of LABELLED) {
+    const a = document.createElement('a');
+    a.className = 'gl-label';
+    a.href = `#/place/${p.key}`;
+    a.innerHTML = `${esc(p.name)} <b>${n(p.flights)}</b>`;
+    a.addEventListener('pointerenter', () => { hot = p.key; syncList(); });
+    a.addEventListener('pointerleave', () => { hot = null; syncList(); });
+    overlay.appendChild(a);
+    labelEls.set(p.key, a);
+  }
+  /* Europe is dense: at this scale half a dozen countries land within a few
+     pixels of each other. Place labels greedily by traffic and drop any that
+     would collide with one already placed, so the busiest always wins and the
+     overlay never turns into a pile. */
+  function positionLabels() {
+    const placed = [];
+    for (const p of LABELLED) {
+      const a = labelEls.get(p.key), q = project(p.lat, p.lng);
+      if (!q || q.z < 0.18) { a.style.display = 'none'; continue; }
+
+      const w = a.offsetWidth || 76, h = a.offsetHeight || 22;
+      const x = q.x, y = q.y - 15 - 9 * Math.sqrt(p.flights / maxF);
+      const box = { l: x - w / 2, r: x + w / 2, t: y - h / 2, b: y + h / 2 };
+      const clash = hot !== p.key && placed.some(o =>
+        box.l < o.r + 4 && box.r > o.l - 4 && box.t < o.b + 4 && box.b > o.t - 4);
+      if (clash) { a.style.display = 'none'; continue; }
+
+      placed.push(box);
+      a.style.display = '';
+      a.style.left = x + 'px';
+      a.style.top  = y + 'px';
+      a.style.opacity = Math.min(1, (q.z - 0.18) * 4);
+      a.classList.toggle('hot', hot === p.key);
+    }
+  }
+  function syncList() {
+    document.querySelectorAll('.gl-item').forEach(x =>
+      x.classList.toggle('hot', x.dataset.cc === hot));
+  }
+
+  // Hovering the ranked list turns the globe to that country.
+  document.querySelectorAll('.gl-item').forEach(item => {
+    item.addEventListener('pointerenter', () => {
+      hot = item.dataset.cc;
+      const p = pts.find(x => x.key === hot);
+      if (p) { targetL = -p.lng; targetP = Math.max(-55, Math.min(60, p.lat * .8)); turning = true; }
+      syncList();
+    });
+    item.addEventListener('pointerleave', () => { hot = null; turning = false; syncList(); });
+  });
+
+  let targetL = rotL, targetP = rotP, turning = false;
+
+  cv.addEventListener('pointerdown', e => {
+    dragging = true; spin = false; turning = false;
+    lastX = e.clientX; lastY = e.clientY;
+    cv.classList.add('dragging'); cv.setPointerCapture(e.pointerId);
+  });
+  cv.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    rotL += (e.clientX - lastX) * 0.32;
+    rotP = Math.max(-80, Math.min(80, rotP - (e.clientY - lastY) * 0.32));
+    lastX = e.clientX; lastY = e.clientY;
+  });
+  const endDrag = () => { dragging = false; cv.classList.remove('dragging');
+                          setTimeout(() => { if (!dragging) spin = true; }, 2200); };
+  cv.addEventListener('pointerup', endDrag);
+  cv.addEventListener('pointercancel', endDrag);
+
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let raf;
+  function frame() {
+    if (turning) {
+      let d = ((targetL - rotL + 540) % 360) - 180;
+      rotL += d * 0.12; rotP += (targetP - rotP) * 0.12;
+    } else if (spin && !reduce) {
+      rotL -= 0.085;
+    }
+    draw();
+    raf = requestAnimationFrame(frame);
+  }
+  const ro = new ResizeObserver(() => { resize(); draw(); });
+  ro.observe(cv);
+  resize(); frame();
+
+  globeStop = () => { cancelAnimationFrame(raf); ro.disconnect(); globeStop = null; };
 }
 
 /* ── Entity pages ────────────────────────────────────────────────────── */
@@ -856,8 +1207,7 @@ function viewGroup(kind, name) {
   return entityShell({
     crumbs: `<a href="#/explore">Explore</a> <em>/</em> ${esc(name)}`,
     title: esc(name),
-    lede: `${kids.length} registration countries, aggregated. Counts roll up from the
-           country level, so the hierarchy always adds up.`,
+    lede: `${kids.length} registration countries, aggregated.`,
     stats: readout([
       { v: n(g.flights), l: 'Flights', s: `${g.share}% of all traffic` },
       { v: n(kids.length), l: 'Countries' },
@@ -967,159 +1317,157 @@ const FLIGHT_COLS = [
 ];
 
 /* ── Ask ─────────────────────────────────────────────────────────────── */
+/* ── Ask ─────────────────────────────────────────────────────────────────
+   The audience is business analysts, not engineers. The question is assembled
+   from plain-language dropdowns that read as a sentence; SQL exists, runs the
+   whole thing, and stays folded away until somebody asks to see it. */
 const MEASURES = {
-  flights:  { sql: 'COUNT(*)',                     label: 'Flights' },
-  aircraft: { sql: 'COUNT(DISTINCT hex)',          label: 'Distinct aircraft' },
-  widebody: { sql: "SUM(CASE WHEN body='widebody' THEN 1 ELSE 0 END)", label: 'Wide-body movements' },
-  cargo:    { sql: 'SUM(CASE WHEN is_cargo THEN 1 ELSE 0 END)',        label: 'All-cargo flights' },
-  operators:{ sql: 'COUNT(DISTINCT airline_prefix)', label: 'Operators' },
+  flights:  { sql: 'COUNT(*)',                                          label: 'How many flights' },
+  aircraft: { sql: 'COUNT(DISTINCT hex)',                               label: 'How many different aircraft' },
+  widebody: { sql: "SUM(CASE WHEN body='widebody' THEN 1 ELSE 0 END)",  label: 'How many wide-body flights' },
+  cargo:    { sql: 'SUM(CASE WHEN is_cargo THEN 1 ELSE 0 END)',         label: 'How many all-cargo flights' },
+  operators:{ sql: 'COUNT(DISTINCT airline_prefix)',                    label: 'How many airlines' },
 };
 const DIMS = {
-  country:   { sql: 'reg_country_name', label: 'Country' },
-  region:    { sql: 'reg_region',       label: 'Economic region' },
-  continent: { sql: 'reg_continent',    label: 'Continent' },
-  operator:  { sql: 'airline',          label: 'Airline' },
-  type:      { sql: 'ac_type',          label: 'Aircraft type' },
-  day:       { sql: "strftime(seen_at, '%Y-%m-%d')", label: 'Day' },
-  hour:      { sql: "strftime(seen_at, '%H')",       label: 'Hour of day' },
+  country:   { sql: 'reg_country_name',                label: 'country',            head: 'Country' },
+  region:    { sql: 'reg_region',                      label: 'economic region',    head: 'Region' },
+  continent: { sql: 'reg_continent',                   label: 'continent',          head: 'Continent' },
+  operator:  { sql: 'airline',                         label: 'airline',            head: 'Airline' },
+  type:      { sql: 'ac_desc',                         label: 'aircraft type',      head: 'Aircraft' },
+  day:       { sql: "strftime(seen_at, '%Y-%m-%d')",   label: 'day',                head: 'Day' },
+  hour:      { sql: "strftime(seen_at, '%H') || ':00'",label: 'hour of the day',    head: 'Hour' },
 };
-const QUESTIONS = [
-  ['Which countries send the most aircraft over Aarhus?',
-   "SELECT reg_country_name AS country, reg_region AS region,\n       COUNT(*) AS flights, COUNT(DISTINCT hex) AS aircraft\nFROM flights\nWHERE reg_country_name IS NOT NULL\nGROUP BY 1,2 ORDER BY 3 DESC;"],
-  ['Which aircraft are here from outside Europe?',
-   "SELECT reg_country_name AS country, ac_type, ac_desc,\n       COUNT(*) AS flights\nFROM flights\nWHERE reg_continent NOT IN ('Europe') AND reg_continent IS NOT NULL\nGROUP BY 1,2,3 ORDER BY 4 DESC;"],
-  ['What does a day look like, hour by hour?',
-   "SELECT strftime(seen_at, '%H') AS hour,\n       COUNT(*) AS flights,\n       SUM(CASE WHEN body='widebody' THEN 1 ELSE 0 END) AS widebody\nFROM flights GROUP BY 1 ORDER BY 1;"],
-  ['Which wide-bodies pass overhead most often?',
-   "SELECT ac_type, ac_desc, COUNT(*) AS flights,\n       COUNT(DISTINCT hex) AS airframes\nFROM flights WHERE body = 'widebody'\nGROUP BY 1,2 ORDER BY 3 DESC;"],
-  ['What is the rarest thing recorded?',
-   "SELECT ac_type, ac_desc, reg, reg_country_name, callsign, seen_at\nFROM flights\nWHERE ac_type IN (SELECT ac_type FROM flights GROUP BY 1 HAVING COUNT(*) = 1)\nORDER BY seen_at DESC;"],
-  ['Which flights hide their identity?',
-   "SELECT hex, reg, reg_country_name, ac_type, ac_desc, seen_at\nFROM flights\nWHERE callsign IS NULL\nORDER BY first_seen DESC;"],
-  ['Is anything flying all-cargo over Aarhus?',
-   "SELECT airline_prefix, airline, ac_type, COUNT(*) AS flights\nFROM flights WHERE is_cargo\nGROUP BY 1,2,3 ORDER BY 4 DESC;"],
+const FILTERS = {
+  '':           { sql: '',                            label: 'all aircraft' },
+  widebody:     { sql: "body='widebody'",             label: 'only wide-bodies' },
+  cargo:        { sql: 'is_cargo',                    label: 'only all-cargo operators' },
+  nonEU:        { sql: "reg_continent<>'Europe'",     label: 'only non-European aircraft' },
+  anon:         { sql: 'callsign IS NULL',            label: 'only aircraft with no callsign' },
+};
+const WINDOWS = {
+  '':    { hours: null, label: 'the whole record' },
+  '24':  { hours: 24,   label: 'the last 24 hours' },
+  '72':  { hours: 72,   label: 'the last 3 days' },
+  '168': { hours: 168,  label: 'the last 7 days' },
+};
+/* Examples are builder states, not raw SQL, so clicking one shows the reader
+   exactly which controls produce that answer. */
+const PRESETS = [
+  ['Which countries send the most aircraft?',      { m:'flights',  d:'country',   f:'',        w:'' }],
+  ['Who is flying in from outside Europe?',        { m:'flights',  d:'country',   f:'nonEU',   w:'' }],
+  ['What does a normal day look like?',            { m:'flights',  d:'hour',      f:'',        w:'' }],
+  ['Which wide-bodies pass overhead most?',        { m:'flights',  d:'type',      f:'widebody',w:'' }],
+  ['Which airlines are busiest right now?',        { m:'flights',  d:'operator',  f:'',        w:'168' }],
+  ['Is any freight moving through?',               { m:'flights',  d:'operator',  f:'cargo',   w:'' }],
+  ['How much long-haul, by region?',               { m:'widebody', d:'region',    f:'',        w:'' }],
 ];
 
 function viewAsk() {
-  const preset = new URLSearchParams(location.hash.split('?')[1] || '').get('sql');
+  const sel = (id, obj, cur) => `<select id="${id}">${Object.entries(obj).map(([k, v]) =>
+    `<option value="${k}"${k === cur ? ' selected' : ''}>${esc(v.label)}</option>`).join('')}</select>`;
   return `
   <header class="page-head">
     <div class="crumbs"><a href="#/">Signals</a> <em>/</em> Ask</div>
     <h1>Ask the data</h1>
-    <p class="lede">The whole record is in your browser. Build a question with the controls,
-      start from an example, or write the SQL yourself — it is the same engine either way,
-      and nothing is hidden behind an API.</p>
+    <p class="lede">The whole record is loaded in your browser. Nothing here is sampled or
+      rounded, and every answer is computed in front of you.</p>
   </header>
 
   <section>
-    <div class="sec-head"><div><div class="eyebrow">Start from a question</div>
-      <h2>Examples</h2></div></div>
-    <div class="chips">${QUESTIONS.map((qq, i) =>
-      `<button class="chip" data-ex="${i}">${esc(qq[0])}</button>`).join('')}</div>
-  </section>
+    <div class="chips">${PRESETS.map((p, i) =>
+      `<button class="chip" data-ex="${i}">${esc(p[0])}</button>`).join('')}</div>
 
-  <section>
-    <div class="sec-head"><div><div class="eyebrow">Or build one</div>
-      <h2>Compose a query</h2></div></div>
-    <div class="controls">
-      <div class="ctl"><label for="c-measure">Measure</label>
-        <select id="c-measure">${Object.entries(MEASURES).map(([k, v]) =>
-          `<option value="${k}">${esc(v.label)}</option>`).join('')}</select></div>
-      <div class="ctl"><label for="c-dim">Grouped by</label>
-        <select id="c-dim">${Object.entries(DIMS).map(([k, v]) =>
-          `<option value="${k}"${k === 'country' ? ' selected' : ''}>${esc(v.label)}</option>`).join('')}</select></div>
-      <div class="ctl"><label for="c-filter">Limited to</label>
-        <select id="c-filter">
-          <option value="">Everything</option>
-          <option value="body='widebody'">Wide-body only</option>
-          <option value="is_cargo">All-cargo only</option>
-          <option value="reg_continent<>'Europe'">Non-European registration</option>
-          <option value="callsign IS NULL">No callsign transmitted</option>
-        </select></div>
-      <div class="ctl"><label for="c-win">Window</label>
-        <select id="c-win">
-          <option value="">All observations</option>
-          <option value="24">Last 24 hours</option>
-          <option value="72">Last 3 days</option>
-          <option value="168">Last 7 days</option>
-        </select></div>
-      <div class="ctl" style="display:flex;align-items:flex-end">
-        <button class="btn primary" id="c-build" style="width:100%">Build &amp; run</button></div>
+    <div class="qb">
+      <div class="qb-line">
+        <span class="qb-t">Show me</span>${sel('c-measure', MEASURES, 'flights')}
+        <span class="qb-t">by</span>${sel('c-dim', DIMS, 'country')}
+        <span class="qb-t">counting</span>${sel('c-filter', FILTERS, '')}
+        <span class="qb-t">across</span>${sel('c-win', WINDOWS, '')}
+      </div>
     </div>
-  </section>
-
-  <section>
-    <div class="sec-head"><div><div class="eyebrow">The query</div><h2>SQL</h2></div>
-      <button class="btn primary" id="run">Run ▶ <span class="faint">⌘↵</span></button></div>
-    <textarea class="sql-box" id="sql" spellcheck="false">${esc(preset || QUESTIONS[0][1])}</textarea>
-    <div class="status" id="qstatus">DuckDB loads on your first run — a second or two, once.</div>
+    <div class="status" id="qstatus">Loading the record…</div>
     <div id="qout"></div>
-  </section>
 
-  <section>
-    <div class="sec-head"><div><div class="eyebrow">Reference</div><h2>What you can query</h2></div></div>
-    <div class="tbl-wrap"><table><thead><tr><th>Column</th><th>Meaning</th></tr></thead><tbody>
-      ${[['hex','24-bit ICAO address. Present on every observation.'],
-         ['callsign','Flight identifier, when transmitted. Null on ~11% of flights.'],
-         ['reg / ac_type / ac_desc','Registration, ICAO type code, and full aircraft name.'],
-         ['reg_country / reg_country_name','Country of registration, derived from the hex block.'],
-         ['reg_region / reg_continent','Economic region and continent that country rolls up to.'],
-         ['airline / airline_prefix','Operator, where the ICAO prefix is in our airline table.'],
-         ['body','wide-body or narrow-body, from the type code.'],
-         ['is_cargo','True when the operator is an all-cargo carrier.'],
-         ['seen_at / first_seen / last_seen','When the aircraft was in range.'],
-         ['duration_sec / n_obs','How long it was tracked, and how many samples.'],
-         ['first_lat / first_lon / last_lat / last_lon','Position at first and last contact.']]
-        .map(([c, d]) => `<tr><td class="code">${esc(c)}</td><td class="dim">${esc(d)}</td></tr>`).join('')}
-    </tbody></table></div>
+    <details class="adv" id="adv">
+      <summary>Show the query behind this answer</summary>
+      <p class="adv-note">This is the SQL that produced the table above. Edit it and run if
+        you want something the controls can't express.</p>
+      <textarea class="sql-box" id="sql" spellcheck="false"></textarea>
+      <div class="adv-bar">
+        <button class="btn primary" id="run">Run this query</button>
+        <button class="btn" id="copy-sql">Copy</button>
+        <a class="btn" href="#/data">Column reference →</a>
+      </div>
+    </details>
   </section>`;
 }
 
 function wireAsk() {
   const ta = el('sql'), out = el('qout'), st = el('qstatus');
   if (!ta) return;
+  const ctl = { m: el('c-measure'), d: el('c-dim'), f: el('c-filter'), w: el('c-win') };
 
-  const run = async () => {
-    const sql = ta.value.trim();
+  function compose() {
+    const m = MEASURES[ctl.m.value], d = DIMS[ctl.d.value];
+    const f = FILTERS[ctl.f.value], w = WINDOWS[ctl.w.value];
+    const conds = [`${d.sql} IS NOT NULL`];
+    if (f.sql) conds.push(f.sql);
+    if (w.hours) conds.push(
+      `first_seen >= (SELECT MAX(first_seen) FROM flights) - ${w.hours * 3600}`);
+    const ordering = ctl.d.value === 'day' || ctl.d.value === 'hour'
+      ? 'ORDER BY 1' : 'ORDER BY 2 DESC';
+    return `SELECT ${d.sql} AS "${d.head}",\n       ${m.sql} AS "${m.label.replace(/^How many /, '')}"\n`
+         + `FROM flights\nWHERE ${conds.join('\n  AND ')}\nGROUP BY 1\n${ordering};`;
+  }
+
+  async function run(sql) {
+    sql = (sql || ta.value).trim();
     if (!sql) return;
-    st.textContent = 'Running…'; out.innerHTML = '';
-    const t0 = performance.now();
+    ta.value = sql;
+    st.textContent = 'Working…';
     try {
+      // Warm the engine before starting the clock. The first call pays for
+      // downloading and instantiating DuckDB, which is not what the reader is
+      // being told the query cost.
+      await getDeep();
+      const t0 = performance.now();
       const { rows, cols } = await query(sql);
-      const ms = (performance.now() - t0).toFixed(0);
-      st.textContent = `${n(rows.length)} rows · ${ms} ms · computed in your browser`;
-      out.innerHTML = rows.length
-        ? renderResult(rows, cols)
-        : `<div class="empty">The query ran and returned no rows.</div>`;
+      const ms = Math.round(performance.now() - t0);
+      st.innerHTML = rows.length
+        ? `<b>${n(rows.length)}</b> ${rows.length === 1 ? 'row' : 'rows'} · answered in ${ms} ms, in your browser`
+        : '';
+      out.innerHTML = rows.length ? renderResult(rows, cols)
+        : `<div class="empty">Nothing in the record matches that.</div>`;
     } catch (e) {
       st.textContent = '';
-      out.innerHTML = `<div class="notice warn"><b>That query did not run.</b><br>${esc(e.message)}</div>`;
+      out.innerHTML = `<div class="notice warn"><b>That didn't run.</b> ${esc(e.message)}</div>`;
+      el('adv').open = true;   // the SQL is where the problem is, so show it
     }
-  };
+  }
+  const runComposed = () => run(compose());
 
-  el('run').onclick = run;
+  Object.values(ctl).forEach(s => s.addEventListener('change', runComposed));
+
+  document.querySelectorAll('[data-ex]').forEach(b => b.onclick = () => {
+    const p = PRESETS[+b.dataset.ex][1];
+    ctl.m.value = p.m; ctl.d.value = p.d; ctl.f.value = p.f; ctl.w.value = p.w;
+    runComposed();
+  });
+
+  el('run').onclick = () => run();
+  el('copy-sql').onclick = async () => {
+    try { await navigator.clipboard.writeText(ta.value); el('copy-sql').textContent = 'Copied'; }
+    catch { el('copy-sql').textContent = 'Select and copy'; }
+    setTimeout(() => { el('copy-sql').textContent = 'Copy'; }, 1600);
+  };
   ta.addEventListener('keydown', e => {
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); run(); }
   });
-  document.querySelectorAll('[data-ex]').forEach(b =>
-    b.onclick = () => { ta.value = QUESTIONS[+b.dataset.ex][1]; run(); });
 
-  el('c-build').onclick = () => {
-    const m = MEASURES[el('c-measure').value], d = DIMS[el('c-dim').value];
-    const f = el('c-filter').value, w = el('c-win').value;
-    const conds = [`${d.sql} IS NOT NULL`];
-    if (f) conds.push(f);
-    if (w) conds.push(`first_seen >= (SELECT MAX(first_seen) FROM flights) - ${+w * 3600}`);
-    const alias = s => s.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
-    ta.value =
-      `SELECT ${d.sql} AS ${alias(d.label)},\n` +
-      `       ${m.sql} AS ${alias(m.label)}\n` +
-      `FROM flights\nWHERE ${conds.join('\n  AND ')}\n` +
-      `GROUP BY 1\nORDER BY 2 DESC;`;
-    run();
-  };
-
-  if (new URLSearchParams(location.hash.split('?')[1] || '').get('sql')) run();
+  // A "reproduce this" link from a signal arrives with its own SQL.
+  const linked = new URLSearchParams(location.hash.split('?')[1] || '').get('sql');
+  if (linked) { el('adv').open = true; run(linked); }
+  else runComposed();
 }
 
 /** Result rendering picks a chart when the shape is label + one number. */
@@ -1156,8 +1504,8 @@ function viewData() {
   <header class="page-head">
     <div class="crumbs"><a href="#/">Signals</a> <em>/</em> Data</div>
     <h1>We don't ask you to trust us</h1>
-    <p class="lede">Every number on this site comes from these files. They are the same files
-      the site itself downloads — plain Parquet, served as static assets. Take them.</p>
+    <p class="lede">Every number here comes from these files — plain Parquet, served as
+      static assets. Take them.</p>
   </header>
 
   <section>
@@ -1206,69 +1554,57 @@ function viewMethod() {
   <header class="page-head">
     <div class="crumbs"><a href="#/">Signals</a> <em>/</em> Method</div>
     <h1>What we can and cannot see</h1>
-    <p class="lede">This page exists so you can argue with us. Everything below is a limit on
-      what this antenna can honestly support.</p>
+    <p class="lede">This page exists so you can argue with us.</p>
   </header>
 
   <section class="prose">
-    <h3>Collection</h3>
-    <p>A single antenna in Aarhus (56.16°N, 10.20°E) receives ADS-B broadcasts on 1090 MHz.
-    Range is line-of-sight: roughly 250–400 km for aircraft at cruise, far less for anything
-    low. We sample the receiver every 15 seconds. An aircraft seen across consecutive samples
-    becomes one flight session; a gap of more than 30 minutes starts a new one.</p>
+    <h3>How it is collected</h3>
+    <p>One antenna in Aarhus (56.16°N, 10.20°E) receives ADS-B on 1090 MHz — line-of-sight,
+    roughly 250–400 km for aircraft at cruise. We sample every 15 seconds; a gap of more than
+    30 minutes starts a new flight.</p>
 
-    <h3>Country attribution</h3>
-    <p>Every transponder broadcasts a 24-bit ICAO address, and those addresses are allocated
-    to states in fixed blocks. We resolve each address against that allocation table, falling
-    back to the registration prefix when an address sits outside a known block. On the current
-    record the two methods agree on <b>100%</b> of the flights where both are available, and
-    together they resolve <b>${(100 - t.unresolved_country / t.flights * 100).toFixed(1)}%</b>
-    of all flights.</p>
-    <p>This identifies where an aircraft is <em>registered</em>. It is not where the flight
-    departed, where it is going, or the nationality of anyone on board. A Ryanair aircraft is
-    Irish-registered wherever it happens to be flying.</p>
+    <h3>How we know the country</h3>
+    <p>Transponder addresses are allocated to states in fixed blocks. We resolve each address
+    against that table, falling back to the registration prefix. The two methods agree on
+    <b>100%</b> of flights where both are readable and together cover
+    <b>${(100 - t.unresolved_country / t.flights * 100).toFixed(1)}%</b> of the record.</p>
+    <p>This is where an aircraft is <em>registered</em> — not where it departed or is headed.
+    A Ryanair jet is Irish-registered wherever it is flying.</p>
 
-    <h3>What we deliberately do not claim</h3>
+    <h3>What we don't claim</h3>
     <ul>
-      <li><b>Routes.</b> We know the nearest airport to where an aircraft entered and left our
-      range. For something at 38,000 feet crossing Denmark, that is a fact about our antenna,
-      not about the flight. We do not present it as an origin or a destination.</li>
-      <li><b>Cargo, per aircraft.</b> A freighter and a passenger jet can share a type code.
-      We only mark cargo where the <em>operator</em> is an all-cargo carrier.</li>
-      <li><b>Economic conclusions.</b> Aircraft counts are an input to an economic question,
-      never the answer. We publish the observation and let you weigh it.</li>
+      <li><b>Routes.</b> We only know the nearest airport to where an aircraft entered and
+      left range. At 38,000 feet that describes our antenna, not the flight.</li>
+      <li><b>Cargo per aircraft.</b> Freighters and passenger jets share type codes, so we
+      mark cargo only where the <em>operator</em> is an all-cargo carrier.</li>
+      <li><b>Economic conclusions.</b> Aircraft counts are an input to those questions, not
+      the answer.</li>
     </ul>
 
-    <h3>Known gaps in the current record</h3>
+    <h3>Current gaps</h3>
     <ul>
-      <li><b>Altitude and speed are missing.</b> The receiver is returning these under field
-      names our poller does not read. Affects every row so far; the fix is in the collector,
-      not the data already gathered.</li>
+      <li><b>Altitude and speed are missing</b> — the receiver returns them under field names
+      the collector didn't read. Fixed going forward; the existing rows stay empty.</li>
       <li><b>${n(t.no_callsign)} flights carry no callsign</b>
-      (${(t.no_callsign / t.flights * 100).toFixed(0)}%). Military, state and some private
-      aircraft suppress it. They still carry a registration and a type.</li>
-      <li><b>${n(t.unresolved_country)} flights could not be attributed to a country</b> —
-      addresses outside any allocated block we hold.</li>
-      <li><b>Some operators are unnamed.</b> We see the ICAO prefix but our airline table
-      does not cover it. The flights are real; only the label is missing.</li>
-      <li><b>The record is ${w.days_observed} days long</b>, with ${w.complete_days} complete
-      day${w.complete_days === 1 ? '' : 's'}. That is why almost nothing here is presented
-      as a trend.</li>
+      (${(t.no_callsign / t.flights * 100).toFixed(0)}%) — military, state and some private
+      aircraft suppress it. Registration and type still come through.</li>
+      <li><b>${n(t.unresolved_country)} flights sit outside any allocated address block.</b></li>
+      <li><b>The record is ${w.days_observed} days long</b>, ${w.complete_days} of them
+      complete — which is why nothing here is presented as a trend yet.</li>
     </ul>
 
-    <h3>Confidence levels</h3>
+    <h3>Confidence</h3>
     <ul>
-      <li><b>Observed</b> — a direct count. No inference. Wrong only if the receiver is wrong.</li>
-      <li><b>Early</b> — real, but the record is too short to separate it from noise.</li>
+      <li><b>Observed</b> — a direct count, no inference.</li>
+      <li><b>Early</b> — real, but too short a record to separate from noise.</li>
       <li><b>Moderate</b> — enough history and volume to be worth attention.</li>
       <li><b>Strong</b> — large, consistent, well sampled. Nothing qualifies yet.</li>
     </ul>
 
-    <h3>Coverage bias</h3>
-    <p>This antenna sees what passes over one point in Jutland. High-altitude traffic on
-    Scandinavia–Europe and Europe–Asia routings is over-represented; anything routed around
-    Denmark is invisible to us. Terrain, weather and receiver downtime all remove observations
-    we would otherwise have. Absence of a signal here is not evidence of absence in the sky.</p>
+    <h3>What we're blind to</h3>
+    <p>We see one point in Jutland. Scandinavia–Europe and Europe–Asia routings are
+    over-represented; anything routed around Denmark is invisible. Absence here is not
+    absence in the sky.</p>
   </section>`;
 }
 
@@ -1323,9 +1659,11 @@ function route() {
   const raw = (location.hash.replace(/^#/, '') || '/').split('?')[0];
   const p = raw.split('/').filter(Boolean);
   const view = el('view');
+  if (globeStop) globeStop();   // stop the previous page's animation loop
   let html;
   try {
     if (!p.length)                     html = viewSignals();
+    else if (p[0] === 'globe')         html = viewGlobe();
     else if (p[0] === 'explore')       html = viewExplore();
     else if (p[0] === 'ask')           html = viewAsk();
     else if (p[0] === 'data')          html = viewData();
@@ -1352,7 +1690,8 @@ function route() {
     b.setAttribute('aria-expanded', String(open));
   });
 
-  if (p[0] === 'ask') wireAsk();
+  if (p[0] === 'ask')   wireAsk();
+  if (p[0] === 'globe') initGlobe();
   if (el('lazy')) fillLazy();
   window.scrollTo(0, 0);
 }
@@ -1369,11 +1708,14 @@ function route() {
     S = summary; TAX = tax; S._manifest = manifest;
 
     const age = (Date.now() - new Date(S.generated_at)) / 3.6e6;
-    el('stamp').innerHTML =
-      `<b>${n(S.totals.flights)}</b> flights · <b>${S.window.days_observed}</b> days<br>` +
-      `updated ${age < 1 ? 'just now' : age < 48 ? `${age.toFixed(0)} h ago`
-        : `${(age / 24).toFixed(0)} d ago`}<br>` +
-      `<span style="color:var(--faint)">one antenna · 1090 MHz</span>`;
+    const ago = age < 1 ? 'just now'
+              : age < 48 ? `${age.toFixed(0)}h ago`
+              : `${(age / 24).toFixed(0)}d ago`;
+    const stampEl = el('stamp');
+    stampEl.className = 'freshness' + (age > 30 ? ' stale' : '');
+    stampEl.innerHTML = `<span class="dot"></span>Updated <b>${ago}</b>`;
+    stampEl.title = `Last data update ${S.generated_at.replace('T', ' ')} UTC · `
+                  + `${n(S.totals.flights)} flights over ${S.window.days_observed} days`;
 
     wireSearch(buildIndex());
     addEventListener('hashchange', route);
