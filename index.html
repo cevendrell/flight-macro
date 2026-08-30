@@ -359,6 +359,15 @@
     }
     .schema-label { color: var(--mute); }
 
+    .cs-link {
+      color: var(--brass);
+      text-decoration: none;
+      font-family: var(--mono);
+      font-size: .8rem;
+      font-weight: 500;
+    }
+    .cs-link:hover { text-decoration: underline; color: var(--brass-l); }
+
     /* ── Empty / loading states ── */
     .empty {
       color: var(--mute);
@@ -406,8 +415,19 @@
     </section>
   </div>
 
+  <div id="main-cols">
+    <section class="panel" id="panel-daily">
+      <div class="panel-title">Daily traffic</div>
+      <div id="daily-body"><div class="empty">Loading…</div></div>
+    </section>
+    <section class="panel" id="panel-types">
+      <div class="panel-title">Aircraft types</div>
+      <div id="types-body"><div class="empty">Loading…</div></div>
+    </section>
+  </div>
+
   <section class="panel">
-    <div class="panel-title">Recent flights</div>
+    <div class="panel-title">Recent flights <span id="recent-count" class="panel-subtitle"></span></div>
     <div style="overflow-x:auto"><div id="recent-body"><div class="empty">Loading…</div></div></div>
   </section>
 
@@ -606,32 +626,103 @@ async function renderHourly(conn) {
 }
 
 // ─────────────────────────────────────────────────────────
+// Daily traffic trend
+// ─────────────────────────────────────────────────────────
+async function renderDaily(conn) {
+  const r = await conn.query(`
+    SELECT strftime(TO_TIMESTAMP(first_seen), '%Y-%m-%d') AS day,
+           COUNT(*) AS flights
+    FROM flights
+    GROUP BY 1 ORDER BY 1
+  `);
+  const rows = r.toArray();
+  if (!rows.length) {
+    document.getElementById('daily-body').innerHTML = '<div class="empty">No data yet.</div>';
+    return;
+  }
+  const max = Math.max(...rows.map(r => Number(r.flights)), 1);
+  let html = '<div class="hour-chart">';
+  rows.forEach(row => {
+    const pct = (Number(row.flights) / max * 100).toFixed(1);
+    const label = String(row.day ?? '').slice(5); // MM-DD
+    html += `<div class="hour-bar-wrap" title="${esc(row.day)} — ${fmt(row.flights)} flights" style="flex:1;min-width:40px">
+      <div class="hour-spacer"></div>
+      <div class="hour-bar" style="height:${pct}%"></div>
+      <div class="hour-label" style="font-size:.65rem">${esc(label)}</div>
+    </div>`;
+  });
+  html += '</div>';
+  document.getElementById('daily-body').innerHTML = html;
+}
+
+// ─────────────────────────────────────────────────────────
+// Aircraft types
+// ─────────────────────────────────────────────────────────
+async function renderTypes(conn) {
+  const r = await conn.query(`
+    SELECT ac_type, ac_desc, COUNT(*) AS flights
+    FROM flights
+    WHERE ac_type IS NOT NULL AND ac_type != ''
+    GROUP BY 1, 2
+    ORDER BY 3 DESC
+    LIMIT 12
+  `);
+  const rows = r.toArray();
+  if (!rows.length) {
+    document.getElementById('types-body').innerHTML = '<div class="empty">No type data yet.</div>';
+    return;
+  }
+  const max = Number(rows[0].flights);
+  let html = '<table class="op-table"><thead><tr><th>#</th><th>Type</th><th>Description</th><th style="text-align:right">Flights</th></tr></thead><tbody>';
+  rows.forEach((row, i) => {
+    const pct = (Number(row.flights) / max * 100).toFixed(1);
+    html += `<tr>
+      <td class="rank">${i + 1}</td>
+      <td class="op-prefix">${esc(row.ac_type ?? '—')}</td>
+      <td style="color:var(--text-2);font-size:.78rem">${esc(row.ac_desc ?? '—')}</td>
+      <td style="text-align:right;white-space:nowrap">
+        <span style="font-family:var(--mono);font-size:.8rem">${fmt(row.flights)}</span>
+        <span class="op-bar" style="width:${pct}%"></span>
+      </td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  document.getElementById('types-body').innerHTML = html;
+}
+
+// ─────────────────────────────────────────────────────────
 // Recent flights
 // ─────────────────────────────────────────────────────────
 async function renderRecent(conn) {
   const r = await conn.query(`
-    SELECT callsign, airline_prefix, first_seen, last_seen,
+    SELECT callsign, airline_prefix, ac_type, first_seen, last_seen,
            ROUND(max_alt) AS max_alt, ROUND(max_gs) AS max_gs,
            ROUND(duration_sec / 60.0) AS duration_min,
            near_first_airport, near_last_airport
     FROM flights
     ORDER BY first_seen DESC
-    LIMIT 60
+    LIMIT 80
   `);
   const rows = r.toArray();
   if (!rows.length) {
     document.getElementById('recent-body').innerHTML = '<div class="empty">No flights yet.</div>';
     return;
   }
+  document.getElementById('recent-count').textContent = `— last ${rows.length}`;
   let html = `<table class="flights-table">
     <thead><tr>
-      <th>Callsign</th><th>Prefix</th><th>First seen (UTC)</th><th>Duration</th>
+      <th>Callsign</th><th>Prefix</th><th>Type</th><th>First seen (UTC)</th><th>Duration</th>
       <th>Max alt (ft)</th><th>Max GS (kt)</th><th>Near (dep)</th><th>Near (arr)</th>
     </tr></thead><tbody>`;
   rows.forEach(row => {
+    const cs = row.callsign;
+    const csCell = cs
+      ? `<a href="https://www.flightradar24.com/data/flights/${esc(cs)}" target="_blank" rel="noopener" class="cs-link">${esc(cs)}</a>`
+      : '<span style="color:var(--mute)">—</span>';
     html += `<tr>
-      <td class="cs">${esc(row.callsign ?? '—')}</td>
+      <td class="cs">${csCell}</td>
       <td class="op-prefix">${esc(row.airline_prefix ?? '—')}</td>
+      <td style="font-family:var(--mono);font-size:.72rem;color:var(--brass-d)">${esc(row.ac_type ?? '—')}</td>
       <td class="ts-val">${tsHuman(row.first_seen)}</td>
       <td class="alt-val">${row.duration_min ? fmt(row.duration_min) + ' min' : '—'}</td>
       <td class="alt-val">${row.max_alt ? fmt(row.max_alt) : '—'}</td>
@@ -710,6 +801,8 @@ async function main() {
       renderStats(conn),
       renderOperators(conn),
       renderHourly(conn),
+      renderDaily(conn),
+      renderTypes(conn),
       renderRecent(conn),
     ]);
 
