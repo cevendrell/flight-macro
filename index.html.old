@@ -1,0 +1,2642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="OvrHead — reading global flight-route data as a lens on macroeconomic shifts. Tourism, business travel, migration, supply chains.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="OvrHead">
+  <meta property="og:description" content="Global macro trends, read through flight data.">
+  <title>OvrHead</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230a1119'/%3E%3Cpath d='M6 22 L26 10 M6 10 L26 22' stroke='%23c9a86a' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      /* ── Elevation scale — deep midnight navy, warmed to catch brass light ── */
+      --bg:      #080e17;   /* deepest — page ground, behind globe */
+      --bg-2:    #0b1420;   /* globe canvas */
+      --surface: #101929;   /* sidebar, drawer */
+      --panel:   #16202f;   /* cards, inputs */
+      --raised:  #1d2837;   /* hover states, active cards */
+
+      /* ── Structure — warm hairlines, never pure white ── */
+      --line:    rgba(201, 180, 140, 0.09);
+      --line-2:  rgba(201, 180, 140, 0.17);
+      --line-3:  rgba(201, 180, 140, 0.30);
+
+      /* ── Text — warm parchment hierarchy ── */
+      --text:    #ece4d6;   /* primary */
+      --text-2:  #b9b3a6;   /* secondary body */
+      --dim:     #8d8878;   /* tertiary / labels */
+      --mute:    #5a5648;   /* quaternary / hints */
+
+      /* ── Primary accent — brass/teak (LayOvr family) ── */
+      --brass:   #c9a86a;
+      --brass-l: #e0c79c;
+      --brass-d: #8f7748;
+
+      /* ── Trend — sage up, burnt sienna down. Ledger-muted, never neon. ── */
+      --up:      #7fa88c;
+      --up-l:    #a8c8b3;
+      --down:    #b87857;
+      --down-l:  #d59c7e;
+
+      /* ── Secondary — aeronautical steel ── */
+      --steel:   #6b8caf;
+      --steel-l: #9ab2cc;
+      --violet:  #9086b8;
+
+      /* ── Type stacks — three voices, three jobs.
+           Display: Space Grotesk (airport-signage humanist-geometric — Frutiger territory).
+           Body:    Inter.
+           Numbers: JetBrains Mono, always tabular. */
+      --display: 'Space Grotesk', 'Söhne', -apple-system, BlinkMacSystemFont, sans-serif;
+      --sans:    'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --mono:    'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+      /* ── Rhythm ── */
+      --gutter: 1.15rem;
+      --nav-h:  56px;
+      --strip-h: 46px;
+    }
+
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      font-family: var(--sans);
+      background: var(--bg); color: var(--text);
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      font-feature-settings: 'cv05' 1, 'cv08' 1;   /* Inter: nicer l, tighter t */
+    }
+    a { text-decoration: none; color: inherit; }
+    ::selection { background: var(--brass); color: var(--bg); }
+
+    /* Numbers are the product — always tabular, never wobbling */
+    .num, .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+    /* Chart-paper texture — 1px grid at very low alpha. Reads as navigation chart. */
+    .chart-grid {
+      position: absolute; inset: 0; pointer-events: none;
+      background-image:
+        linear-gradient(rgba(201,180,140,0.028) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(201,180,140,0.028) 1px, transparent 1px);
+      background-size: 34px 34px;
+      z-index: 0;
+    }
+
+    /* Shared scrollbar treatment */
+    .scroll-thin { scrollbar-width: thin; scrollbar-color: var(--line-3) transparent; }
+    .scroll-thin::-webkit-scrollbar { width: 9px; }
+    .scroll-thin::-webkit-scrollbar-track { background: transparent; }
+    .scroll-thin::-webkit-scrollbar-thumb {
+      background: var(--line-2); border-radius: 5px;
+      border: 3px solid transparent; background-clip: content-box;
+    }
+    .scroll-thin::-webkit-scrollbar-thumb:hover { background-color: var(--line-3); background-clip: content-box; }
+
+    /* Eyebrow — the small mono uppercase label used throughout */
+    .eyebrow {
+      font-family: var(--mono); font-size: 0.63rem; font-weight: 500;
+      color: var(--mute); letter-spacing: 0.18em; text-transform: uppercase;
+    }
+
+    /* NAV */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 500;
+      height: var(--nav-h);
+      padding: 0 1.15rem;
+      display: flex; align-items: center; justify-content: space-between;
+      background: rgba(8,14,23,0.92);
+      backdrop-filter: blur(20px) saturate(130%);
+      -webkit-backdrop-filter: blur(20px) saturate(130%);
+      border-bottom: 1px solid var(--line);
+    }
+    .nav-logo { display: flex; align-items: baseline; gap: 0.55rem; }
+    .nav-mark {
+      width: 24px; height: 24px; border-radius: 5px;
+      background: linear-gradient(145deg, var(--panel), var(--bg-2));
+      border: 1px solid var(--brass-d);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; align-self: center;
+      box-shadow: 0 0 12px rgba(201,168,106,0.15);
+    }
+    .nav-mark svg { width: 15px; height: 15px; }
+    .nav-wordmark {
+      font-family: var(--display); font-size: 1.05rem; font-weight: 500;
+      letter-spacing: -0.015em; color: var(--text); line-height: 1;
+    }
+    .nav-wordmark em { font-style: normal; font-weight: 500; color: var(--brass); }
+    .nav-title-sub {
+      font-family: var(--mono); font-size: 0.6rem; color: var(--mute);
+      letter-spacing: 0.2em; text-transform: uppercase;
+      padding-left: 0.7rem; margin-left: 0.15rem;
+      border-left: 1px solid var(--line-2);
+      align-self: center;
+    }
+    .nav-links { display: flex; gap: 1.25rem; list-style: none; align-items: center; }
+
+    /* ── INSTRUMENT STRIP — full-width state-of-the-world readout ── */
+    .strip {
+      position: fixed; top: var(--nav-h); left: 0; right: 0; z-index: 480;
+      height: var(--strip-h);
+      display: flex; align-items: stretch;
+      background: rgba(11,20,32,0.94);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--line);
+      overflow-x: auto; overflow-y: hidden;
+      scrollbar-width: none;
+    }
+    .strip::-webkit-scrollbar { display: none; }
+    .strip-cell {
+      display: flex; flex-direction: column; justify-content: center;
+      padding: 0 1.15rem;
+      border-right: 1px solid var(--line);
+      white-space: nowrap; flex-shrink: 0;
+      min-width: 0;
+    }
+    .strip-cell:last-child { border-right: none; }
+    .strip-k {
+      font-family: var(--mono); font-size: 0.56rem; font-weight: 500;
+      color: var(--mute); letter-spacing: 0.18em; text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+    .strip-v {
+      font-family: var(--mono); font-size: 0.86rem; font-weight: 600;
+      color: var(--text); font-variant-numeric: tabular-nums;
+      letter-spacing: -0.01em;
+    }
+    .strip-v.up   { color: var(--up-l); }
+    .strip-v.down { color: var(--down-l); }
+    .strip-v.brass{ color: var(--brass-l); }
+    .strip-v .sub { color: var(--dim); font-weight: 400; font-size: 0.76rem; margin-left: 3px; }
+    /* the "biggest mover" cell is clickable */
+    .strip-cell.tappable { cursor: pointer; transition: background 0.15s; }
+    .strip-cell.tappable:hover { background: rgba(201,168,106,0.07); }
+    .strip-spacer { flex: 1; border-right: none; }
+    .strip-live {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-family: var(--mono); font-size: 0.6rem; color: var(--dim);
+      letter-spacing: 0.1em;
+    }
+    .strip-live::before {
+      content: ''; width: 5px; height: 5px; border-radius: 50%;
+      background: var(--up); box-shadow: 0 0 6px var(--up);
+      animation: pulse 2.6s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+    @media (max-width: 900px) { .strip-cell.optional { display: none; } }
+    .nav-links a { font-size: 0.82rem; font-weight: 500; color: var(--dim); transition: color 0.2s; }
+    .nav-links a:hover { color: var(--brass-l); }
+    .nav-fav {
+      display: inline-flex; align-items: center;
+      background: transparent; border: 1px solid var(--line-2);
+      color: var(--brass-l); font-family: inherit; font-size: 0.78rem; font-weight: 500;
+      padding: 6px 12px; border-radius: 5px; cursor: pointer;
+      transition: all 0.15s;
+    }
+    .nav-fav:hover { border-color: var(--brass); background: rgba(201,168,106,0.08); }
+    .nav-fav.open { border-color: var(--brass); background: rgba(201,168,106,0.12); }
+    .nav-fav svg { color: var(--brass); }
+    .nav-fav-count {
+      margin-left: 6px; background: var(--brass); color: var(--bg);
+      font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; font-weight: 700;
+      padding: 1px 6px; border-radius: 8px; letter-spacing: 0;
+    }
+
+    /* Favorites floating panel */
+    .fav-panel {
+      position: fixed; top: 62px; right: 16px; z-index: 900;
+      background: var(--panel);
+      border: 1px solid var(--line-2);
+      border-radius: 8px;
+      width: min(340px, 90vw);
+      max-height: calc(100vh - 100px);
+      display: flex; flex-direction: column;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.55);
+      overflow: hidden;
+    }
+    .fav-panel[hidden] { display: none; }
+    .fav-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--line);
+      font-family: 'JetBrains Mono', monospace; font-size: 0.7rem;
+      color: var(--brass-l); letter-spacing: 0.16em; text-transform: uppercase;
+    }
+    .fav-clear {
+      background: transparent; border: none; color: var(--mute); cursor: pointer;
+      font-family: inherit; font-size: 0.65rem; letter-spacing: 0.08em;
+      padding: 2px 6px; border-radius: 3px; text-transform: uppercase;
+    }
+    .fav-clear:hover { color: var(--down-l); }
+    .fav-body { overflow-y: auto; padding: 4px 0 8px; }
+    .fav-group-title {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.6rem;
+      color: var(--mute); letter-spacing: 0.16em; text-transform: uppercase;
+      padding: 10px 14px 4px;
+    }
+    .fav-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 14px;
+      cursor: pointer; transition: background 0.12s;
+      font-size: 0.85rem; color: var(--text);
+    }
+    .fav-item:hover { background: rgba(201,168,106,0.08); color: var(--brass-l); }
+    .fav-item .fav-remove {
+      background: transparent; border: none; color: var(--mute); cursor: pointer;
+      padding: 2px 4px; border-radius: 3px; opacity: 0;
+      display: flex; align-items: center;
+    }
+    .fav-item:hover .fav-remove { opacity: 1; }
+    .fav-item .fav-remove:hover { color: var(--down-l); }
+    .fav-item .fav-meta {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.66rem;
+      color: var(--mute); letter-spacing: 0.04em;
+    }
+    .fav-empty {
+      padding: 22px 18px; text-align: center; color: var(--mute);
+      font-size: 0.82rem; line-height: 1.5;
+    }
+
+    /* Hero star button — appears on country / region nodes to favorite them */
+    .hero-star {
+      background: transparent; border: 1px solid var(--line-2); color: var(--mute);
+      font-family: inherit; cursor: pointer;
+      padding: 4px 10px; border-radius: 5px;
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 0.72rem; letter-spacing: 0.04em;
+      transition: all 0.15s;
+      margin-top: 0.5rem;
+    }
+    .hero-star:hover { color: var(--brass-l); border-color: var(--brass); }
+    .hero-star.on { color: var(--brass); border-color: var(--brass); background: rgba(201,168,106,0.10); }
+    .hero-star svg { width: 12px; height: 12px; }
+    @media (max-width: 720px) { .nav-title-sub { display: none; } .nav-links { gap: 1rem; } }
+
+    /* APP LAYOUT — 2-column grid; drawer overlays the left of the globe when open */
+    #app {
+      display: grid;
+      grid-template-columns: 396px 1fr;
+      height: 100vh;
+      padding-top: calc(var(--nav-h) + var(--strip-h));
+      position: relative;
+    }
+
+    #sidebar {
+      background: var(--surface);
+      border-right: 1px solid var(--line);
+      overflow-y: auto;
+      display: flex; flex-direction: column;
+      position: relative;
+    }
+    #map-wrap { position: relative; }
+    /* Warm brass glow behind the globe — subtle, gives the whole scene a lamp-lit feel */
+    #map-wrap::before {
+      content: ''; position: absolute; inset: 0; pointer-events: none;
+      background:
+        radial-gradient(ellipse at 60% 45%, rgba(201,168,106,0.09), transparent 65%),
+        radial-gradient(ellipse at 25% 80%, rgba(107,140,175,0.06), transparent 55%);
+      z-index: 1;
+    }
+    #map { width: 100%; height: 100%; background: var(--bg-2); position: relative; z-index: 2; }
+
+    /* SIDEBAR HEADER — the command bar */
+    .side-head {
+      padding: 0.85rem var(--gutter);
+      background: var(--surface);
+      border-bottom: 1px solid var(--line);
+      position: sticky; top: 0; z-index: 20;
+    }
+    .side-head::after {
+      content: ''; position: absolute; left: 0; right: 0; bottom: -1px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(201,168,106,0.35) 30%, rgba(201,168,106,0.35) 70%, transparent);
+    }
+    .side-head-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.55rem; }
+    .side-title { font-family: var(--mono); font-size: 0.6rem; color: var(--mute); letter-spacing: 0.2em; text-transform: uppercase; }
+    .updated-pill {
+      font-family: var(--mono); font-size: 0.58rem; color: var(--dim);
+      letter-spacing: 0.1em; text-transform: uppercase;
+      display: inline-flex; align-items: center; gap: 5px;
+    }
+    .updated-pill::before {
+      content: ''; width: 4px; height: 4px; border-radius: 50%;
+      background: var(--brass-d);
+    }
+    /* HERO — the answer surface */
+    .hero-block { padding: 0.95rem var(--gutter) 0.2rem; }
+    .hero-block:empty { display: none; }
+    .hero-eyebrow {
+      font-family: var(--mono); font-size: 0.58rem;
+      color: var(--mute); letter-spacing: 0.2em; text-transform: uppercase;
+      margin-bottom: 0.45rem;
+      display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    }
+    .hero-eyebrow .kind {
+      color: var(--brass-d); border: 1px solid currentColor;
+      padding: 1px 5px; border-radius: 3px; letter-spacing: 0.14em;
+    }
+    .hero-title {
+      font-family: var(--display); font-size: 1.85rem; font-weight: 500;
+      letter-spacing: -0.028em; line-height: 1.05;
+      margin-bottom: 0.55rem; color: var(--text);
+    }
+    .hero-title .accent { color: var(--brass); font-weight: 500; }
+    /* Big readout — the number IS the answer */
+    .hero-num {
+      font-family: var(--mono); font-size: 2.9rem; font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.045em; line-height: 0.92; margin-bottom: 0.4rem;
+      display: flex; align-items: baseline; gap: 1px;
+    }
+    .hero-num .sign { opacity: 0.45; font-weight: 300; }
+    .hero-num .pct  { font-size: 0.42em; opacity: 0.45; margin-left: 3px; letter-spacing: 0; }
+    .hero-num.up   { color: var(--up-l); }
+    .hero-num.down { color: var(--down-l); }
+    .hero-sub {
+      font-size: 0.8rem; color: var(--text-2); line-height: 1.6;
+      margin-bottom: 0.2rem;
+    }
+    .hero-sub strong { color: var(--text); font-weight: 500; }
+    /* Up/down split bar — instant read of the balance */
+    .hero-split {
+      display: flex; height: 3px; border-radius: 2px; overflow: hidden;
+      margin: 0.55rem 0 0.15rem; background: rgba(255,255,255,0.05);
+    }
+    .hero-split .seg-up   { background: var(--up); }
+    .hero-split .seg-down { background: var(--down); }
+    .hero-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.6rem; }
+
+    /* PAIR-MODE INLINE DETAIL — used when both A and B are picked */
+    .pair-detail {
+      background: var(--panel);
+      border: 1px solid var(--brass);
+      border-radius: 10px;
+      padding: 1rem 1.1rem;
+      margin-top: 0.5rem;
+    }
+    .pair-detail-reading {
+      font-size: 0.88rem; color: var(--text); line-height: 1.6;
+      margin: 0.6rem 0 0.8rem;
+    }
+    .pair-vol-row { display: flex; align-items: center; gap: 0.6rem; font-size: 0.72rem; margin: 0.35rem 0; }
+    .pair-vol-label { width: 66px; color: var(--mute); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.05em; }
+    .pair-vol-bar { flex: 1; height: 5px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden; }
+    .pair-vol-fill.current { background: var(--brass); height: 100%; }
+    .pair-vol-fill.prior   { background: var(--mute); height: 100%; }
+    .pair-vol-num { width: 60px; text-align: right; font-family: 'JetBrains Mono', monospace; color: var(--text); font-variant-numeric: tabular-nums; }
+
+    /* ADVANCED FILTERS — folded away by default */
+    details.advanced {
+      border-top: 1px solid var(--line);
+      padding: 0.6rem 1.25rem;
+    }
+    details.advanced summary {
+      cursor: pointer; list-style: none;
+      font-family: 'JetBrains Mono', monospace; font-size: 0.66rem;
+      color: var(--mute); letter-spacing: 0.16em; text-transform: uppercase;
+      padding: 0.35rem 0; user-select: none;
+    }
+    details.advanced summary::-webkit-details-marker { display: none; }
+    details.advanced summary::before { content: '›  '; color: var(--mute); transition: transform 0.15s; display: inline-block; }
+    details.advanced[open] summary::before { transform: rotate(90deg); }
+    details.advanced .filter-panel-inner {
+      padding: 0.5rem 0 0.75rem;
+    }
+    .filter-group { margin-bottom: 0.75rem; }
+    .filter-group:last-child { margin-bottom: 0; }
+    .filter-label {
+      display: block;
+      font-size: 0.64rem; color: var(--mute);
+      letter-spacing: 0.14em; text-transform: uppercase;
+      margin-bottom: 0.35rem; font-weight: 500;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .chip-row { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+    .chip {
+      font-size: 0.72rem; font-weight: 500;
+      padding: 4px 9px; border-radius: 4px;
+      background: transparent; border: 1px solid var(--line-2);
+      color: var(--dim); cursor: pointer;
+      transition: all 0.15s;
+      font-family: inherit;
+    }
+    .chip:hover { border-color: var(--brass); color: var(--brass-l); }
+    .chip.active { background: var(--brass); border-color: var(--brass); color: var(--bg); font-weight: 600; }
+
+    /* INSIGHT FEED */
+    .feed-header {
+      padding: 0.85rem 1.25rem 0.5rem;
+      display: flex; justify-content: space-between; align-items: baseline;
+    }
+    .feed-title { font-size: 0.66rem; font-family: 'JetBrains Mono', monospace; color: var(--mute); letter-spacing: 0.2em; text-transform: uppercase; }
+    .feed-count { font-size: 0.72rem; font-family: 'JetBrains Mono', monospace; color: var(--brass-l); }
+    .feed { padding: 0.5rem var(--gutter) 2rem; display: flex; flex-direction: column; gap: 0.4rem; }
+    .feed-heading {
+      font-family: var(--mono); font-size: 0.58rem;
+      color: var(--mute); letter-spacing: 0.2em; text-transform: uppercase;
+      padding: 0.7rem 0 0.15rem;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .feed-heading::after {
+      content: ''; flex: 1; height: 1px; background: var(--line);
+    }
+    .show-more {
+      margin-top: 0.35rem; padding: 0.5rem;
+      background: transparent; border: 1px solid var(--line);
+      color: var(--dim); font-family: var(--mono); font-size: 0.65rem;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      border-radius: 5px; cursor: pointer;
+      transition: all 0.15s;
+    }
+    .show-more:hover { color: var(--brass-l); border-color: var(--brass-d); background: var(--panel); }
+
+    /* Compact card variant — leaner, used for related/secondary lists */
+    .card.compact { padding: 0.65rem 0.85rem; }
+    .card.compact .card-headline { font-size: 0.82rem; margin: 0.2rem 0 0; line-height: 1.4; color: var(--dim); font-weight: 500; }
+    .card.compact .card-headline.compact { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .card.compact .card-top { padding-right: 0; margin-bottom: 0; }
+    .card.compact .card-route { font-size: 0.75rem; color: var(--text); font-family: inherit; font-weight: 500; letter-spacing: 0; text-transform: none; }
+    .card.compact .card-delta { font-size: 0.78rem; padding: 1px 6px; }
+
+    /* ── THESIS CARD — the core object ──────────────────────────────────── */
+    .thesis-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 0.75rem 0.85rem 0.7rem;
+      transition: background 0.15s, border-color 0.15s;
+      cursor: pointer;
+      position: relative; overflow: hidden;
+    }
+    /* Direction bar — flush left edge, full height, no border-radius fight */
+    .thesis-card::before {
+      content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px;
+      background: var(--brass); opacity: 0.75; transition: opacity 0.15s, width 0.15s;
+    }
+    .thesis-card.dir-up::before   { background: var(--up); }
+    .thesis-card.dir-down::before { background: var(--down); }
+    .thesis-card:hover  { background: var(--raised); border-color: var(--line-2); }
+    .thesis-card:hover::before { opacity: 1; width: 3px; }
+    .thesis-card.active { background: var(--raised); border-color: var(--brass-d); }
+    .thesis-card.active::before { opacity: 1; width: 3px; }
+
+    /* Row 1 — route (mono, quiet) + delta (mono, loud) */
+    .tc-route-row {
+      display: flex; align-items: baseline; justify-content: space-between;
+      gap: 0.6rem; margin-bottom: 0.3rem;
+    }
+    .tc-route {
+      font-family: var(--mono); font-size: 0.63rem; font-weight: 500;
+      color: var(--dim); letter-spacing: 0.1em; text-transform: uppercase;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      display: flex; align-items: baseline; gap: 5px; min-width: 0;
+    }
+    .tc-route .arrow { color: var(--mute); }
+    .tc-delta {
+      font-family: var(--mono); font-size: 1.28rem; font-weight: 600;
+      font-variant-numeric: tabular-nums; letter-spacing: -0.03em;
+      white-space: nowrap; flex-shrink: 0; line-height: 1;
+    }
+    .tc-delta .sign { opacity: 0.55; font-weight: 400; margin-right: -1px; }
+    .tc-delta .pct  { font-size: 0.72em; opacity: 0.5; margin-left: 1px; }
+    .tc-delta.up   { color: var(--up-l); }
+    .tc-delta.down { color: var(--down-l); }
+
+    /* Row 2 — the thesis line. Display sans, medium weight. */
+    .tc-thesis {
+      font-family: var(--display); font-size: 0.98rem; font-weight: 500;
+      line-height: 1.32; color: var(--text); letter-spacing: -0.012em;
+      margin-bottom: 0.55rem;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+
+    /* Row 3 — volume comparison as a real micro-chart */
+    .tc-vol {
+      display: flex; align-items: center; gap: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+    .tc-vol-track {
+      flex: 1; height: 3px; border-radius: 2px;
+      background: rgba(255,255,255,0.05);
+      position: relative; overflow: hidden;
+    }
+    .tc-vol-prior {
+      position: absolute; left: 0; top: 0; bottom: 0;
+      background: var(--mute); opacity: 0.55; border-radius: 2px;
+    }
+    .tc-vol-curr {
+      position: absolute; left: 0; top: 0; bottom: 0;
+      border-radius: 2px;
+    }
+    .tc-vol-curr.up   { background: var(--up); }
+    .tc-vol-curr.down { background: var(--down); }
+    .tc-vol-num {
+      font-family: var(--mono); font-size: 0.64rem; color: var(--dim);
+      font-variant-numeric: tabular-nums; letter-spacing: 0.02em;
+      white-space: nowrap; flex-shrink: 0;
+    }
+
+    .tc-meta {
+      display: flex; align-items: center; gap: 0.4rem;
+      flex-wrap: wrap;
+    }
+    /* Badges — outline style, quieter than filled pills */
+    .tc-conf {
+      font-family: var(--mono); font-size: 0.58rem; font-weight: 500;
+      padding: 2px 6px; border-radius: 3px; letter-spacing: 0.12em;
+      border: 1px solid currentColor;
+      display: inline-flex; align-items: center; gap: 4px;
+    }
+    .tc-conf::before { content: ''; width: 4px; height: 4px; border-radius: 50%; background: currentColor; }
+    .tc-conf.high   { color: var(--up); }
+    .tc-conf.medium { color: var(--brass-d); }
+    .tc-conf.low    { color: var(--mute); }
+    .tc-theme {
+      font-family: var(--mono); font-size: 0.58rem; font-weight: 500;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      padding: 2px 6px; border-radius: 3px;
+    }
+    .tc-theme.tourism      { color: var(--brass-l); background: rgba(201,168,106,0.11); }
+    .tc-theme.business     { color: var(--steel-l); background: rgba(107,140,175,0.15); }
+    .tc-theme.migration    { color: #b8afd6;        background: rgba(144,134,184,0.15); }
+    .tc-theme.supply-chain { color: var(--up-l);    background: rgba(127,168,140,0.12); }
+    .tc-expand {
+      margin-left: auto; background: transparent; border: none;
+      color: var(--mute); font-family: var(--mono);
+      font-size: 0.6rem; cursor: pointer; letter-spacing: 0.1em;
+      padding: 3px 2px; text-transform: uppercase;
+      transition: color 0.15s;
+    }
+    .tc-expand:hover { color: var(--brass-l); }
+
+    .tc-body {
+      display: grid; grid-template-rows: 0fr;
+      transition: grid-template-rows 0.28s cubic-bezier(0.4,0,0.2,1);
+    }
+    .thesis-card.open .tc-body { grid-template-rows: 1fr; }
+    .tc-body-inner { overflow: hidden; min-height: 0; }
+    .tc-section {
+      padding-top: 0.6rem; margin-top: 0.6rem;
+      border-top: 1px solid var(--line);
+    }
+    .tc-section h4 {
+      font-family: var(--mono); font-size: 0.58rem;
+      color: var(--brass-d); letter-spacing: 0.2em; text-transform: uppercase;
+      margin-bottom: 0.3rem; font-weight: 500;
+    }
+    .tc-section p {
+      font-size: 0.8rem; color: var(--text-2); line-height: 1.6;
+      margin: 0;
+    }
+    .tc-section p strong { color: var(--text); font-weight: 500; }
+    .tc-section p .muted { color: var(--mute); }
+
+    /* Section heading inside the feed */
+    .board-heading {
+      display: flex; justify-content: space-between; align-items: baseline;
+      padding: 0.15rem 0 0.6rem;
+    }
+    .board-heading h3 {
+      font-family: var(--display); font-size: 1.05rem; font-weight: 500;
+      letter-spacing: -0.015em; color: var(--text);
+    }
+    .board-heading .sub {
+      font-family: var(--mono); font-size: 0.6rem;
+      color: var(--mute); letter-spacing: 0.14em; text-transform: uppercase;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      cursor: pointer;
+      transition: all 0.18s;
+      position: relative;
+    }
+    .card:hover, .card.hover { border-color: var(--brass); transform: translateY(-1px); }
+    .card.active { border-color: var(--brass); background: rgba(201,168,106,0.07); box-shadow: 0 0 0 1px var(--brass) inset; }
+    .card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem; gap: 0.75rem; }
+    .card-route { font-size: 0.7rem; font-family: 'JetBrains Mono', monospace; color: var(--mute); letter-spacing: 0.06em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .card-delta {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem; font-weight: 600;
+      padding: 2px 8px; border-radius: 4px;
+      white-space: nowrap;
+    }
+    .card-delta.up { color: var(--up-l); background: rgba(127,168,140,0.12); }
+    .card-delta.down { color: var(--down-l); background: rgba(184,120,87,0.14); }
+    .card-headline { font-size: 0.92rem; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 0.3rem; line-height: 1.35; color: var(--text); }
+    .card-reading { font-size: 0.78rem; color: var(--dim); line-height: 1.55; }
+    .card-meta { margin-top: 0.55rem; display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+    .theme-tag {
+      font-size: 0.6rem; font-weight: 600;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 2px 6px; border-radius: 3px;
+    }
+    .theme-tag.tourism      { color: var(--brass-l); background: rgba(201,168,106,0.10); }
+    .theme-tag.business     { color: var(--steel-l); background: rgba(107,140,175,0.14); }
+    .theme-tag.migration    { color: #b8afd6;       background: rgba(144,134,184,0.14); }
+    .theme-tag.supply-chain { color: var(--up-l);   background: rgba(127,168,140,0.10); }
+    .card-period { font-size: 0.64rem; color: var(--mute); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.06em; }
+    .card-vol { font-size: 0.64rem; color: var(--mute); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.04em; margin-left: auto; }
+    .card-conf-dot {
+      display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+      margin-right: 4px;
+      vertical-align: middle;
+    }
+    .card-conf-dot.high { background: var(--brass); box-shadow: 0 0 6px var(--brass); }
+    .card-conf-dot.medium { background: var(--brass-l); }
+    .card-conf-dot.low { background: var(--down); }
+    .empty { padding: 2rem 1rem; text-align: center; color: var(--mute); font-size: 0.85rem; }
+
+    /* MAP OVERLAY LEGEND — compact horizontal strip, bottom-left */
+    .map-legend {
+      position: absolute;
+      bottom: 14px; left: 16px;
+      background: rgba(24,32,46,0.85);
+      border: 1px solid var(--line-2);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      padding: 6px 10px;
+      border-radius: 6px;
+      z-index: 400;
+      display: flex; align-items: center; gap: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.62rem;
+      color: var(--dim);
+      letter-spacing: 0.06em;
+      max-width: calc(100% - 32px);
+      flex-wrap: wrap;
+    }
+    .legend-row { display: flex; align-items: center; gap: 6px; }
+    .legend-swatch { width: 18px; height: 3px; border-radius: 2px; flex-shrink: 0; }
+    .legend-swatch.up { background: var(--up); }
+    .legend-swatch.down { background: var(--down); }
+    .legend-swatch.flow { background: linear-gradient(90deg, var(--brass-l), transparent); }
+
+    /* GLOBE */
+    #map canvas { display: block; outline: none; }
+    #map { cursor: grab; }
+    #map:active { cursor: grabbing; }
+    #map .scene-tooltip {
+      font-family: 'JetBrains Mono', monospace !important;
+      background: rgba(24,32,46,0.94) !important;
+      color: var(--text) !important;
+      border: 1px solid var(--line-2) !important;
+      font-size: 0.72rem !important;
+      padding: 5px 9px !important;
+      border-radius: 5px !important;
+      letter-spacing: 0.05em !important;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.5) !important;
+    }
+    .globe-loading {
+      position: absolute; inset: 0; z-index: 350;
+      background: var(--bg-2);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 0.9rem;
+      transition: opacity 0.4s;
+    }
+    .globe-loading.done { opacity: 0; pointer-events: none; }
+    .globe-loading .spinner {
+      width: 22px; height: 22px; border-radius: 50%;
+      border: 2px solid var(--line-2); border-top-color: var(--brass);
+      animation: spin 0.9s linear infinite;
+    }
+    .globe-loading p { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: var(--mute); letter-spacing: 0.16em; text-transform: uppercase; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ACTIONS ROW (above feed) */
+    .actions-row {
+      padding: 0 1.25rem 0.5rem;
+      display: flex; gap: 0.4rem; flex-wrap: wrap;
+    }
+    .action-btn {
+      font-family: inherit; font-size: 0.7rem; font-weight: 500;
+      color: var(--dim); background: transparent;
+      border: 1px solid var(--line-2); border-radius: 4px;
+      padding: 4px 9px; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 5px;
+      transition: all 0.15s;
+    }
+    .action-btn:hover { border-color: var(--brass); color: var(--brass-l); }
+    .action-btn svg { width: 12px; height: 12px; }
+
+    /* WATCH STAR ON CARDS */
+    .card-star {
+      position: absolute; top: 8px; right: 8px;
+      width: 24px; height: 24px; border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+      background: transparent; border: none; color: var(--mute);
+      cursor: pointer; transition: color 0.15s, transform 0.15s;
+      opacity: 0;
+    }
+    .card:hover .card-star, .card-star.on { opacity: 1; }
+    .card-star:hover { color: var(--down-l); transform: scale(1.15); }
+    .card-star.on { color: var(--down); }
+    .card-star svg { width: 14px; height: 14px; }
+    /* keep delta from being covered by the star */
+    .card-top { padding-right: 22px; }
+
+    /* DETAIL DRAWER — floats over the left edge of the globe area; globe stays put */
+    .drawer {
+      /* fixed, not absolute: #app has padding-top, so an absolute top:0 would
+         land behind the nav + strip. */
+      position: fixed;
+      top: calc(var(--nav-h) + var(--strip-h)); bottom: 0; left: 396px;
+      width: 428px; max-width: calc(100vw - 396px);
+      background: var(--surface);
+      border-right: 1px solid var(--line);
+      box-shadow: 6px 0 24px rgba(0,0,0,0.35);
+      overflow: hidden;
+      display: flex; flex-direction: column;
+      transform: translateX(-8px);
+      opacity: 0; pointer-events: none;
+      transition: transform 0.22s ease, opacity 0.18s ease;
+      z-index: 40;
+    }
+    body.drawer-open .drawer { opacity: 1; pointer-events: auto; transform: translateX(0); }
+    .drawer-head {
+      padding: 1.25rem 1.5rem 1rem;
+      border-bottom: 1px solid var(--line);
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem;
+    }
+    .drawer-eyebrow { font-family: var(--mono); font-size: 0.58rem; color: var(--mute); letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 0.4rem; }
+    .drawer-title { font-family: var(--display); font-size: 1.25rem; font-weight: 500; letter-spacing: -0.02em; line-height: 1.2; color: var(--text); }
+    .drawer-close {
+      background: transparent; border: 1px solid var(--line-2); color: var(--dim);
+      width: 30px; height: 30px; border-radius: 6px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; transition: all 0.15s;
+    }
+    .drawer-close:hover { color: var(--brass-l); border-color: var(--brass); }
+    .drawer-body { flex: 1; overflow-y: auto; padding: 1.25rem 1.5rem 2rem; }
+    .drawer-body::-webkit-scrollbar { width: 8px; }
+    .drawer-body::-webkit-scrollbar-thumb { background: var(--mute); border-radius: 4px; }
+
+    .drawer-hero {
+      background: var(--panel); border: 1px solid var(--line);
+      border-radius: 10px; padding: 1rem 1.1rem; margin-bottom: 1.25rem;
+    }
+    .drawer-hero-delta {
+      font-family: var(--mono); font-size: 2.5rem; font-weight: 600;
+      font-variant-numeric: tabular-nums; line-height: 0.95; letter-spacing: -0.04em;
+    }
+    .drawer-hero-delta .sign { opacity: 0.45; font-weight: 300; }
+    .drawer-hero-delta .pct  { font-size: 0.44em; opacity: 0.45; margin-left: 2px; }
+    .drawer-hero-delta.up { color: var(--up-l); }
+    .drawer-hero-delta.down { color: var(--down-l); }
+    .drawer-hero-sub { font-size: 0.58rem; color: var(--mute); margin-top: 0.45rem; font-family: var(--mono); letter-spacing: 0.14em; text-transform: uppercase; }
+
+    .vol-compare { margin-top: 1rem; display: flex; flex-direction: column; gap: 0.55rem; }
+    .vol-row { display: flex; align-items: center; gap: 0.65rem; font-size: 0.75rem; }
+    .vol-row-label { width: 70px; color: var(--mute); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.06em; }
+    .vol-bar-outer { flex: 1; height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden; }
+    .vol-bar-fill { height: 100%; border-radius: 3px; }
+    .vol-bar-fill.current { background: var(--brass); box-shadow: 0 0 6px rgba(201,168,106,0.35); }
+    .vol-bar-fill.prior   { background: var(--mute); }
+    .vol-row-num { width: 62px; text-align: right; font-family: 'JetBrains Mono', monospace; color: var(--text); font-variant-numeric: tabular-nums; }
+
+    .drawer-section { margin-bottom: 1.5rem; }
+    .drawer-section h3 {
+      font-family: var(--mono); font-size: 0.58rem; color: var(--brass-d);
+      letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 0.5rem; font-weight: 500;
+    }
+    .drawer-reading { font-size: 0.87rem; color: var(--text-2); line-height: 1.68; }
+    .drawer-meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem 1rem; }
+    .drawer-meta-cell .k { font-size: 0.56rem; color: var(--mute); font-family: var(--mono); letter-spacing: 0.16em; text-transform: uppercase; margin-bottom: 0.2rem; }
+    .drawer-meta-cell .v { font-size: 0.85rem; color: var(--text); font-family: var(--mono); font-variant-numeric: tabular-nums; }
+    .drawer-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; }
+    .drawer-btn {
+      font-family: inherit; font-size: 0.78rem; font-weight: 600;
+      padding: 8px 14px; border-radius: 5px; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 6px;
+      transition: all 0.15s;
+    }
+    .drawer-btn.primary { background: var(--brass); color: var(--bg); border: 1px solid var(--brass); }
+    .drawer-btn.primary:hover { background: var(--brass-l); border-color: var(--brass-l); }
+    .drawer-btn.ghost { background: transparent; color: var(--dim); border: 1px solid var(--line-2); }
+    .drawer-btn.ghost:hover { color: var(--brass-l); border-color: var(--brass); }
+    .drawer-btn.ok { color: var(--brass); border-color: var(--brass); }
+    .drawer-btn svg { width: 13px; height: 13px; }
+
+    .country-chip {
+      display: inline-block;
+      font-family: 'JetBrains Mono', monospace; font-size: 0.7rem;
+      color: var(--brass-l); background: rgba(201,168,106,0.10);
+      padding: 3px 7px; border-radius: 3px; margin: 0 2px;
+      cursor: pointer; letter-spacing: 0.04em;
+      border: 1px solid transparent; transition: all 0.15s;
+    }
+    .country-chip:hover { border-color: var(--brass); }
+
+    /* FOCUS INPUT — single search bar with autocomplete over nodes */
+    .focus-wrap { position: relative; }
+    .focus-input {
+      width: 100%; background: var(--bg-2); border: 1px solid var(--line-2);
+      color: var(--text); font-family: var(--sans); font-size: 0.9rem; font-weight: 400;
+      padding: 9px 34px 9px 32px; border-radius: 6px;
+      transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+    }
+    .focus-input:focus {
+      outline: none; border-color: var(--brass-d); background: var(--panel);
+      box-shadow: 0 0 0 3px rgba(201,168,106,0.10);
+    }
+    .focus-input::placeholder { color: var(--mute); }
+    /* ⌘K-style hint on the right when empty */
+    .focus-kbd {
+      position: absolute; right: 9px; top: 50%; transform: translateY(-50%);
+      font-family: var(--mono); font-size: 0.58rem; color: var(--mute);
+      border: 1px solid var(--line-2); border-radius: 3px;
+      padding: 1px 5px; pointer-events: none;
+      transition: opacity 0.15s;
+    }
+    .focus-input:focus ~ .focus-kbd { opacity: 0; }
+    .focus-ico {
+      position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+      color: var(--mute); pointer-events: none;
+    }
+    .focus-clear {
+      position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+      background: transparent; border: none; color: var(--mute); cursor: pointer;
+      padding: 4px; border-radius: 3px; display: flex;
+    }
+    .focus-clear:hover { color: var(--down-l); }
+    .focus-suggest {
+      position: absolute; top: 100%; left: 0; right: 0;
+      background: var(--panel); border: 1px solid var(--line-2);
+      border-top: none; border-radius: 0 0 6px 6px;
+      max-height: 340px; overflow-y: auto;
+      z-index: 50;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.4);
+    }
+    .focus-suggest[hidden] { display: none; }
+    .fs-group {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.6rem;
+      color: var(--mute); letter-spacing: 0.16em; text-transform: uppercase;
+      padding: 8px 12px 4px;
+    }
+    .fs-option {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 7px 12px; cursor: pointer; font-size: 0.85rem; color: var(--text);
+      transition: background 0.1s;
+      gap: 8px;
+    }
+    .fs-option:hover, .fs-option.active { background: rgba(201,168,106,0.10); color: var(--brass-l); }
+    .fs-option .fs-kind {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.6rem;
+      color: var(--mute); letter-spacing: 0.08em;
+      padding: 2px 6px; border-radius: 3px; background: var(--surface);
+    }
+    .fs-empty {
+      padding: 12px; text-align: center; font-size: 0.78rem; color: var(--mute);
+    }
+
+    /* BREADCRUMBS — small navigation trail */
+    .crumbs {
+      display: flex; align-items: center; gap: 0.4rem;
+      padding: 0.45rem var(--gutter);
+      border-bottom: 1px solid var(--line);
+      font-size: 0.7rem;
+      background: var(--bg-2);
+      overflow-x: auto; white-space: nowrap;
+      scrollbar-width: none;
+    }
+    .crumbs::-webkit-scrollbar { display: none; }
+    .crumbs[hidden] { display: none; }
+    .crumb-back {
+      background: transparent; border: 1px solid var(--line-2); color: var(--dim);
+      font-family: inherit; font-size: 0.68rem;
+      padding: 3px 8px; border-radius: 4px; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 4px;
+      flex-shrink: 0;
+    }
+    .crumb-back:hover { color: var(--brass-l); border-color: var(--brass); }
+    .crumb-sep { color: var(--mute); }
+    .crumb-item {
+      color: var(--dim); cursor: pointer;
+      font-family: 'JetBrains Mono', monospace; font-size: 0.66rem;
+      letter-spacing: 0.04em;
+    }
+    .crumb-item:hover { color: var(--brass-l); }
+    .crumb-item.current { color: var(--text); cursor: default; font-weight: 500; }
+
+    /* Clickable endpoints inside cards */
+    .clickable-node {
+      cursor: pointer;
+      text-decoration: none;
+      border-bottom: 1px dotted var(--mute);
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .clickable-node:hover { color: var(--brass-l); border-bottom-color: var(--brass-l); }
+
+    /* IN / OUT layout in node dashboard */
+    /* Segmented control — one unit, not three loose chips */
+    .direction-tab {
+      display: flex;
+      margin: 0.35rem var(--gutter) 0;
+      background: var(--bg-2); border: 1px solid var(--line);
+      border-radius: 6px; padding: 2px; gap: 2px;
+    }
+    .dir-chip {
+      flex: 1;
+      font-family: var(--mono); font-size: 0.62rem; font-weight: 500;
+      letter-spacing: 0.09em; text-transform: uppercase;
+      padding: 6px 4px; border-radius: 4px;
+      background: transparent; border: none;
+      color: var(--dim); cursor: pointer;
+      transition: all 0.15s;
+    }
+    .dir-chip:hover { color: var(--brass-l); background: rgba(201,168,106,0.07); }
+    .dir-chip.active { background: var(--panel); color: var(--brass-l); box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+
+    /* MAP LANDING PROMPT — small top-left hint, not a modal */
+    .map-prompt {
+      position: absolute; top: 16px; left: 16px;
+      background: rgba(24,32,46,0.85);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid var(--line-2);
+      border-radius: 6px;
+      padding: 6px 12px;
+      z-index: 380;
+      pointer-events: none;
+      transition: opacity 0.2s;
+      display: flex; align-items: center; gap: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem; color: var(--dim);
+      letter-spacing: 0.06em;
+    }
+    .map-prompt::before {
+      content: ''; width: 6px; height: 6px; border-radius: 50%;
+      background: var(--brass); box-shadow: 0 0 6px var(--brass);
+    }
+    .map-prompt.hidden { opacity: 0; }
+
+    /* LANDING STATE IN FEED */
+    .feed-landing {
+      padding: 1.5rem 0.5rem;
+      color: var(--dim); font-size: 0.85rem; line-height: 1.6;
+      text-align: center;
+    }
+    .feed-landing .big { color: var(--text); font-weight: 600; margin-bottom: 0.35rem; display: block; font-size: 0.95rem; }
+
+    /* MOBILE */
+    .mobile-toggle {
+      display: none;
+      position: fixed; bottom: 20px; right: 20px; z-index: 600;
+      background: var(--brass); color: var(--bg); border: none;
+      padding: 10px 16px; border-radius: 40px;
+      font-family: inherit; font-size: 0.8rem; font-weight: 700;
+      box-shadow: 0 6px 20px rgba(201,168,106,0.28);
+      cursor: pointer;
+    }
+    @media (max-width: 780px) {
+      #app { grid-template-columns: 1fr; grid-template-rows: 1fr; }
+      #sidebar { position: fixed; top: 58px; bottom: 0; left: 0; right: 0; z-index: 550; transform: translateY(100%); transition: transform 0.3s; }
+      body.sidebar-open #sidebar { transform: translateY(0); }
+      .mobile-toggle { display: block; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-logo">
+    <div class="nav-mark">
+      <svg viewBox="0 0 32 32"><path d="M6 22 L26 10 M6 10 L26 22" stroke="#c9a86a" stroke-width="2.4" stroke-linecap="round" fill="none"/></svg>
+    </div>
+    <span class="nav-wordmark">Ovr<em>Head</em></span>
+    <span class="nav-title-sub">flight data as macro signal</span>
+  </a>
+  <ul class="nav-links">
+    <li>
+      <button class="nav-fav" id="nav-fav" title="Your favorites">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        Favorites <span class="nav-fav-count" id="nav-fav-count" hidden></span>
+      </button>
+    </li>
+    <li><a href="pages/about/index.html">About</a></li>
+  </ul>
+</nav>
+
+<div class="strip" id="strip"></div>
+
+<div id="app">
+
+  <aside id="sidebar" class="scroll-thin">
+    <div class="side-head">
+      <div class="side-head-top">
+        <span class="side-title">Focus</span>
+        <span class="updated-pill" id="updated-pill">—</span>
+      </div>
+      <div class="focus-wrap">
+        <svg class="focus-ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+        <input class="focus-input" id="focus-input" type="text" placeholder="Country, region, or airport…" autocomplete="off" spellcheck="false">
+        <span class="focus-kbd" id="focus-kbd">/</span>
+        <button class="focus-clear" id="focus-clear" title="Clear focus (Esc)" hidden>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+        <div class="focus-suggest" id="focus-suggest" hidden></div>
+      </div>
+    </div>
+
+    <div class="crumbs" id="crumbs" hidden></div>
+    <div class="hero-block" id="hero-block"></div>
+    <div class="direction-tab" id="direction-tab" hidden></div>
+    <div class="feed" id="feed"></div>
+
+    <details class="advanced" id="advanced">
+      <summary>Advanced</summary>
+      <div class="filter-panel-inner">
+        <div class="filter-group">
+          <label class="filter-label">Theme</label>
+          <div class="chip-row" data-filter="theme">
+            <button class="chip active" data-value="all">All</button>
+            <button class="chip" data-value="tourism">Tourism</button>
+            <button class="chip" data-value="business">Business</button>
+            <button class="chip" data-value="migration">Migration</button>
+            <button class="chip" data-value="supply-chain">Supply chain</button>
+          </div>
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">Direction</label>
+          <div class="chip-row" data-filter="direction">
+            <button class="chip active" data-value="all">All</button>
+            <button class="chip" data-value="up">Up YoY</button>
+            <button class="chip" data-value="down">Down YoY</button>
+            <button class="chip" data-value="watched">★ Watched</button>
+          </div>
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">Sort</label>
+          <div class="chip-row" data-filter="sort">
+            <button class="chip active" data-value="strength">Signal strength</button>
+            <button class="chip" data-value="delta">|Delta|</button>
+            <button class="chip" data-value="volume">Volume</button>
+          </div>
+        </div>
+        <div class="actions-row" style="padding:0.5rem 0 0">
+          <button class="action-btn" id="btn-export" title="Export currently visible signals as CSV">Export CSV</button>
+          <button class="action-btn" id="btn-clear-watch" title="Clear all watched signals">Clear watched</button>
+        </div>
+      </div>
+    </details>
+  </aside>
+
+  <aside class="drawer" id="drawer" aria-hidden="true">
+    <div class="drawer-head">
+      <div>
+        <div class="drawer-eyebrow" id="drawer-route">—</div>
+        <div class="drawer-title" id="drawer-headline">—</div>
+      </div>
+      <button class="drawer-close" id="drawer-close" aria-label="Close">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="drawer-body scroll-thin" id="drawer-body"></div>
+  </aside>
+
+  <div id="map-wrap">
+    <div id="map"></div>
+    <div class="globe-loading" id="globe-loading">
+      <div class="spinner"></div>
+      <p>Loading globe</p>
+    </div>
+    <div class="map-prompt" id="map-prompt">Tinted countries have signals · click any to focus</div>
+    <div class="map-legend">
+      <div class="legend-row"><div class="legend-swatch up"></div>Growing</div>
+      <div class="legend-row"><div class="legend-swatch down"></div>Shrinking</div>
+      <div class="legend-row"><div class="legend-swatch flow"></div>Flow ∝ traffic</div>
+    </div>
+  </div>
+
+</div>
+
+<div class="fav-panel" id="fav-panel" hidden>
+  <div class="fav-head">
+    <span>Favorites</span>
+    <button class="fav-clear" id="fav-clear" title="Remove all">Clear all</button>
+  </div>
+  <div class="fav-body" id="fav-body"></div>
+</div>
+
+<button class="mobile-toggle" id="mobile-toggle">Signals</button>
+
+<script src="https://unpkg.com/three@0.155.0/build/three.min.js"></script>
+<script src="https://unpkg.com/globe.gl@2.27.2/dist/globe.gl.min.js"></script>
+<script src="https://unpkg.com/topojson-client@3/dist/topojson-client.min.js"></script>
+<script>
+  // ---- Globe setup ----
+  const mapEl = document.getElementById('map');
+  const globe = Globe()(mapEl)
+    .backgroundColor('rgba(0,0,0,0)')
+    // No photographic texture — a flat "ocean" sphere with vector country polygons
+    // drawn on top. Reads as a navigation chart, not a satellite photo, and avoids
+    // the muddy black-patch artifact where polygons overlay a dark bitmap.
+    .showGlobe(true)
+    .showAtmosphere(true)
+    .atmosphereColor('#a4b1c6')             // slightly warmer than pure cool blue
+    .atmosphereAltitude(0.18)               // bigger halo — helps the "lamp-lit" feel
+    .polygonAltitude(0.0015)                 // thin land layer over the ocean sphere
+    .polygonCapColor(() => 'rgba(38,50,66,0.92)')
+    .polygonSideColor(() => 'rgba(0,0,0,0)') // no visible extrusion wall
+    .polygonStrokeColor(() => 'rgba(140,158,180,0.28)')
+    .polygonsTransitionDuration(0)           // instant repaint — reads flatter
+    // Two-layer arcs: solid faded base + flowing dashed overlay (IEA-style)
+    .arcColor('color')
+    .arcAltitudeAutoScale(0.42)
+    .arcStroke(a => a.stroke)
+    .arcDashLength(a => a.dashLen ?? 1)
+    .arcDashGap(a => a.dashGap ?? 0)
+    .arcDashInitialGap(a => a.initGap ?? 0)
+    .arcDashAnimateTime(a => a.animMs ?? 0)
+    .arcsTransitionDuration(400)
+    .pointsData([])
+    .pointAltitude(0.008)
+    .pointColor('color')
+    .pointRadius(0.35);
+
+  // Ocean sphere — deep navy, slightly glossy so the atmosphere reads
+  globe.globeMaterial(new THREE.MeshPhongMaterial({
+    color: new THREE.Color('#0d1b2b'),
+    emissive: new THREE.Color('#060d16'),
+    emissiveIntensity: 0.9,
+    shininess: 4,
+    transparent: false,
+  }));
+
+  // ── Auto-fit to container, respond to resize ──
+  function resizeGlobe() {
+    const w = mapEl.clientWidth || window.innerWidth;
+    const h = mapEl.clientHeight || window.innerHeight;
+    globe.width(w).height(h);
+  }
+  resizeGlobe();
+  window.addEventListener('resize', resizeGlobe);
+  // The drawer-open transition changes the grid columns → globe container resizes → re-fit.
+  if (window.ResizeObserver) new ResizeObserver(resizeGlobe).observe(mapEl);
+
+  // Open on the region the data actually covers (EU + partners), not mid-Atlantic.
+  globe.pointOfView({ lat: 44, lng: 14, altitude: 1.85 }, 0);
+
+  // ── Controls: slow auto-rotate before any pick; disable after ──
+  globe.controls().autoRotate = true;
+  globe.controls().autoRotateSpeed = 0.22;
+  globe.controls().enableZoom = true;
+  globe.controls().minDistance = 180;
+  globe.controls().maxDistance = 600;
+
+  // ── Fetch countries GeoJSON (via topojson from unpkg) and wire polygons ──
+  fetch('https://unpkg.com/world-atlas@2.0.2/countries-110m.json')
+    .then(r => r.json())
+    .then(topo => {
+      const countries = topojson.feature(topo, topo.objects.countries).features
+        .filter(f => f.properties && f.properties.name !== 'Antarctica');
+      window._countryFeatures = countries;   // stash so we can repaint after data loads
+      globe.polygonsData(countries)
+        .polygonLabel(d => countryHoverLabel(d))
+        .polygonAltitude(0.0015)             // uniform land layer — never lifts on hover
+        .polygonSideColor(() => 'rgba(0,0,0,0)')
+        .polygonCapColor(d => countryCapColor(d))
+        .polygonStrokeColor(() => 'rgba(140,158,180,0.28)')
+        .onPolygonHover(hovered => {
+          hoveredCountryFeature = hovered || null;
+          // Zero altitude change on hover — fill + stroke do all the work.
+          // This is what fixes the "Brazil/Russia extrudes weirdly" artifact.
+          globe
+            .polygonCapColor(d => d === hovered
+              ? mixHoverColor(countryCapColor(d))
+              : countryCapColor(d))
+            .polygonStrokeColor(d => d === hovered
+              ? 'rgba(224,199,156,0.95)'
+              : 'rgba(140,158,180,0.28)');
+          mapEl.style.cursor = hovered ? 'pointer' : 'grab';
+        })
+        .onPolygonClick(feat => {
+          const name = feat && feat.properties && feat.properties.name;
+          if (name) handleCountryClickFromMap(name);
+        });
+      document.getElementById('globe-loading').classList.add('done');
+    })
+    .catch(err => {
+      console.warn('World atlas failed:', err);
+      document.getElementById('globe-loading').classList.add('done');
+    });
+
+  // ── When user picks a country by clicking the globe ──
+  // If already focused on a country, promote to a pair (drill into that specific corridor).
+  // Otherwise, focus on this country as a fresh node.
+  function handleCountryClickFromMap(name) {
+    globe.controls().autoRotate = false;
+    const cur = currentFocus();
+    if (cur && cur.kind === 'country' && normName(cur.name) !== normName(name)) {
+      focusOn({ kind: 'pair', id: `${cur.name}::${name}`, name: `${cur.name} ↔ ${name}`, pair: [cur.name, name] });
+    } else {
+      focusOn({ kind: 'country', id: name, name });
+    }
+  }
+
+  // ---- State ----
+  // The "focus" is a single node the user is exploring: a country, a region, or an airport.
+  // Direction: 'both' (default), 'out' (from focus), 'in' (to focus).
+  const filters = { theme: 'all', direction: 'all', sort: 'strength', dirRel: 'both' };
+  let insights = [];
+  let activeId = null;
+  let hoverId = null;
+  let meta = {};
+  let hoveredCountryFeature = null;
+  const arcById = new Map();
+
+  // Per-country aggregate signal (volume-weighted net delta) — feeds the globe tinting.
+  let countrySignals = new Map();
+  function computeCountrySignals() {
+    const map = new Map();
+    insights.forEach(i => {
+      // Weight = 1 for each corridor endpoint; sum with volume weight for the delta.
+      const w = i.volumeCurrent || 100000;
+      [i.origin.country, i.dest.country].forEach(name => {
+        if (!name) return;
+        const rec = map.get(name) || { count: 0, up: 0, down: 0, sumWD: 0, sumW: 0 };
+        rec.count += 1;
+        if (i.deltaPct >= 0) rec.up += 1; else rec.down += 1;
+        rec.sumWD += i.deltaPct * w;
+        rec.sumW  += w;
+        map.set(name, rec);
+      });
+    });
+    map.forEach(rec => { rec.netPct = rec.sumW ? rec.sumWD / rec.sumW : 0; });
+    return map;
+  }
+
+  function countryHoverLabel(feat) {
+    const n = (feat && feat.properties && feat.properties.name) || '';
+    const sig = signalFor(feat);
+    if (!sig || !sig.count) {
+      return `<div class="scene-tooltip"><div style="font-weight:600">${n}</div><div style="opacity:0.55;font-size:0.62rem;margin-top:2px;letter-spacing:0.06em">NO SIGNALS YET</div></div>`;
+    }
+    const sign = sig.netPct >= 0 ? '+' : '';
+    const color = sig.netPct >= 0 ? '#a3c1ac' : '#cf9578';
+    return `<div class="scene-tooltip">
+      <div style="font-weight:600">${n}</div>
+      <div style="margin-top:3px;font-size:0.68rem;letter-spacing:0.02em">
+        <span style="color:${color};font-weight:600">${sign}${sig.netPct.toFixed(1)}%</span>
+        <span style="opacity:0.7">· net across ${sig.count} corridor${sig.count===1?'':'s'}</span>
+      </div>
+    </div>`;
+  }
+
+  /** Hover: lift the fill toward brass so the country glows without moving. */
+  function mixHoverColor(baseRgba) {
+    const m = baseRgba.match(/rgba\((\d+),\s*(\d+),\s*(\d+)/);
+    if (!m) return 'rgba(150,124,80,0.95)';
+    const lift = (c, toward) => Math.round(c * 0.55 + toward * 0.45);
+    return `rgba(${lift(+m[1],201)},${lift(+m[2],168)},${lift(+m[3],106)},0.97)`;
+  }
+
+  function repaintCountries() {
+    if (!window._countryFeatures) return;
+    globe
+      .polygonCapColor(d => countryCapColor(d))
+      .polygonLabel(d => countryHoverLabel(d));
+  }
+
+  // Base landmass — countries with no signal. Sits above the ocean sphere so
+  // continents are legible without a photographic texture.
+  const LAND_BASE = 'rgba(38,50,66,0.92)';
+
+  function signalFor(feat) {
+    if (!feat || !feat.properties) return null;
+    const n = feat.properties.name;
+    // Natural-earth uses some different names than our ISO table
+    const ALIAS = {
+      'United States of America': 'United States',
+      'Czech Republic': 'Czechia',
+      'Turkey': 'Türkiye',
+      'Bosnia and Herz.': 'Bosnia & Herz.',
+      'Republic of Serbia': 'Serbia',
+      'United Kingdom': 'United Kingdom',
+      'Greece': 'Greece',
+    };
+    return countrySignals.get(n) || countrySignals.get(ALIAS[n]) || null;
+  }
+
+  function countryCapColor(feat) {
+    const sig = signalFor(feat);
+    if (!sig || !sig.count) return LAND_BASE;
+    // Blend the signal tint over the land base. Alpha climbs with magnitude.
+    const mag = Math.min(Math.abs(sig.netPct) / 30, 1);
+    const a = 0.30 + mag * 0.50;
+    const [r, g, b] = sig.netPct >= 0 ? [127, 168, 140] : [184, 120, 87];
+    // Mix toward the land base so tinted countries still read as land, not neon.
+    const mix = (c, base) => Math.round(c * a + base * (1 - a));
+    return `rgba(${mix(r,38)},${mix(g,50)},${mix(b,66)},0.94)`;
+  }
+
+  /** Focus stack — most-recent node last. Empty stack = landing. */
+  const focusStack = [];   // items: { kind: 'country'|'region'|'airport'|'pair', id, name }
+  function currentFocus() { return focusStack.length ? focusStack[focusStack.length - 1] : null; }
+
+  // ── Region definitions — expand freely ──────────────────────────────────
+  const REGIONS = {
+    'Nordics':           { members: ['SE','NO','DK','FI','IS'] },
+    'Iberia':            { members: ['ES','PT'] },
+    'Benelux':           { members: ['NL','BE','LU'] },
+    'DACH':              { members: ['DE','AT','CH'] },
+    'British Isles':     { members: ['GB','IE'] },
+    'Baltics':           { members: ['EE','LV','LT'] },
+    'Central Europe':    { members: ['PL','CZ','SK','HU'] },
+    'Balkans':           { members: ['HR','RS','BA','ME','MK','AL','XK','SI'] },
+    'Mediterranean EU':  { members: ['ES','IT','EL','PT','FR','HR','CY','MT'] },
+    'EU':                { members: ['AT','BE','BG','CY','CZ','DE','DK','EE','EL','ES','FI','FR','HR','HU','IE','IT','LT','LU','LV','MT','NL','PL','PT','RO','SE','SI','SK'] },
+    'MENA':              { members: ['MA','TN','EG','AE','QA','SA','JO','LB','IL'] },
+    'East Asia':         { members: ['CN','JP','KR','HK','TW'] },
+    'Southeast Asia':    { members: ['SG','TH','VN','ID','MY','PH'] },
+    'North America':     { members: ['US','CA','MX'] },
+    'Oceania':           { members: ['AU','NZ'] },
+  };
+
+  // ---- Favorites (unified: countries + regions + corridors) ----
+  const FAV_KEY = 'ovrhead.favorites.v1';
+  const LEGACY_WATCH_KEY = 'ovrhead.watched.v1';
+  const favorites = { countries: new Set(), regions: new Set(), corridors: new Set() };
+  try {
+    const raw = localStorage.getItem(FAV_KEY);
+    if (raw) {
+      const j = JSON.parse(raw);
+      if (Array.isArray(j.countries)) j.countries.forEach(x => favorites.countries.add(x));
+      if (Array.isArray(j.regions))   j.regions.forEach(x   => favorites.regions.add(x));
+      if (Array.isArray(j.corridors)) j.corridors.forEach(x => favorites.corridors.add(x));
+    } else {
+      // migrate legacy watched-key (corridor ids only)
+      const legacy = localStorage.getItem(LEGACY_WATCH_KEY);
+      if (legacy) JSON.parse(legacy).forEach(x => favorites.corridors.add(x));
+    }
+  } catch { /* private mode etc. */ }
+  function saveFavorites() {
+    try {
+      localStorage.setItem(FAV_KEY, JSON.stringify({
+        countries: [...favorites.countries],
+        regions:   [...favorites.regions],
+        corridors: [...favorites.corridors],
+      }));
+    } catch {}
+  }
+  function favCount() {
+    return favorites.countries.size + favorites.regions.size + favorites.corridors.size;
+  }
+  function updateFavBadge() {
+    const el = document.getElementById('nav-fav-count');
+    if (!el) return;
+    const n = favCount();
+    el.textContent = n ? String(n) : '';
+    el.hidden = n === 0;
+  }
+
+  // Legacy alias — the corridor thesis cards still call toggleWatch(id).
+  const watched = favorites.corridors;
+  function toggleWatch(id) {
+    if (favorites.corridors.has(id)) favorites.corridors.delete(id); else favorites.corridors.add(id);
+    saveFavorites();
+    updateFavBadge();
+    render();
+    if (activeId === id) openDrawer(id); // refresh drawer star
+  }
+  function toggleFavCountry(name) {
+    if (favorites.countries.has(name)) favorites.countries.delete(name); else favorites.countries.add(name);
+    saveFavorites(); updateFavBadge(); render();
+  }
+  function toggleFavRegion(name) {
+    if (favorites.regions.has(name)) favorites.regions.delete(name); else favorites.regions.add(name);
+    saveFavorites(); updateFavBadge(); render();
+  }
+
+  // ---- Helpers ----
+  function fmtInt(n) {
+    if (!Number.isFinite(n)) return '';
+    if (n >= 1e6) return (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M';
+    if (n >= 1e3) return (n / 1e3).toFixed(1).replace(/\.0$/, '') + 'k';
+    return String(n);
+  }
+
+  function strength(i) { return Math.abs(i.deltaPct || 0) * Math.log10(Math.max(i.volumeCurrent || 100, 10)); }
+
+  function normName(s) { return String(s || '').trim().toLowerCase(); }
+
+  /** Does an insight touch this country (by code or name)? Direction 'both'|'out'|'in'. */
+  function insightTouchesCountry(i, code, name, dir = 'both') {
+    const cLower = normName(code), nLower = normName(name);
+    const oMatch = normName(i.origin.code) === cLower || normName(i.origin.name) === nLower || normName(i.origin.country) === nLower;
+    const dMatch = normName(i.dest.code)   === cLower || normName(i.dest.name)   === nLower || normName(i.dest.country)   === nLower;
+    if (dir === 'out') return oMatch;
+    if (dir === 'in')  return dMatch;
+    return oMatch || dMatch;
+  }
+
+  /** Does an insight belong to the currently-focused node? */
+  function insightInFocus(i, node) {
+    if (!node) return false;
+    const dir = filters.dirRel || 'both';
+    if (node.kind === 'country') {
+      return insightTouchesCountry(i, node.id, node.name, dir);
+    }
+    if (node.kind === 'region') {
+      const members = REGIONS[node.id]?.members || [];
+      // "out": origin is a member country; "in": destination is a member country
+      return members.some(code => insightTouchesCountry(i, code, '', dir));
+    }
+    if (node.kind === 'airport') {
+      const iata = node.iataOrIcao;
+      const endpointIsAirport = (i.origin.type === 'city' && i.origin.name.includes(`(${iata})`))
+                              || (i.dest.type   === 'city' && i.dest.name.includes(`(${iata})`));
+      return endpointIsAirport;
+    }
+    if (node.kind === 'pair') {
+      const [a, b] = node.pair;
+      return (insightTouchesCountry(i, a, a) && insightTouchesCountry(i, b, b));
+    }
+    return false;
+  }
+
+  function passesFilter(i) {
+    const node = currentFocus();
+    if (!node) return false;                     // landing shows top-N separately, not via this path
+    if (!insightInFocus(i, node)) return false;
+    if (filters.theme !== 'all' && i.theme !== filters.theme) return false;
+    if (filters.direction === 'up' && i.deltaPct <= 0) return false;
+    if (filters.direction === 'down' && i.deltaPct >= 0) return false;
+    if (filters.direction === 'watched' && !watched.has(i.id)) return false;
+    return true;
+  }
+
+  function sortInsights(list) {
+    const s = filters.sort;
+    const out = list.slice();
+    if (s === 'strength') out.sort((a, b) => strength(b) - strength(a));
+    else if (s === 'delta') out.sort((a, b) => Math.abs(b.deltaPct) - Math.abs(a.deltaPct));
+    else if (s === 'volume') out.sort((a, b) => (b.volumeCurrent || 0) - (a.volumeCurrent || 0));
+    else if (s === 'az') out.sort((a, b) => (a.origin.name + a.dest.name).localeCompare(b.origin.name + b.dest.name));
+    return out;
+  }
+
+  // How many signals show in the short list. Busy user cap.
+  const SHORT_LIST_MAX = 6;
+
+  function scopedInsights() {
+    const node = currentFocus();
+    if (!node) return [];
+    return insights.filter(i => insightInFocus(i, node));
+  }
+
+  function filteredInsights() {
+    return sortInsights(insights.filter(passesFilter));
+  }
+
+  function render() {
+    arcById.clear();
+    const node = currentFocus();
+    document.getElementById('map-prompt').classList.toggle('hidden', !!node);
+    renderCrumbs();
+    renderStrip();
+
+    const hero = document.getElementById('hero-block');
+    const feed = document.getElementById('feed');
+    const dirTab = document.getElementById('direction-tab');
+
+    if (!node) {
+      dirTab.hidden = true;
+      renderLanding(hero, feed);
+    } else if (node.kind === 'pair') {
+      dirTab.hidden = true;
+      renderPairMode(hero, feed);
+    } else {
+      renderNodeDashboard(hero, feed, node, dirTab);
+    }
+
+    applyHighlight();
+
+    // Fly only when the focus itself changes — not on sort/filter tweaks.
+    const focusKey = node ? `${node.kind}:${node.id}` : '';
+    if (node && focusKey !== lastFlownKey) {
+      const arcTargets = filteredInsights();
+      if (arcTargets.length) flyToSelection(arcTargets);
+      lastFlownKey = focusKey;
+    } else if (!node) {
+      lastFlownKey = '';
+    }
+  }
+  let lastFlownKey = '';
+
+  // ── Navigation ──────────────────────────────────────────────────────────
+  function focusOn(node, { push = true } = {}) {
+    if (push) {
+      // Collapse identical consecutive entries
+      const cur = currentFocus();
+      if (!cur || cur.kind !== node.kind || cur.id !== node.id) {
+        focusStack.push(node);
+      }
+    }
+    filters.dirRel = 'both';
+    updateFocusInputValue();
+    render();
+  }
+  function goBack() {
+    focusStack.pop();
+    updateFocusInputValue();
+    render();
+  }
+  function clearFocus() {
+    focusStack.length = 0;
+    updateFocusInputValue();
+    render();
+  }
+  function updateFocusInputValue() {
+    const node = currentFocus();
+    const el = document.getElementById('focus-input');
+    if (el) el.value = node ? node.name : '';
+    const cx = document.getElementById('focus-clear');
+    if (cx) cx.hidden = !node;
+  }
+
+  function renderCrumbs() {
+    const el = document.getElementById('crumbs');
+    if (focusStack.length === 0) { el.hidden = true; el.innerHTML = ''; return; }
+    el.hidden = false;
+    const parts = [`<button class="crumb-back" id="crumb-back">${focusStack.length > 1 ? '← back' : '× clear'}</button>`];
+    parts.push(`<span class="crumb-item" data-idx="-1">Board</span>`);
+    focusStack.forEach((node, idx) => {
+      parts.push(`<span class="crumb-sep">›</span>`);
+      const isLast = idx === focusStack.length - 1;
+      parts.push(`<span class="crumb-item ${isLast ? 'current' : ''}" data-idx="${idx}">${escapeHtml(node.name)}</span>`);
+    });
+    el.innerHTML = parts.join(' ');
+    el.querySelector('#crumb-back').addEventListener('click', () => {
+      focusStack.length > 1 ? goBack() : clearFocus();
+    });
+    el.querySelectorAll('.crumb-item').forEach(c => {
+      c.addEventListener('click', () => {
+        const idx = Number(c.dataset.idx);
+        if (idx === -1) return clearFocus();
+        if (idx === focusStack.length - 1) return;   // already there
+        focusStack.length = idx + 1;
+        updateFocusInputValue();
+        render();
+      });
+    });
+  }
+
+  function wireCards(container) {
+    container.querySelectorAll('.card').forEach(el => {
+      el.addEventListener('click', e => {
+        if (e.target.closest('.card-star')) return;
+        selectInsight(el.dataset.id);
+      });
+      el.addEventListener('mouseenter', () => setHover(el.dataset.id));
+      el.addEventListener('mouseleave', () => setHover(null));
+    });
+    container.querySelectorAll('.card-star').forEach(el => {
+      el.addEventListener('click', e => { e.stopPropagation(); toggleWatch(el.dataset.id); });
+    });
+  }
+
+  // ---- LANDING: no focus → thesis board of top 8 worldwide ----
+  function renderLanding(hero, feed) {
+    const top = sortInsights(insights.slice()).slice(0, 8);
+    hero.innerHTML = `
+      <div class="hero-eyebrow"><span class="kind">Board</span> ${escapeHtml((meta && meta.period) || '')}</div>
+      <div class="hero-title">Today's strongest<br><span class="accent">macro signals</span></div>
+      <div class="hero-sub">Ranked by magnitude × corridor size. Click an endpoint to focus it, a card to open its reasoning.</div>
+    `;
+    if (!top.length) {
+      feed.innerHTML = `<div class="feed-landing">Loading signals…</div>`;
+      drawArcs([]);
+      return;
+    }
+    feed.innerHTML = top.map(i => thesisCardHtml(i, insights)).join('');
+    wireThesisCards(feed, insights);
+    drawArcs(top);
+  }
+
+  // ---- NODE DASHBOARD — country, region, or airport ----
+  function renderNodeDashboard(hero, feed, node, dirTab) {
+    const scoped = scopedInsights();     // all insights matching this node (any theme, any dir per current dirRel)
+    const shown  = filteredInsights();
+    const kindLabel = node.kind === 'region' ? 'REGION' : node.kind === 'airport' ? 'AIRPORT' : 'COUNTRY';
+    if (!scoped.length) {
+      hero.innerHTML = `
+        <div class="hero-eyebrow">${kindLabel} · ${escapeHtml(node.name)}</div>
+        <div class="hero-title">No signals yet</div>
+        <div class="hero-sub">The current dataset doesn't have material anomalies touching <strong>${escapeHtml(node.name)}</strong>. Try another node, or check back after the next update.</div>
+      `;
+      dirTab.hidden = true;
+      feed.innerHTML = '';
+      drawArcs([]);
+      return;
+    }
+    const agg = aggregate(scoped);
+    // Star button only for country/region — corridors get their own star on the card.
+    const starrable = node.kind === 'country' || node.kind === 'region';
+    const isStarred = starrable && (
+      (node.kind === 'country' && favorites.countries.has(node.name)) ||
+      (node.kind === 'region'  && favorites.regions.has(node.name))
+    );
+    const starBtn = starrable ? `
+      <button class="hero-star ${isStarred ? 'on' : ''}" id="hero-star" title="${isStarred ? 'Remove from favorites' : 'Save to favorites'}">
+        <svg viewBox="0 0 24 24" fill="${isStarred ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        ${isStarred ? 'Favorited' : 'Save to favorites'}
+      </button>` : '';
+
+    const upPct = agg.total ? (agg.up / agg.total * 100) : 0;
+    hero.innerHTML = `
+      <div class="hero-eyebrow"><span class="kind">${kindLabel}</span> ${escapeHtml((meta && meta.period) || '')}</div>
+      <div class="hero-title" style="font-size:1.45rem;margin-bottom:0.55rem">${escapeHtml(node.name)}</div>
+      <div class="hero-num ${agg.netUp ? 'up' : 'down'}">
+        <span class="sign">${agg.netUp ? '+' : '−'}</span>${Math.abs(agg.netPct).toFixed(1)}<span class="pct">%</span>
+      </div>
+      <div class="hero-sub">
+        Volume-weighted net across <strong>${agg.total} corridor${agg.total===1?'':'s'}</strong>
+      </div>
+      <div class="hero-split">
+        <div class="seg-up"   style="width:${upPct.toFixed(1)}%"></div>
+        <div class="seg-down" style="width:${(100-upPct).toFixed(1)}%"></div>
+      </div>
+      <div class="hero-sub" style="font-family:var(--mono);font-size:0.63rem;letter-spacing:0.06em;color:var(--dim)">
+        ${agg.up} RISING · ${agg.down} FALLING
+      </div>
+      ${starBtn}
+    `;
+    if (starrable) {
+      document.getElementById('hero-star').addEventListener('click', () => {
+        node.kind === 'country' ? toggleFavCountry(node.name) : toggleFavRegion(node.name);
+      });
+    }
+
+    // Direction chips: All / Outbound / Inbound. Only meaningful for country + region.
+    if (node.kind !== 'airport') {
+      dirTab.hidden = false;
+      dirTab.innerHTML = `
+        <button class="dir-chip ${filters.dirRel==='both' ? 'active':''}" data-dir="both">All flows</button>
+        <button class="dir-chip ${filters.dirRel==='out'  ? 'active':''}" data-dir="out">Outbound →</button>
+        <button class="dir-chip ${filters.dirRel==='in'   ? 'active':''}" data-dir="in">← Inbound</button>
+      `;
+      dirTab.querySelectorAll('.dir-chip').forEach(btn => {
+        btn.addEventListener('click', () => { filters.dirRel = btn.dataset.dir; render(); });
+      });
+    } else {
+      dirTab.hidden = true;
+    }
+
+    const top = shown.slice(0, SHORT_LIST_MAX);
+    const overflow = shown.length - top.length;
+    feed.innerHTML = `
+      ${top.map(i => thesisCardHtml(i, insights)).join('')}
+      ${overflow > 0 ? `<button class="show-more" id="show-more">Show ${overflow} more</button>` : ''}
+    `;
+    wireThesisCards(feed, insights);
+    if (overflow > 0) {
+      document.getElementById('show-more').addEventListener('click', () => {
+        feed.innerHTML = shown.map(i => thesisCardHtml(i, insights)).join('');
+        wireThesisCards(feed, insights);
+      });
+    }
+    drawArcs(shown);
+  }
+
+  // ---- PAIR: two countries pinned, single thesis card ----
+  function renderPairMode(hero, feed) {
+    const shown = filteredInsights();
+    const node = currentFocus();
+    if (!shown.length) {
+      hero.innerHTML = `
+        <div class="hero-eyebrow">PAIR · ${escapeHtml(node.name)}</div>
+        <div class="hero-title">No signal for this corridor</div>
+        <div class="hero-sub">No material anomaly computed for this pair in the current period. Focus on either endpoint alone to widen.</div>
+      `;
+      feed.innerHTML = '';
+      drawArcs([]);
+      return;
+    }
+    const primary = shown[0];
+    const pUp = primary.deltaPct >= 0;
+    hero.innerHTML = `
+      <div class="hero-eyebrow"><span class="kind">Pair</span> ${escapeHtml(primary.period || '')}</div>
+      <div class="hero-title" style="font-size:1.35rem;margin-bottom:0.5rem">${escapeHtml(primary.origin.name)} <span class="accent">↔</span> ${escapeHtml(primary.dest.name)}</div>
+      <div class="hero-num ${pUp ? 'up' : 'down'}">
+        <span class="sign">${pUp ? '+' : '−'}</span>${Math.abs(primary.deltaPct).toFixed(1)}<span class="pct">%</span>
+      </div>
+    `;
+    const related = shown.slice(1, 4);
+    feed.innerHTML = `
+      ${thesisCardHtml(primary, insights)}
+      ${related.length ? `<div class="feed-heading" style="padding-top:0.75rem">Related</div>${related.map(i => thesisCardHtml(i, insights)).join('')}` : ''}
+    `;
+    wireThesisCards(feed, insights);
+    requestAnimationFrame(() => {
+      const first = feed.querySelector('.thesis-card');
+      if (first) {
+        first.classList.add('open');
+        const btn = first.querySelector('.tc-expand');
+        if (btn) btn.textContent = 'Reasoning −';
+      }
+    });
+    drawArcs(shown);
+  }
+
+  // ── INSTRUMENT STRIP — state of the world, always visible ───────────────
+  function renderStrip() {
+    const el = document.getElementById('strip');
+    if (!el) return;
+    if (!insights.length) { el.innerHTML = ''; return; }
+
+    const agg = aggregate(insights);
+    const sorted = sortInsights(insights.slice());
+    const biggest = sorted[0];
+    const biggestUp = biggest && biggest.deltaPct >= 0;
+
+    // Widest gainer / decliner by absolute delta
+    const byDelta = insights.slice().sort((a, b) => b.deltaPct - a.deltaPct);
+    const topGain = byDelta[0];
+    const topDrop = byDelta[byDelta.length - 1];
+
+    const totalPax = insights.reduce((s, i) => s + (i.volumeCurrent || 0), 0);
+    const node = currentFocus();
+
+    const cell = (k, v, cls = '', opts = {}) => `
+      <div class="strip-cell ${opts.optional ? 'optional' : ''} ${opts.id ? 'tappable' : ''}"
+           ${opts.id ? `data-goto="${escapeHtml(opts.id)}"` : ''}
+           ${opts.title ? `title="${escapeHtml(opts.title)}"` : ''}>
+        <span class="strip-k">${k}</span>
+        <span class="strip-v ${cls}">${v}</span>
+      </div>`;
+
+    const parts = [];
+    parts.push(cell('Signals', String(insights.length).padStart(2, '0'), 'brass'));
+    parts.push(cell('Net flow',
+      `${agg.netUp ? '+' : '−'}${Math.abs(agg.netPct).toFixed(1)}<span class="sub">%</span>`,
+      agg.netUp ? 'up' : 'down'));
+    parts.push(cell('Breadth',
+      `${agg.up}<span class="sub">↑</span> ${agg.down}<span class="sub">↓</span>`, ''));
+    if (topGain) parts.push(cell('Top gainer',
+      `${escapeHtml(shortNode(topGain))} <span class="sub">+${topGain.deltaPct.toFixed(1)}%</span>`,
+      'up', { id: topGain.id, optional: true, title: topGain.headline || '' }));
+    if (topDrop && topDrop.deltaPct < 0) parts.push(cell('Top decliner',
+      `${escapeHtml(shortNode(topDrop))} <span class="sub">${topDrop.deltaPct.toFixed(1)}%</span>`,
+      'down', { id: topDrop.id, optional: true, title: topDrop.headline || '' }));
+    parts.push(cell('Volume', `${fmtInt(totalPax)}<span class="sub">pax</span>`, '', { optional: true }));
+    if (node) parts.push(cell('Focus', escapeHtml(node.name), 'brass', { optional: true }));
+
+    parts.push(`<div class="strip-cell strip-spacer"></div>`);
+    parts.push(`<div class="strip-cell">
+      <span class="strip-k">Period</span>
+      <span class="strip-v" style="font-size:0.74rem">${escapeHtml((meta && meta.period) || '—')}</span>
+    </div>`);
+    parts.push(`<div class="strip-cell"><span class="strip-live">LIVE</span></div>`);
+
+    el.innerHTML = parts.join('');
+    el.querySelectorAll('[data-goto]').forEach(c => {
+      c.addEventListener('click', () => selectInsight(c.dataset.goto));
+    });
+  }
+
+  /** Compact label for strip cells — "DE→Poland" style. */
+  function shortNode(i) {
+    const trim = s => s.replace(/\s*\(.*\)$/, '');
+    return `${trim(i.origin.name)}→${trim(i.dest.name)}`;
+  }
+
+  function aggregate(list) {
+    const up = list.filter(i => i.deltaPct > 0).length;
+    const down = list.filter(i => i.deltaPct < 0).length;
+    // Volume-weighted net delta if volumes present, else simple mean
+    let netPct = 0;
+    const withVol = list.filter(i => (i.volumeCurrent || 0) > 0);
+    if (withVol.length) {
+      const totalVol = withVol.reduce((s, i) => s + i.volumeCurrent, 0);
+      netPct = withVol.reduce((s, i) => s + (i.deltaPct * i.volumeCurrent), 0) / totalVol;
+    } else if (list.length) {
+      netPct = list.reduce((s, i) => s + i.deltaPct, 0) / list.length;
+    }
+    return { total: list.length, up, down, netPct, netUp: netPct >= 0 };
+  }
+
+  function flyToSelection(visible) {
+    // Centroid of all endpoints; altitude based on max span so both endpoints stay in view.
+    let sumLat = 0, sumLng = 0, n = 0;
+    let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
+    visible.forEach(i => {
+      [i.origin, i.dest].forEach(p => {
+        sumLat += p.lat; sumLng += p.lng; n++;
+        minLat = Math.min(minLat, p.lat); maxLat = Math.max(maxLat, p.lat);
+        minLng = Math.min(minLng, p.lng); maxLng = Math.max(maxLng, p.lng);
+      });
+    });
+    if (!n) return;
+    const span = Math.max(maxLat - minLat, maxLng - minLng);
+    const altitude = Math.min(2.6, Math.max(0.9, span / 40 + 0.9));
+    globe.controls().autoRotate = false;
+    globe.pointOfView({ lat: sumLat / n, lng: sumLng / n, altitude }, 900);
+  }
+
+  // ── Thesis card — the primary experience ───────────────────────────────
+  // Structure: Thesis (headline) · Anomaly + baseline · [expand] Pattern / If true / Angle
+  // Confidence + theme in the meta row. No source line — attribution lives in
+  // About/Methodology; on-card, it's just noise.
+
+  function computePattern(i, all) {
+    // Find peer corridors — same destination OR same origin — from other insights.
+    const destPeers = all.filter(x => x.id !== i.id && x.dest.country === i.dest.country);
+    const origPeers = all.filter(x => x.id !== i.id && x.origin.country === i.origin.country);
+    const iUp = i.deltaPct >= 0;
+
+    function summarize(peers, side) {
+      if (peers.length < 2) return null;
+      const same  = peers.filter(p => (p.deltaPct >= 0) === iUp).length;
+      const total = peers.length;
+      const ratio = same / total;
+      const meanDelta = peers.reduce((s, p) => s + p.deltaPct, 0) / total;
+      const sideLabel = side === 'dest' ? i.dest.country : i.origin.country;
+      const oppLabel  = side === 'dest' ? 'origins' : 'destinations';
+      if (ratio >= 0.7) {
+        return `Regional pattern — ${same}/${total} other ${oppLabel} into <strong>${escapeHtml(sideLabel)}</strong> are moving the same way (mean ${meanDelta >= 0 ? '+' : ''}${meanDelta.toFixed(1)}%). This is about <strong>${escapeHtml(sideLabel)}</strong>, not just this pair.`;
+      }
+      if (ratio <= 0.3) {
+        return `Idiosyncratic — other ${oppLabel} into <strong>${escapeHtml(sideLabel)}</strong> move the opposite way (mean ${meanDelta >= 0 ? '+' : ''}${meanDelta.toFixed(1)}%). This corridor is the outlier, not the rule.`;
+      }
+      return null;
+    }
+    return summarize(destPeers, 'dest') || summarize(origPeers, 'origin') ||
+      `<span class="muted">Not enough peer corridors in the current dataset to say whether this is regional or idiosyncratic.</span>`;
+  }
+
+  function templateIfTrue(i) {
+    const up = i.deltaPct >= 0;
+    const theme = i.theme || 'business';
+    const dest = escapeHtml(i.dest.name);
+    const orig = escapeHtml(i.origin.name);
+    if (theme === 'tourism') {
+      return up
+        ? `If sustained, expect <strong>${dest}</strong> hotel occupancy and F&B receipts to lift over the next 4–8 weeks. Watch for corroboration in next release of the ${orig} consumer-confidence index.`
+        : `If sustained, expect <strong>${dest}</strong> hospitality operators to see a soft next quarter. Watch ${orig} disposable-income and FX moves.`;
+    }
+    if (theme === 'business') {
+      return up
+        ? `If persistent, likely to show up in cross-border services trade and next PMI release for the ${orig}–${dest} corridor. Corporate activity indicator to track: front-cabin load factor.`
+        : `If persistent, softer transnational corporate activity between ${orig} and ${dest}. Track it against services-PMI and trade-balance releases.`;
+    }
+    if (theme === 'migration') {
+      return up
+        ? `If sustained, expect visa / work-permit applications on the ${orig} → ${dest} corridor to trend in the same direction over the next 1–2 quarters.`
+        : `If sustained, a slowdown in visa / work-permit flows on this corridor. Watch labour-market indicators in ${dest}.`;
+    }
+    // supply-chain
+    return up
+      ? `If persistent, freighter capacity on the ${orig} → ${dest} lane will follow within a quarter. Corroborate against port-throughput data.`
+      : `If persistent, expect logistics slot capacity to unwind on this lane. Corroborate against ${dest} manufacturing-PMI.`;
+  }
+
+  function templateAngle(i) {
+    const up = i.deltaPct >= 0;
+    const theme = i.theme || 'business';
+    const dest = escapeHtml(i.dest.name);
+    const orig = escapeHtml(i.origin.name);
+    if (theme === 'tourism') {
+      return up
+        ? `Long ${dest} hospitality / short ${orig} discretionary retail if the trend hardens.`
+        : `Long ${orig} domestic tourism / cautious on ${dest} hospitality names with exposure to this corridor.`;
+    }
+    if (theme === 'business') {
+      return up
+        ? `Overweight ${dest} services stocks with ${orig} client exposure; track carrier front-cabin unit revenue.`
+        : `Underweight ${dest}-exposed corporate services if the pattern extends beyond one quarter.`;
+    }
+    if (theme === 'migration') {
+      return up
+        ? `${dest} labour supply loosening on this corridor — bullish for ${dest} sectors hiring at scale.`
+        : `${dest} labour supply tightening on this corridor — cost pressure to watch in ${dest} labour-intensive sectors.`;
+    }
+    return up
+      ? `Long ${dest} industrial-exposure names benefitting from inbound capacity; watch cargo carrier unit revenue.`
+      : `Cargo capacity on this lane is easing — freight-rate downside for carriers over-indexed to it.`;
+  }
+
+  /**
+   * The serif line must say something the route line above doesn't.
+   * Unenriched pipeline headlines are purely mechanical ("Italy → Warsaw up 57.6% YoY"),
+   * so if stripping the numbers leaves nothing but the route, we generate an
+   * interpretive line from magnitude + theme instead. Once the Claude enrichment
+   * pass runs, real headlines pass through untouched.
+   */
+  function cleanThesis(i) {
+    let h = (i.headline || '').trim();
+    // Strip mechanical tails
+    h = h.replace(/\s*(up|down)\s+[\d.]+%\s*YoY\s*(\(flights\))?\s*$/i, '')
+         .replace(/\s*(climbing|easing)\s+[\d.]+%\s*$/i, '')
+         .replace(/\s*corridor\s*[+−-][\d.]+%\s*$/i, '')
+         .replace(/\s*[+−-][\d.]+%\s*$/i, '')
+         .trim();
+
+    // What's left is just the route (or nothing) → it's not a thesis. Generate one.
+    const routeish = new RegExp(`^\\s*${escapeRe(i.origin.name)}\\s*(→|↔|to)?\\s*${escapeRe(i.dest.name)}\\s*$`, 'i');
+    if (!h || h.length < 8 || routeish.test(h)) return generatedThesis(i);
+    return h;
+  }
+  function escapeRe(s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+  function generatedThesis(i) {
+    const up = i.deltaPct >= 0;
+    const mag = Math.abs(i.deltaPct);
+    const dest = i.dest.name.replace(/\s*\(.*\)$/, '');
+    const orig = i.origin.name.replace(/\s*\(.*\)$/, '');
+    const band = mag >= 40 ? 'step-change' : mag >= 20 ? 'strong' : mag >= 10 ? 'clear' : 'modest';
+
+    const byTheme = {
+      tourism: {
+        up:   [`Leisure demand into ${dest} is running well ahead of last year`,
+               `Travellers from ${orig} are choosing ${dest} in materially greater numbers`,
+               `${dest} is absorbing a ${band} lift in leisure traffic from ${orig}`],
+        down: [`Leisure appetite in ${orig} for ${dest} has cooled`,
+               `${dest} is losing share of outbound holiday demand from ${orig}`,
+               `A ${band} pullback in leisure travel from ${orig} to ${dest}`],
+      },
+      business: {
+        up:   [`Corporate travel between ${orig} and ${dest} is intensifying`,
+               `Commercial ties between ${orig} and ${dest} are thickening`,
+               `A ${band} pickup in ${orig}–${dest} business movement`],
+        down: [`Corporate travel between ${orig} and ${dest} is thinning`,
+               `Commercial activity on the ${orig}–${dest} lane is easing`,
+               `A ${band} retreat in ${orig}–${dest} business traffic`],
+      },
+      migration: {
+        up:   [`Movement of people from ${orig} to ${dest} is accelerating`,
+               `The ${orig}–${dest} diaspora corridor is widening`,
+               `A ${band} increase in ${orig} → ${dest} relocation flow`],
+        down: [`The ${orig} → ${dest} migration corridor is narrowing`,
+               `Fewer people are making the ${orig} to ${dest} move`,
+               `A ${band} slowdown in ${orig} → ${dest} relocation`],
+      },
+      'supply-chain': {
+        up:   [`Industrial linkage between ${orig} and ${dest} is deepening`,
+               `Freight-adjacent traffic on the ${orig}–${dest} lane is building`,
+               `A ${band} expansion in ${orig}–${dest} industrial movement`],
+        down: [`Industrial linkage between ${orig} and ${dest} is loosening`,
+               `The ${orig}–${dest} logistics lane is contracting`,
+               `A ${band} unwind in ${orig}–${dest} industrial traffic`],
+      },
+    };
+    const set = (byTheme[i.theme] || byTheme.business)[up ? 'up' : 'down'];
+    // Deterministic pick so a card doesn't reword itself on every re-render
+    let hash = 0;
+    for (let c = 0; c < i.id.length; c++) hash = (hash * 31 + i.id.charCodeAt(c)) >>> 0;
+    return set[hash % set.length];
+  }
+
+  function thesisCardHtml(i, all) {
+    const up = i.deltaPct >= 0;
+    const conf = (i.confidence || 'medium').toLowerCase();
+    const theme = i.theme || 'business';
+    const patternHtml = computePattern(i, all);
+
+    // Volume micro-chart — prior as a ghost bar, current as the coloured bar.
+    const vc = i.volumeCurrent || 0, vp = i.volumePrior || 0;
+    const maxV = Math.max(vc, vp, 1);
+    const volBlock = (vc || vp) ? `
+      <div class="tc-vol">
+        <div class="tc-vol-track">
+          <div class="tc-vol-prior" style="width:${(vp / maxV * 100).toFixed(1)}%"></div>
+          <div class="tc-vol-curr ${up ? 'up' : 'down'}" style="width:${(vc / maxV * 100).toFixed(1)}%;opacity:.85"></div>
+        </div>
+        <span class="tc-vol-num">${fmtInt(vp)} → ${fmtInt(vc)}</span>
+      </div>` : '';
+
+    return `
+      <div class="thesis-card ${up ? 'dir-up' : 'dir-down'} ${i.id === activeId ? 'active' : ''}" data-id="${i.id}">
+        <div class="tc-route-row">
+          <span class="tc-route">
+            <span class="clickable-node" data-node-country="${escapeHtml(i.origin.country || i.origin.name)}">${escapeHtml(i.origin.name)}</span>
+            <span class="arrow">→</span>
+            <span class="clickable-node" data-node-country="${escapeHtml(i.dest.country || i.dest.name)}">${escapeHtml(i.dest.name)}</span>
+          </span>
+          <span class="tc-delta ${up ? 'up' : 'down'}"><span class="sign">${up ? '+' : '−'}</span>${Math.abs(+i.deltaPct).toFixed(1)}<span class="pct">%</span></span>
+        </div>
+        <div class="tc-thesis">${escapeHtml(cleanThesis(i))}</div>
+        ${volBlock}
+        <div class="tc-meta">
+          <span class="tc-theme ${theme}">${theme.replace('-', ' ')}</span>
+          <span class="tc-conf ${conf}">${conf}</span>
+          <button class="tc-expand" data-id="${i.id}">Reasoning +</button>
+        </div>
+        <div class="tc-body"><div class="tc-body-inner">
+          <div class="tc-section"><h4>Pattern</h4><p>${patternHtml}</p></div>
+          <div class="tc-section"><h4>If true</h4><p>${templateIfTrue(i)}</p></div>
+          <div class="tc-section"><h4>Angle</h4><p>${templateAngle(i)}</p></div>
+          <div class="tc-section"><h4>Baseline</h4><p class="muted">Prior-year same window · ${escapeHtml(i.period || '')}. Seasonal-norm and peer baselines are on the roadmap.</p></div>
+        </div></div>
+      </div>
+    `;
+  }
+
+  function wireThesisCards(container, allInsights) {
+    container.querySelectorAll('.thesis-card').forEach(el => {
+      el.addEventListener('click', e => {
+        if (e.target.closest('.tc-expand')) return;
+        if (e.target.closest('.clickable-node')) return;
+        selectInsight(el.dataset.id);
+      });
+      el.addEventListener('mouseenter', () => setHover(el.dataset.id));
+      el.addEventListener('mouseleave', () => setHover(null));
+    });
+    container.querySelectorAll('.tc-expand').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const card = btn.closest('.thesis-card');
+        const isOpen = card.classList.toggle('open');
+        btn.textContent = isOpen ? 'Reasoning −' : 'Reasoning +';
+      });
+    });
+    // Endpoint chips → focus on that country
+    container.querySelectorAll('.clickable-node').forEach(el => {
+      el.addEventListener('click', e => {
+        e.stopPropagation();
+        const name = el.dataset.nodeCountry;
+        if (!name) return;
+        focusOn({ kind: 'country', id: name, name });
+      });
+    });
+  }
+
+  // Compact card — the secondary list item. Route, delta, one-line reading, no meta noise.
+  function compactCard(i) {
+    const up = i.deltaPct >= 0;
+    const sign = up ? '+' : '';
+    return `
+      <div class="card compact ${i.id === activeId ? 'active' : ''}" data-id="${i.id}">
+        <div class="card-top">
+          <span class="card-route">${escapeHtml(i.origin.name)} → ${escapeHtml(i.dest.name)}</span>
+          <span class="card-delta ${up ? 'up' : 'down'}">${sign}${(+i.deltaPct).toFixed(1)}%</span>
+        </div>
+        <div class="card-headline compact">${escapeHtml(i.headline || '')}</div>
+      </div>
+    `;
+  }
+
+  // Full card — used inside the drawer for the deep-dive view.
+  function cardHtml(i) {
+    const up = i.deltaPct >= 0;
+    const sign = up ? '+' : '';
+    const conf = (i.confidence || '').toLowerCase();
+    const vol = i.volumeCurrent ? `<span class="card-vol">${fmtInt(i.volumeCurrent)} pax</span>` : '';
+    const isWatched = watched.has(i.id);
+    const star = `<button class="card-star ${isWatched ? 'on' : ''}" data-id="${i.id}" title="${isWatched ? 'Remove from watched' : 'Add to watched'}" aria-label="Watch">
+      <svg viewBox="0 0 24 24" fill="${isWatched ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+    </button>`;
+    return `
+      <div class="card ${i.id === activeId ? 'active' : ''}" data-id="${i.id}">
+        ${star}
+        <div class="card-top">
+          <span class="card-route">${i.origin.name.toUpperCase()} ↔ ${i.dest.name.toUpperCase()}</span>
+          <span class="card-delta ${up ? 'up' : 'down'}">${sign}${(+i.deltaPct).toFixed(1)}%</span>
+        </div>
+        <div class="card-headline">${escapeHtml(i.headline || '')}</div>
+        <div class="card-reading">${escapeHtml(i.reading || '')}</div>
+        <div class="card-meta">
+          <span class="theme-tag ${i.theme || 'business'}">${(i.theme || 'business').replace('-', ' ')}</span>
+          <span class="card-period">${escapeHtml(i.period || '')}</span>
+          ${conf ? `<span class="card-period"><span class="card-conf-dot ${conf}"></span>${conf}</span>` : ''}
+          ${vol}
+        </div>
+      </div>
+    `;
+  }
+
+  function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  function drawArcs(visible) {
+    // Two arcs per corridor: a solid faint base + an animated flowing overlay.
+    // The overlay's dash speed is inversely proportional to volume — bigger
+    // corridors "flow" faster, mimicking IEA-style energy flow maps.
+    const arcs = [];
+
+    visible.forEach(i => {
+      const up = i.deltaPct >= 0;
+      const baseHex = up ? '#7fa88c' : '#b87857';
+      const stroke = Math.min(0.35 + Math.abs(i.deltaPct) * 0.05, 1.3);
+
+      // Faded base trace — shows the whole corridor path always.
+      arcs.push({
+        id: i.id, layer: 'base',
+        startLat: i.origin.lat, startLng: i.origin.lng,
+        endLat:   i.dest.lat,   endLng:   i.dest.lng,
+        color: [withAlpha(baseHex, 0.22), withAlpha(baseHex, 0.22)],
+        stroke: stroke * 0.85, baseStroke: stroke, baseColor: baseHex,
+        dashLen: 1, dashGap: 0, animMs: 0,
+      });
+
+      // Flowing overlay — animated dashes traveling origin → destination.
+      // Speed keyed to volume so busy corridors visibly pulse faster.
+      const vol = i.volumeCurrent || 100000;
+      const animMs = Math.max(1200, Math.min(4500, 6_000_000 / vol));
+      arcs.push({
+        id: i.id, layer: 'flow',
+        startLat: i.origin.lat, startLng: i.origin.lng,
+        endLat:   i.dest.lat,   endLng:   i.dest.lng,
+        color: [withAlpha(baseHex, 0.9), withAlpha(baseHex, 0.15)],
+        stroke, baseStroke: stroke, baseColor: baseHex,
+        dashLen: 0.22, dashGap: 0.78,
+        initGap: Math.random(),
+        animMs,
+      });
+
+      arcById.set(i.id, { baseColor: baseHex, baseStroke: stroke });
+    });
+
+    globe.arcsData(arcs);
+
+    // Bright dot at destination end — reads as the "head" of the flow.
+    const points = [];
+    visible.forEach(i => {
+      const color = i.deltaPct >= 0 ? '#a3c1ac' : '#cf9578';
+      points.push({ lat: i.origin.lat, lng: i.origin.lng, color, id: i.id, kind: 'origin' });
+      points.push({ lat: i.dest.lat,   lng: i.dest.lng,   color, id: i.id, kind: 'dest' });
+    });
+    globe
+      .pointsData(points)
+      .pointAltitude(p => p.kind === 'dest' ? 0.012 : 0.006)
+      .pointRadius(p => p.kind === 'dest' ? 0.45 : 0.28)
+      .pointColor('color');
+  }
+
+  function setHover(id) {
+    if (hoverId === id) return;
+    hoverId = id;
+    applyHighlight();
+  }
+
+  function applyHighlight() {
+    document.querySelectorAll('.card').forEach(el => {
+      el.classList.toggle('hover', el.dataset.id === hoverId && hoverId !== activeId);
+    });
+    if (!arcById.size) return;
+    const anyFocus = !!(hoverId || activeId);
+    globe
+      .arcColor(a => {
+        const rec  = arcById.get(a.id);
+        const base = (rec && rec.baseColor) || '#7fa88c';
+        const isActive = a.id === activeId;
+        const isHover  = a.id === hoverId;
+        // On the base layer, colors stay faint. On the flow layer, they go bright.
+        if (a.layer === 'base') {
+          const alpha = isActive ? 0.4 : (isHover ? 0.35 : (anyFocus ? 0.08 : 0.22));
+          return [withAlpha(base, alpha), withAlpha(base, alpha)];
+        }
+        const startA = isActive ? 1.0 : (isHover ? 0.95 : (anyFocus ? 0.15 : 0.9));
+        const endA   = isActive ? 0.4 : (isHover ? 0.35 : (anyFocus ? 0.04 : 0.15));
+        return [withAlpha(base, startA), withAlpha(base, endA)];
+      })
+      .arcStroke(a => {
+        const rec  = arcById.get(a.id);
+        const base = (rec && rec.baseStroke) || 0.5;
+        const boost = (a.id === activeId || a.id === hoverId) ? 0.6 : 0;
+        return (a.layer === 'base' ? base * 0.85 : base) + boost;
+      });
+  }
+
+  function withAlpha(hex, alpha) {
+    const h = hex.replace('#', '');
+    const r = parseInt(h.slice(0, 2), 16);
+    const g = parseInt(h.slice(2, 4), 16);
+    const b = parseInt(h.slice(4, 6), 16);
+    return `rgba(${r},${g},${b},${alpha})`;
+  }
+
+  function selectInsight(id) {
+    activeId = id === activeId ? null : id;
+    render();
+    const i = insights.find(x => x.id === id);
+    if (i && activeId) {
+      globe.controls().autoRotate = false;
+      const midLat = (i.origin.lat + i.dest.lat) / 2;
+      const midLng = (i.origin.lng + i.dest.lng) / 2;
+      const span = Math.max(Math.abs(i.origin.lat - i.dest.lat), Math.abs(i.origin.lng - i.dest.lng));
+      const altitude = Math.min(2.2, Math.max(0.8, span / 40 + 0.8));
+      globe.pointOfView({ lat: midLat, lng: midLng, altitude }, 900);
+      if (window.innerWidth <= 780) document.body.classList.remove('sidebar-open');
+      openDrawer(id);
+    } else {
+      closeDrawer();
+    }
+  }
+
+  // ---- Drawer (grid child — globe stays visible + navigable when open) ----
+  const drawer = document.getElementById('drawer');
+
+  function openDrawer(id) {
+    const i = insights.find(x => x.id === id);
+    if (!i) return;
+    renderDrawer(i);
+    document.body.classList.add('drawer-open');
+    drawer.setAttribute('aria-hidden', 'false');
+  }
+  function closeDrawer() {
+    document.body.classList.remove('drawer-open');
+    drawer.setAttribute('aria-hidden', 'true');
+    if (activeId) { activeId = null; render(); }
+  }
+  document.getElementById('drawer-close').addEventListener('click', closeDrawer);
+
+  function renderDrawer(i) {
+    const up = i.deltaPct >= 0;
+    const sign = up ? '+' : '';
+    const isWatched = watched.has(i.id);
+    document.getElementById('drawer-route').textContent =
+      `${i.origin.name} ↔ ${i.dest.name}${i.period ? ' · ' + i.period : ''}`;
+    document.getElementById('drawer-headline').textContent = cleanThesis(i);
+
+    const vc = i.volumeCurrent || 0;
+    const vp = i.volumePrior || 0;
+    const maxV = Math.max(vc, vp, 1);
+    const barsHtml = (vc || vp) ? `
+      <div class="vol-compare">
+        <div class="vol-row">
+          <span class="vol-row-label">current</span>
+          <div class="vol-bar-outer"><div class="vol-bar-fill current" style="width:${(vc/maxV*100).toFixed(1)}%"></div></div>
+          <span class="vol-row-num">${fmtInt(vc)}</span>
+        </div>
+        <div class="vol-row">
+          <span class="vol-row-label">prior yr</span>
+          <div class="vol-bar-outer"><div class="vol-bar-fill prior" style="width:${(vp/maxV*100).toFixed(1)}%"></div></div>
+          <span class="vol-row-num">${fmtInt(vp)}</span>
+        </div>
+      </div>` : '';
+
+    const body = document.getElementById('drawer-body');
+    body.innerHTML = `
+      <div class="drawer-hero">
+        <div class="drawer-hero-delta ${up ? 'up' : 'down'}"><span class="sign">${up ? '+' : '−'}</span>${Math.abs(+i.deltaPct).toFixed(1)}<span class="pct">%</span></div>
+        <div class="drawer-hero-sub">${escapeHtml(i.period || '')} · ${(i.theme || 'business').replace('-', ' ')}${i.confidence ? ' · ' + i.confidence + ' confidence' : ''}</div>
+        ${barsHtml}
+      </div>
+
+      <div class="drawer-section">
+        <h3>Reading</h3>
+        <div class="drawer-reading">${escapeHtml(i.reading || 'No reading available.')}</div>
+      </div>
+
+      <div class="drawer-section">
+        <h3>Corridor</h3>
+        <div class="drawer-meta-grid">
+          <div class="drawer-meta-cell"><div class="k">Origin</div><div class="v"><span class="country-chip" data-country="${escapeHtml(i.origin.name)}">${escapeHtml(i.origin.name)}</span></div></div>
+          <div class="drawer-meta-cell"><div class="k">Destination</div><div class="v"><span class="country-chip" data-country="${escapeHtml(i.dest.name)}">${escapeHtml(i.dest.name)}</span></div></div>
+          <div class="drawer-meta-cell"><div class="k">Volume (curr)</div><div class="v">${vc ? vc.toLocaleString() + ' pax' : '—'}</div></div>
+          <div class="drawer-meta-cell"><div class="k">Volume (prior)</div><div class="v">${vp ? vp.toLocaleString() + ' pax' : '—'}</div></div>
+        </div>
+      </div>
+
+      <div class="drawer-section">
+        <h3>Actions</h3>
+        <div class="drawer-actions">
+          <button class="drawer-btn ${isWatched ? 'ok' : 'ghost'}" id="dw-watch">
+            <svg viewBox="0 0 24 24" fill="${isWatched ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            ${isWatched ? 'Watched' : 'Watch'}
+          </button>
+          <button class="drawer-btn ghost" id="dw-copy">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Copy for note
+          </button>
+          <button class="drawer-btn ghost" id="dw-export-one">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export row
+          </button>
+        </div>
+        <div style="font-size:0.7rem;color:var(--mute);margin-top:0.6rem;line-height:1.5">
+          "Copy for note" produces a citation-ready sentence with source attribution and retrieval date.
+        </div>
+      </div>
+
+      <div class="drawer-section">
+        <h3>Related</h3>
+        ${relatedCorridorsHtml(i)}
+      </div>
+    `;
+
+    document.getElementById('dw-watch').addEventListener('click', () => toggleWatch(i.id));
+    document.getElementById('dw-copy').addEventListener('click', e => copyCitation(i, e.currentTarget));
+    document.getElementById('dw-export-one').addEventListener('click', () => exportCsv([i], `ovrhead_${i.id}.csv`));
+    body.querySelectorAll('.country-chip').forEach(el => {
+      el.addEventListener('click', () => filterToCountry(el.dataset.country));
+    });
+    body.querySelectorAll('[data-related-id]').forEach(el => {
+      el.addEventListener('click', () => selectInsight(el.dataset.relatedId));
+    });
+  }
+
+  function relatedCorridorsHtml(i) {
+    const related = insights
+      .filter(x => x.id !== i.id && (x.origin.code === i.origin.code || x.dest.code === i.origin.code || x.origin.code === i.dest.code || x.dest.code === i.dest.code))
+      .slice(0, 4);
+    if (!related.length) return '<div style="font-size:0.8rem;color:var(--mute)">No overlapping corridors in current dataset.</div>';
+    return related.map(r => {
+      const up = r.deltaPct >= 0;
+      return `<div data-related-id="${r.id}" style="display:flex;justify-content:space-between;padding:0.5rem 0;border-bottom:1px solid var(--line);cursor:pointer;font-size:0.82rem;gap:0.5rem">
+        <span style="color:var(--dim)">${escapeHtml(r.origin.name)} ↔ ${escapeHtml(r.dest.name)}</span>
+        <span style="color:${up ? 'var(--brass)' : 'var(--down)'};font-family:'JetBrains Mono',monospace">${up ? '+' : ''}${(+r.deltaPct).toFixed(1)}%</span>
+      </div>`;
+    }).join('');
+  }
+
+  function filterToCountry(name) {
+    // From the drawer, jumping to a country focuses that node.
+    focusOn({ kind: 'country', id: name, name });
+    closeDrawer();
+  }
+
+  // ---- Citation + CSV ----
+  function copyCitation(i, btn) {
+    const now = new Date().toISOString().slice(0, 10);
+    const vol = i.volumeCurrent ? `${i.volumeCurrent.toLocaleString()} passengers` : 'material volume';
+    const text = `OvrHead: ${i.origin.name} ↔ ${i.dest.name} ${i.deltaPct >= 0 ? 'up' : 'down'} ${Math.abs(i.deltaPct).toFixed(1)}% YoY (${i.period}, ${vol}). ${i.reading || ''} Source: ${meta.source || 'Eurostat'} via OvrHead, retrieved ${now}.`;
+    (navigator.clipboard && navigator.clipboard.writeText
+      ? navigator.clipboard.writeText(text)
+      : Promise.reject('no clipboard')
+    ).then(() => {
+      const orig = btn.innerHTML;
+      btn.innerHTML = '✓ Copied';
+      btn.classList.add('ok');
+      setTimeout(() => { btn.innerHTML = orig; btn.classList.remove('ok'); }, 1600);
+    }).catch(() => alert(text));
+  }
+
+  function exportCsv(rows, filename = 'ovrhead_signals.csv') {
+    if (!rows.length) return;
+    const cols = ['id','origin_name','origin_code','dest_name','dest_code','period','delta_pct','volume_current','volume_prior','theme','confidence','headline','reading'];
+    const esc = v => {
+      if (v == null) return '';
+      const s = String(v);
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const body = rows.map(r => [
+      r.id, r.origin.name, r.origin.code, r.dest.name, r.dest.code,
+      r.period, r.deltaPct, r.volumeCurrent ?? '', r.volumePrior ?? '',
+      r.theme, r.confidence, r.headline, r.reading,
+    ].map(esc).join(','));
+    const csv = [cols.join(','), ...body].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 100);
+  }
+
+  document.getElementById('btn-export').addEventListener('click', () => {
+    const visible = sortInsights(insights.filter(passesFilter));
+    exportCsv(visible, `ovrhead_${new Date().toISOString().slice(0,10)}.csv`);
+  });
+  document.getElementById('btn-clear-watch').addEventListener('click', () => {
+    if (!watched.size) return;
+    if (confirm(`Clear ${watched.size} watched signal(s)?`)) {
+      watched.clear(); saveWatched(); render();
+    }
+  });
+
+  // ---- Filter bindings ----
+  document.querySelectorAll('.chip-row').forEach(row => {
+    const key = row.dataset.filter;
+    row.addEventListener('click', e => {
+      const btn = e.target.closest('.chip');
+      if (!btn) return;
+      row.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      btn.classList.add('active');
+      filters[key] = btn.dataset.value;
+      render();
+    });
+  });
+
+  // ── Focus input + autocomplete (countries · regions · airports) ─────────
+  const focusInput  = document.getElementById('focus-input');
+  const focusClear  = document.getElementById('focus-clear');
+  const focusSuggest = document.getElementById('focus-suggest');
+  let suggestIndex = 0;
+  let suggestOptions = [];
+
+  function buildIndex() {
+    // countries — from what's actually in the insights
+    const countries = new Set();
+    const airports = new Map();  // "Frankfurt (FRA)" → { iataOrIcao, name }
+    insights.forEach(i => {
+      [i.origin, i.dest].forEach(p => {
+        if (p.country) countries.add(p.country);
+        if (p.type === 'city' && p.name.match(/\(([A-Z0-9]+)\)/)) {
+          const m = p.name.match(/\(([A-Z0-9]+)\)/);
+          if (m) airports.set(p.name, { iataOrIcao: m[1], name: p.name });
+        }
+      });
+    });
+    return {
+      countries: [...countries].sort().map(n => ({ kind: 'country', id: n, name: n })),
+      regions:   Object.keys(REGIONS).sort().map(n => ({ kind: 'region', id: n, name: n })),
+      airports:  [...airports.values()].sort((a, b) => a.name.localeCompare(b.name))
+                    .map(a => ({ kind: 'airport', id: a.name, name: a.name, iataOrIcao: a.iataOrIcao })),
+    };
+  }
+
+  function renderSuggest(query = '') {
+    const idx = buildIndex();
+    const q = normName(query);
+    const filter = arr => q ? arr.filter(o => normName(o.name).includes(q) || normName(o.id).includes(q)) : arr;
+    const countries = filter(idx.countries).slice(0, 8);
+    const regions   = filter(idx.regions).slice(0, 6);
+    const airports  = filter(idx.airports).slice(0, 6);
+
+    suggestOptions = [...regions, ...countries, ...airports];   // regions first — smallest set, easy to spot
+    if (!suggestOptions.length) {
+      focusSuggest.innerHTML = `<div class="fs-empty">No match. Try a country, region, or airport city.</div>`;
+      focusSuggest.hidden = false;
+      return;
+    }
+    let html = '';
+    if (regions.length)   html += `<div class="fs-group">Regions</div>` + regions.map((o, i) => optHtml(o, i)).join('');
+    if (countries.length) html += `<div class="fs-group">Countries</div>` + countries.map((o, i) => optHtml(o, regions.length + i)).join('');
+    if (airports.length)  html += `<div class="fs-group">Airports</div>` + airports.map((o, i) => optHtml(o, regions.length + countries.length + i)).join('');
+    focusSuggest.innerHTML = html;
+    focusSuggest.hidden = false;
+    suggestIndex = 0;
+    updateSuggestActive();
+    focusSuggest.querySelectorAll('.fs-option').forEach(el => {
+      el.addEventListener('mousedown', e => {   // mousedown so it fires before input blur
+        e.preventDefault();
+        const idx = Number(el.dataset.idx);
+        pickSuggest(idx);
+      });
+    });
+  }
+  function optHtml(o, i) {
+    return `<div class="fs-option" data-idx="${i}"><span>${escapeHtml(o.name)}</span><span class="fs-kind">${o.kind}</span></div>`;
+  }
+  function updateSuggestActive() {
+    focusSuggest.querySelectorAll('.fs-option').forEach((el, i) => {
+      el.classList.toggle('active', i === suggestIndex);
+    });
+  }
+  function pickSuggest(i) {
+    if (i < 0 || i >= suggestOptions.length) return;
+    const opt = suggestOptions[i];
+    focusOn(opt);
+    focusSuggest.hidden = true;
+    focusInput.blur();
+  }
+
+  focusInput.addEventListener('focus', () => renderSuggest(focusInput.value));
+  focusInput.addEventListener('input', () => renderSuggest(focusInput.value));
+  focusInput.addEventListener('blur', () => setTimeout(() => { focusSuggest.hidden = true; }, 150));
+  focusInput.addEventListener('keydown', e => {
+    if (focusSuggest.hidden) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); suggestIndex = Math.min(suggestIndex + 1, suggestOptions.length - 1); updateSuggestActive(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); suggestIndex = Math.max(suggestIndex - 1, 0); updateSuggestActive(); }
+    else if (e.key === 'Enter')   { e.preventDefault(); pickSuggest(suggestIndex); }
+    else if (e.key === 'Escape')  { e.preventDefault(); focusSuggest.hidden = true; focusInput.blur(); }
+  });
+  focusClear.addEventListener('click', () => { clearFocus(); focusInput.focus(); });
+
+  // ── Favorites panel ─────────────────────────────────────────────────────
+  const favBtn   = document.getElementById('nav-fav');
+  const favPanel = document.getElementById('fav-panel');
+  const favBody  = document.getElementById('fav-body');
+  const favClearBtn = document.getElementById('fav-clear');
+
+  function toggleFavPanel(show) {
+    const willShow = show ?? favPanel.hidden;
+    favPanel.hidden = !willShow;
+    favBtn.classList.toggle('open', willShow);
+    if (willShow) renderFavPanel();
+  }
+  favBtn.addEventListener('click', e => { e.stopPropagation(); toggleFavPanel(); });
+  document.addEventListener('click', e => {
+    if (favPanel.hidden) return;
+    if (favPanel.contains(e.target) || favBtn.contains(e.target)) return;
+    toggleFavPanel(false);
+  });
+  favClearBtn.addEventListener('click', () => {
+    if (!favCount()) return;
+    if (!confirm(`Clear all ${favCount()} favorites?`)) return;
+    favorites.countries.clear(); favorites.regions.clear(); favorites.corridors.clear();
+    saveFavorites(); updateFavBadge(); renderFavPanel(); render();
+  });
+
+  function renderFavPanel() {
+    const sections = [];
+    if (favorites.countries.size) {
+      const items = [...favorites.countries].sort().map(n => {
+        const sig = countrySignals.get(n);
+        const meta = sig ? `${sig.netPct >= 0 ? '+' : ''}${sig.netPct.toFixed(1)}% · ${sig.count} corr.` : '';
+        return favItemHtml('country', n, n, meta);
+      }).join('');
+      sections.push(`<div class="fav-group-title">Countries</div>${items}`);
+    }
+    if (favorites.regions.size) {
+      const items = [...favorites.regions].sort().map(n =>
+        favItemHtml('region', n, n, `${(REGIONS[n]?.members || []).length} countries`)
+      ).join('');
+      sections.push(`<div class="fav-group-title">Regions</div>${items}`);
+    }
+    if (favorites.corridors.size) {
+      const rows = [...favorites.corridors].map(id => insights.find(i => i.id === id)).filter(Boolean);
+      const items = rows.map(i => {
+        const label = `${i.origin.name} → ${i.dest.name}`;
+        const sign = i.deltaPct >= 0 ? '+' : '';
+        return favItemHtml('corridor', i.id, label, `${sign}${i.deltaPct.toFixed(1)}%`);
+      }).join('');
+      const orphans = favorites.corridors.size - rows.length;
+      const orphanNote = orphans ? `<div class="fav-empty" style="padding:6px 14px;text-align:left;font-size:0.7rem">${orphans} corridor${orphans===1?'':'s'} not in current dataset</div>` : '';
+      sections.push(`<div class="fav-group-title">Corridors</div>${items}${orphanNote}`);
+    }
+    favBody.innerHTML = sections.length
+      ? sections.join('')
+      : `<div class="fav-empty">No favorites yet.<br>Star a country, region, or corridor to save it here.</div>`;
+
+    // wire
+    favBody.querySelectorAll('.fav-item').forEach(el => {
+      el.addEventListener('click', e => {
+        if (e.target.closest('.fav-remove')) return;
+        const kind = el.dataset.kind;
+        const id   = el.dataset.id;
+        if (kind === 'country') focusOn({ kind: 'country', id, name: id });
+        else if (kind === 'region') focusOn({ kind: 'region',  id, name: id });
+        else if (kind === 'corridor') { selectInsight(id); }
+        toggleFavPanel(false);
+      });
+    });
+    favBody.querySelectorAll('.fav-remove').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const kind = btn.dataset.kind, id = btn.dataset.id;
+        if (kind === 'country')  favorites.countries.delete(id);
+        if (kind === 'region')   favorites.regions.delete(id);
+        if (kind === 'corridor') favorites.corridors.delete(id);
+        saveFavorites(); updateFavBadge(); renderFavPanel(); render();
+      });
+    });
+  }
+  function favItemHtml(kind, id, label, meta) {
+    return `<div class="fav-item" data-kind="${kind}" data-id="${escapeHtml(id)}">
+      <span>${escapeHtml(label)}</span>
+      <span style="display:flex;align-items:center;gap:8px">
+        ${meta ? `<span class="fav-meta">${escapeHtml(meta)}</span>` : ''}
+        <button class="fav-remove" data-kind="${kind}" data-id="${escapeHtml(id)}" title="Remove">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </span>
+    </div>`;
+  }
+
+  document.getElementById('mobile-toggle').addEventListener('click', () => {
+    document.body.classList.toggle('sidebar-open');
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      if (document.body.classList.contains('drawer-open')) { closeDrawer(); return; }
+      if (activeId) { selectInsight(activeId); return; }
+      if (currentFocus()) { goBack(); return; }
+    }
+    if (e.key === '/' && document.activeElement.tagName !== 'INPUT') {
+      e.preventDefault();
+      focusInput.focus();
+    }
+  });
+
+  // ---- Data load ----
+  function formatUpdated(iso) {
+    if (!iso) return '—';
+    try {
+      const d = new Date(iso);
+      if (isNaN(d)) return iso;
+      const days = Math.floor((Date.now() - d.getTime()) / 86400000);
+      if (days <= 0) return 'updated today';
+      if (days === 1) return 'updated 1d ago';
+      return `updated ${days}d ago`;
+    } catch { return iso; }
+  }
+
+  fetch('data/insights.json')
+    .then(r => r.json())
+    .then(json => {
+      insights = json.insights || [];
+      meta = json.meta || {};
+      countrySignals = computeCountrySignals();
+      document.getElementById('updated-pill').textContent = formatUpdated(meta.updated);
+      updateFavBadge();
+      repaintCountries();
+      render();
+    })
+    .catch(err => {
+      document.getElementById('feed').innerHTML =
+        `<div class="empty">Could not load insights.<br><span style="font-size:0.7rem">${err.message}</span></div>`;
+    });
+</script>
+</body>
+</html>
