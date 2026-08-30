@@ -472,27 +472,42 @@ async function initDuckDB() {
   return db;
 }
 
-async function registerViews(conn, manifest) {
-  // httpfs is bundled in duckdb-wasm; range requests work on GitHub Pages
-  try { await conn.query("LOAD httpfs;"); } catch (_) {}
+async function registerViews(db, conn, manifest) {
+  // DuckDB-Wasm cannot make HTTP requests on its own in the browser.
+  // Pre-fetch each parquet file via the browser's fetch() and register it
+  // in DuckDB's in-memory virtual filesystem before creating views.
+  async function loadParquet(name, url) {
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`fetch ${url}: ${resp.status}`);
+    const buf = await resp.arrayBuffer();
+    await db.registerFileBuffer(name, new Uint8Array(buf));
+  }
 
-  const toUrl = entry => `'${BASE_URL + entry.path.replace(/^data\/adsb\//, '')}'`;
+  const toUrl = entry => BASE_URL + entry.path.replace(/^data\/adsb\//, '');
 
   if (manifest.flights.length) {
-    const paths = manifest.flights.map(toUrl).join(', ');
+    for (const entry of manifest.flights) {
+      setMsg(`Downloading ${entry.name}…`);
+      await loadParquet(entry.name, toUrl(entry));
+    }
+    const names = manifest.flights.map(e => `'${e.name}'`).join(', ');
     await conn.query(`CREATE OR REPLACE VIEW flights AS
-      SELECT * FROM read_parquet([${paths}], union_by_name=true)`);
+      SELECT * FROM read_parquet([${names}], union_by_name=true)`);
   }
+
+  for (const entry of manifest.enrichment) {
+    setMsg(`Downloading ${entry.name}…`);
+    try { await loadParquet(entry.name, toUrl(entry)); }
+    catch (e) { console.warn('enrichment load failed:', entry.name, e); continue; }
+  }
+
   const enrNames = manifest.enrichment.map(e => e.name);
   if (enrNames.includes('airlines.parquet'))
-    await conn.query(`CREATE OR REPLACE VIEW airlines AS
-      SELECT * FROM read_parquet('${BASE_URL}enrichment/airlines.parquet')`);
+    await conn.query("CREATE OR REPLACE VIEW airlines AS SELECT * FROM read_parquet('airlines.parquet')");
   if (enrNames.includes('airports.parquet'))
-    await conn.query(`CREATE OR REPLACE VIEW airports AS
-      SELECT * FROM read_parquet('${BASE_URL}enrichment/airports.parquet')`);
+    await conn.query("CREATE OR REPLACE VIEW airports AS SELECT * FROM read_parquet('airports.parquet')");
   if (enrNames.includes('aircraft_db.parquet'))
-    await conn.query(`CREATE OR REPLACE VIEW aircraft_db AS
-      SELECT * FROM read_parquet('${BASE_URL}enrichment/aircraft_db.parquet')`);
+    await conn.query("CREATE OR REPLACE VIEW aircraft_db AS SELECT * FROM read_parquet('aircraft_db.parquet')");
 }
 
 // ─────────────────────────────────────────────────────────
@@ -674,8 +689,8 @@ async function main() {
     conn = await db.connect();
 
     // 3. Register views
-    setMsg('Registering parquet views…');
-    await registerViews(conn, manifest);
+    setMsg('Fetching parquet files…');
+    await registerViews(db, conn, manifest);
 
     // 4. Render freshness
     const freshnessEl = document.getElementById('freshness');
