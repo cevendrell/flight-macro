@@ -37,6 +37,7 @@
   --accent-bg: rgba(138,90,51,.09);
   --navy:      #05164d;
   --navy-deep: #05164d;
+  --topbar:    #05164d;   /* pinned — nav bar is always this, both themes */
   --on-navy:   #eef1f8;   /* LayOvr onNavy */
   --on-navy-2: #82a5d6;   /* LayOvr onNavySub — periwinkle */
   --rise:      #2e875e;   /* LayOvr success */
@@ -67,21 +68,21 @@
   color-scheme: light;   /* native controls follow the theme */
 }
 
-/* Night: navy becomes the ground. */
+/* Night: page goes near-black — navy stays only in the pinned top bar. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg:        #030d2e;
-    --surface:   #081949;
-    --sunken:    #020a22;
+    --bg:        #0c0c0e;   /* near-black, no blue cast */
+    --surface:   #191919;   /* card surface — dark grey, not navy */
+    --sunken:    #060606;
     --ink:       #eef1f8;
-    --ink-2:     #a8c0e2;
-    --mute:      #7e97c0;
-    --faint:     #55689a;
-    --rule:      rgba(130,165,214,.22);
-    --rule-2:    rgba(130,165,214,.40);
+    --ink-2:     #aab2c8;
+    --mute:      #737b96;
+    --faint:     #4d5470;
+    --rule:      rgba(210,210,220,.12);   /* neutral, not periwinkle-tinted */
+    --rule-2:    rgba(210,210,220,.22);
     --accent:    #d2955c;
     --accent-bg: rgba(210,149,92,.14);
-    --navy:      #081949;
+    --navy:      #191919;   /* navy token now points to dark-grey surface in dark mode */
     --on-navy:   #eef1f8;
     --on-navy-2: #82a5d6;
     --rise:      #5cc191;
@@ -91,19 +92,19 @@
     --cta-bg:       #d2955c;
     --cta-fg:       #1a0f05;
     --cta-hover-fg: #1a0f05;
-    --bar:          #5f7cb0;
+    --bar:          #6a7fa8;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg:#030d2e; --surface:#081949; --sunken:#020a22;
-  --ink:#eef1f8; --ink-2:#a8c0e2; --mute:#7e97c0; --faint:#55689a;
-  --rule:rgba(130,165,214,.22); --rule-2:rgba(130,165,214,.40);
+  --bg:#0c0c0e; --surface:#191919; --sunken:#060606;
+  --ink:#eef1f8; --ink-2:#aab2c8; --mute:#737b96; --faint:#4d5470;
+  --rule:rgba(210,210,220,.12); --rule-2:rgba(210,210,220,.22);
   --accent:#d2955c; --accent-bg:rgba(210,149,92,.14);
-  --navy:#081949; --on-navy:#eef1f8; --on-navy-2:#82a5d6;
+  --navy:#191919; --on-navy:#eef1f8; --on-navy-2:#82a5d6;
   --rise:#5cc191; --fall:#d97b73;
   --rise-bg:rgba(92,193,145,.14); --fall-bg:rgba(217,123,115,.14);
-  --cta-bg:#d2955c; --cta-fg:#1a0f05; --cta-hover-fg:#1a0f05; --bar:#5f7cb0;
+  --cta-bg:#d2955c; --cta-fg:#1a0f05; --cta-hover-fg:#1a0f05; --bar:#6a7fa8;
   color-scheme: dark;
 }
 
@@ -123,7 +124,7 @@ button, input, textarea, select { font:inherit; color:inherit; }
 #shell { min-height:100vh; }
 
 /* Top bar in LayOvr's navy, using that project's on-navy pair. */
-#topbar { position:sticky; top:0; z-index:80; background:var(--navy); color:var(--on-navy); }
+#topbar { position:sticky; top:0; z-index:80; background:var(--topbar); color:var(--on-navy); }
 .bar { max-width:1240px; margin:0 auto; padding:0 var(--pad);
        display:flex; align-items:center; gap:20px; min-height:56px; flex-wrap:wrap; }
 @media (max-width:760px){ .bar{ padding:10px var(--pad); gap:10px } }
