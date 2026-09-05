@@ -19,6 +19,7 @@ build step, no backend, no analytics.
 | Route | What it is |
 | --- | --- |
 | `#/` | Signals — headline counts and the detected claims, each with what it does *not* show |
+| `#/week` | One full week, split by what kind of flying it is — freight, charter, business, scheduled |
 | `#/globe` | Orthographic globe of registration countries, with corridor arcs |
 | `#/explore` | Countries, airlines and aircraft types — sortable, filterable, exportable |
 | `#/ask` | Build a question from dropdowns, or write SQL. Runs in your browser |
@@ -27,8 +28,30 @@ build step, no backend, no analytics.
 | `#/about` | Why it exists |
 
 Entity pages hang off those: `#/place/SE`, `#/operator/SAS`, `#/type/A20N`,
-`#/region/Nordics`, `#/continent/Europe`. Individual signals are linkable at
-`#/s/<id>`.
+`#/region/Nordics`, `#/continent/Europe`, `#/kind/cargo`. Individual signals are
+linkable at `#/s/<id>`.
+
+## What it can actually tell you
+
+The record now holds a full week, which is the first thing it can honestly
+describe. Over 29 August – 4 September 2026:
+
+| | weekday | weekend day | difference |
+| --- | ---: | ---: | ---: |
+| All flights | 1,401 | 1,373 | **+2%** |
+| Freight | 36 | 20 | **+80%** |
+| Holiday charter | 18 | 26 | **−29%** |
+
+Total traffic barely notices the working week. Underneath it, freight and
+holidays run hard in opposite directions and cancel each other out in the
+headline count. That separation is the whole point of the project, and it is only
+possible because `data/adsb/carriers.json` says which operator is which kind —
+freight, business jet, network, low-cost, charter, regional or state. 80% of
+flights resolve to a classified operator; the rest are reported as unclassified,
+never distributed to make the percentages tidy.
+
+One week describes the shape of a week. It says nothing about whether that shape
+is changing — that needs a second week, and the site says so until there is one.
 
 ## How it reads the data
 
@@ -62,6 +85,7 @@ assets/                 social card + app icons  (python scripts/make_og.py)
 data/adsb/
   summary.json          fast layer: rollups + signals
   taxonomy.json         ICAO address blocks → country → region
+  carriers.json         callsign prefix → operator + kind of flying
   manifest.json         file list the Data page is built from
   land.json             coastline for the globe
   flights/*.parquet     one row per aircraft visit  ← the table Ask queries
@@ -104,6 +128,7 @@ the Parquet fetches need an origin.
 pip install -r scripts/requirements.txt
 python scripts/adsb/reconstruct.py     # snapshots → flight sessions
 python scripts/adsb/enrich.py          # registration / type / operator tables
+python scripts/adsb/carriers.py        # carriers.json — operator + kind of flying
 python scripts/adsb/build_summary.py   # summary.json + signal detection
 ```
 

@@ -46,26 +46,28 @@ PERIOD_H = 24  # comparison window, hours
 
 # Wide-body / long-haul airframes. Presence over Aarhus at cruise is the
 # clearest available proxy for intercontinental corridor traffic.
+#
+# "A310", not "A31": a prefix match on A31 also catches the A318 and A319,
+# which are narrow-bodies. It did, for months, and inflated the wide-body
+# count — the site's long-haul proxy — by about a sixth.
 WIDEBODY_PREFIXES = (
-    "A30", "A31", "A33", "A34", "A35", "A38",
+    "A30", "A310", "A33", "A34", "A35", "A38",
     "B74", "B76", "B77", "B78", "IL9", "MD11", "A124", "C5M",
 )
 
-# All-cargo operators. We attribute cargo at the OPERATOR level, not the
-# airframe level: a passenger-configured 777 and a freighter share type codes,
-# so claiming per-aircraft cargo status would overstate what we can see.
-CARGO_PREFIXES = {
-    "FDX": "FedEx Express",       "UPS": "UPS Airlines",
-    "GTI": "Atlas Air",           "CLX": "Cargolux",
-    "CKS": "Kalitta Air",         "ABW": "AirBridgeCargo",
-    "CAO": "Air China Cargo",     "CKK": "China Cargo Airlines",
-    "GEC": "Lufthansa Cargo",     "BOX": "AeroLogic",
-    "SQC": "Singapore Air Cargo", "MPH": "Martinair Cargo",
-    "TAY": "ASL Airlines Belgium","ICV": "Cargolux Italia",
-    "RCF": "Aero Charter",        "QTR": None,  # passenger — excluded
-    "CSN": None, "CES": None,
-}
-CARGO_PREFIXES = {k: v for k, v in CARGO_PREFIXES.items() if v}
+# Who is flying, and what kind of flying it is. Lives in data/adsb/carriers.json
+# so the site can read the same judgement — see scripts/adsb/carriers.py.
+# Cargo is attributed at the OPERATOR level, never the airframe: a
+# passenger-configured 777 and a freighter share a type code.
+CARRIERS_FILE = DATA / "carriers.json"
+
+
+def load_carriers() -> tuple[dict, dict]:
+    if not CARRIERS_FILE.exists():
+        print("[carriers] missing — run scripts/adsb/carriers.py", file=sys.stderr)
+        return {}, {}
+    doc = json.loads(CARRIERS_FILE.read_text(encoding="utf-8"))
+    return doc.get("carriers", {}), doc.get("kinds", {})
 
 
 # ── confidence model ─────────────────────────────────────────────────────────
@@ -125,16 +127,33 @@ def main() -> int:
     if seen:
         con.executemany("INSERT INTO hex_cc VALUES (?, ?)", list(seen.items()))
 
-    wb_pred = " OR ".join(f"ac_type LIKE '{p}%'" for p in WIDEBODY_PREFIXES)
-    cargo_list = ", ".join(f"'{p}'" for p in CARGO_PREFIXES)
+    carriers, kind_meta = load_carriers()
+    con.execute("CREATE TABLE carrier (prefix VARCHAR, op_name VARCHAR, kind VARCHAR)")
+    if carriers:
+        con.executemany("INSERT INTO carrier VALUES (?, ?, ?)",
+                        [(p, v["name"], v["kind"]) for p, v in carriers.items()])
 
+    wb_pred = " OR ".join(f"ac_type LIKE '{p}%'" for p in WIDEBODY_PREFIXES)
+
+    # `dow` and `daytype` exist because one full week is the first thing this
+    # record can honestly describe. A Tuesday and a Sunday are not two samples
+    # of the same thing, and averaging them hides the only structure there is.
     con.execute(f"""
         CREATE VIEW fx AS
         SELECT f.*,
                h.cc                                              AS reg_cc,
+               c.op_name                                         AS carrier_name,
+               c.kind                                            AS carrier_kind,
                CASE WHEN {wb_pred} THEN 'widebody' ELSE 'narrowbody' END AS body,
-               (f.airline_prefix IN ({cargo_list}))              AS is_cargo
-        FROM f LEFT JOIN hex_cc h ON h.hex = f.hex
+               (c.kind = 'cargo')                                AS is_cargo,
+               make_timestamp(f.first_seen * 1000000)            AS seen_at,
+               strftime(make_timestamp(f.first_seen * 1000000), '%Y-%m-%d') AS day,
+               strftime(make_timestamp(f.first_seen * 1000000), '%a')       AS dow,
+               CASE WHEN strftime(make_timestamp(f.first_seen * 1000000), '%a')
+                         IN ('Sat', 'Sun') THEN 'weekend' ELSE 'weekday' END AS daytype
+        FROM f
+        LEFT JOIN hex_cc h ON h.hex = f.hex
+        LEFT JOIN carrier c ON c.prefix = f.airline_prefix
     """)
 
     lo, hi, total = con.execute(
@@ -237,8 +256,12 @@ def main() -> int:
         "SELECT DISTINCT airline_prefix, airline FROM fx WHERE airline IS NOT NULL"
     ).fetchall())
     for o in operators:
-        o["name"] = op_names.get(o["key"]) or CARGO_PREFIXES.get(o["key"])
-        o["cargo_operator"] = o["key"] in CARGO_PREFIXES
+        # The curated table wins over whatever was baked into the flight rows:
+        # it is the one we can correct without regenerating months of Parquet.
+        meta = carriers.get(o["key"], {})
+        o["name"] = meta.get("name") or op_names.get(o["key"])
+        o["kind"] = meta.get("kind")
+        o["cargo_operator"] = meta.get("kind") == "cargo"
 
     types = rollup("ac_type")
     type_desc = dict(con.execute(
@@ -272,9 +295,11 @@ def main() -> int:
         """).fetchall()
     ]
 
+    week = build_week(con, daily, kind_meta)
+
     signals = detect_signals(
         con, countries_roll, regions, operators, types, daily,
-        span_days, total, cur_lo, prev_lo, totals, baseline_complete,
+        span_days, total, cur_lo, prev_lo, totals, baseline_complete, week,
     )
 
     summary = {
@@ -297,6 +322,7 @@ def main() -> int:
         "types": types[:60],
         "daily": daily,
         "hourly": hourly,
+        "week": week,
     }
 
     OUT.write_text(json.dumps(summary, separators=(",", ":")), encoding="utf-8")
@@ -306,10 +332,113 @@ def main() -> int:
     return 0
 
 
+# ── the week ─────────────────────────────────────────────────────────────────
+DOW_ORDER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+
+
+def build_week(con, daily, kind_meta) -> dict | None:
+    """
+    Seven consecutive complete days, one of each weekday.
+
+    This is the first structure the record can honestly carry. A single week
+    cannot show a trend — that needs two — but it can show *shape*, and shape is
+    where the economics live: freight runs on the working week, holidays run on
+    the weekend, and a total that averages the two shows neither.
+
+    Returns None until seven consecutive complete days exist, rather than
+    describing "a week" out of five days and a shrug.
+    """
+    full = [d["day"] for d in daily if not d["partial"]]
+    if len(full) < 7:
+        return None
+    days = full[-7:]
+    start, end = datetime.fromisoformat(days[0]), datetime.fromisoformat(days[-1])
+    if (end - start).days != 6:            # a gap in the middle is not a week
+        return None
+
+    lo, hi = days[0], days[-1]
+    scope = f"day BETWEEN '{lo}' AND '{hi}'"
+
+    per_day = [
+        {"day": d, "dow": dow, "flights": n, "widebody": wb, "cargo": cg,
+         "kinds": {}}
+        for d, dow, n, wb, cg in con.execute(f"""
+            SELECT day, dow, COUNT(*),
+                   SUM(CASE WHEN body = 'widebody' THEN 1 ELSE 0 END),
+                   SUM(CASE WHEN is_cargo THEN 1 ELSE 0 END)
+            FROM fx WHERE {scope} GROUP BY 1, 2 ORDER BY 1""").fetchall()
+    ]
+    by_day = {d["day"]: d for d in per_day}
+    for d, k, n in con.execute(f"""
+            SELECT day, COALESCE(carrier_kind, 'unclassified'), COUNT(*)
+            FROM fx WHERE {scope} GROUP BY 1, 2""").fetchall():
+        by_day[d]["kinds"][k] = n
+
+    kinds = []
+    for k, n, wkday, wkend, wb in con.execute(f"""
+            SELECT COALESCE(carrier_kind, 'unclassified') AS k, COUNT(*),
+                   SUM(CASE WHEN daytype = 'weekday' THEN 1 ELSE 0 END),
+                   SUM(CASE WHEN daytype = 'weekend' THEN 1 ELSE 0 END),
+                   SUM(CASE WHEN body = 'widebody' THEN 1 ELSE 0 END)
+            FROM fx WHERE {scope} GROUP BY 1 ORDER BY 2 DESC""").fetchall():
+        wd, we = wkday / 5.0, wkend / 2.0
+        meta = kind_meta.get(k, {})
+        kinds.append({
+            "key": k,
+            "label": meta.get("label") or k.title(),
+            "reads": meta.get("reads"),
+            "flights": n,
+            "widebody": wb,
+            "weekday_per_day": round(wd, 1),
+            "weekend_per_day": round(we, 1),
+            "lift_pct": round((wd / we - 1) * 100) if we else None,
+            # A ratio between two directly counted groups is observed. Whether
+            # it holds is a different question, and one week cannot answer it.
+            "confidence": "observed" if n >= 200 else "early",
+        })
+
+    hourly = [
+        {"hour": int(h), "weekday": round(wd / 5.0, 1), "weekend": round(we / 2.0, 1)}
+        for h, wd, we in con.execute(f"""
+            SELECT CAST(strftime(seen_at, '%H') AS INTEGER),
+                   SUM(CASE WHEN daytype = 'weekday' THEN 1 ELSE 0 END),
+                   SUM(CASE WHEN daytype = 'weekend' THEN 1 ELSE 0 END)
+            FROM fx WHERE {scope} GROUP BY 1 ORDER BY 1""").fetchall()
+    ]
+
+    total, classified, anon = con.execute(f"""
+        SELECT COUNT(*),
+               SUM(CASE WHEN carrier_kind IS NOT NULL THEN 1 ELSE 0 END),
+               SUM(CASE WHEN airline_prefix IS NULL THEN 1 ELSE 0 END)
+        FROM fx WHERE {scope}""").fetchone()
+
+    wd_total = sum(d["flights"] for d in per_day if d["dow"] not in ("Sat", "Sun"))
+    we_total = sum(d["flights"] for d in per_day if d["dow"] in ("Sat", "Sun"))
+
+    return {
+        "from": lo, "to": hi,
+        "days": per_day,
+        "kinds": kinds,
+        "hourly": hourly,
+        "totals": {
+            "flights": total,
+            "weekday_per_day": round(wd_total / 5.0, 1),
+            "weekend_per_day": round(we_total / 2.0, 1),
+            "lift_pct": round((wd_total / 5.0) / (we_total / 2.0) * 100 - 100)
+                        if we_total else None,
+        },
+        "coverage": {
+            "classified": classified,
+            "share": round(100.0 * classified / total, 1) if total else 0,
+            "no_callsign": anon,
+        },
+    }
+
+
 # ── signal detection ─────────────────────────────────────────────────────────
 def detect_signals(con, countries, regions, operators, types, daily,
                    span_days, total, cur_lo, prev_lo, totals,
-                   baseline_complete) -> list[dict]:
+                   baseline_complete, week=None) -> list[dict]:
     """
     Turn the rollups into a ranked list of claims.
 
@@ -335,6 +464,95 @@ def detect_signals(con, countries, regions, operators, types, daily,
         sig.append(kw)
 
     full_days = [d for d in daily if not d["partial"]]
+
+    # ── What a full week shows ───────────────────────────────────────────
+    # These are the first readings on this site that are about the economy
+    # rather than about the antenna. They are still composition, not trend:
+    # one week can say what a week looks like and nothing about whether it is
+    # changing.
+    if week:
+        kinds = {k["key"]: k for k in week["kinds"]}
+        wt = week["totals"]
+        span = f"{week['from']} to {week['to']}"
+
+        cargo, charter = kinds.get("cargo"), kinds.get("leisure")
+        if cargo and charter and wt["lift_pct"] is not None:
+            add(
+                kind="composition", scope="all",
+                title="The working week barely changes how much flies — "
+                      "it changes what",
+                metric=f"{wt['lift_pct']:+d}%", metric_label="weekday vs weekend traffic",
+                comparison=f"{wt['weekday_per_day']:,.0f} flights a weekday vs "
+                           f"{wt['weekend_per_day']:,.0f} at the weekend",
+                where=span,
+                interpretation=(
+                    "The total is almost flat, which is what you would expect over a "
+                    "point that mostly sees aircraft at cruise. Underneath it the mix "
+                    f"moves hard in both directions: freight runs {cargo['lift_pct']:+d}% "
+                    f"on weekdays while charter runs {charter['lift_pct']:+d}%. Averaging "
+                    "a Tuesday with a Sunday cancels the two against each other and "
+                    "reports nothing. The composition is the signal; the count is not."
+                ),
+                caveat="One week. This describes the shape of a week, not a change in "
+                       "it — that needs a second week to compare against.",
+                confidence="observed",
+                sql=("SELECT daytype, carrier_kind, COUNT(*) AS flights\n"
+                     "FROM flights\n"
+                     f"WHERE day BETWEEN '{week['from']}' AND '{week['to']}'\n"
+                     "GROUP BY 1, 2 ORDER BY 1, 3 DESC;"),
+            )
+
+        if cargo and cargo["lift_pct"] is not None:
+            by_dow = {d["dow"]: d["kinds"].get("cargo", 0) for d in week["days"]}
+            path = " → ".join(f"{d} {by_dow.get(d, 0)}" for d in DOW_ORDER)
+            add(
+                kind="corridor", scope="all",
+                title="Freight keeps office hours",
+                metric=f"{cargo['lift_pct']:+d}%",
+                metric_label="all-cargo flights, weekday vs weekend",
+                comparison=f"{cargo['weekday_per_day']} a weekday vs "
+                           f"{cargo['weekend_per_day']} at the weekend",
+                where=path,
+                interpretation=(
+                    "Freighters follow the working week of the businesses that load "
+                    "them, and the count climbs through it before easing on Friday. "
+                    "This is the closest thing overhead to a trade figure: it is "
+                    "capacity moving because somebody has goods to move."
+                ),
+                caveat="Cargo is attributed by operator, not by aircraft. A freighter "
+                       "flown by a passenger airline is not counted here, and belly "
+                       "freight under passengers is invisible to us entirely.",
+                confidence=cargo["confidence"],
+                sql=("SELECT dow, COUNT(*) AS freight_flights\n"
+                     "FROM flights\n"
+                     f"WHERE carrier_kind = 'cargo'\n"
+                     f"  AND day BETWEEN '{week['from']}' AND '{week['to']}'\n"
+                     "GROUP BY 1;"),
+            )
+
+        if charter and charter["lift_pct"] is not None and charter["lift_pct"] < 0:
+            add(
+                kind="composition", scope="all",
+                title="Holiday flying is a weekend business",
+                metric=f"{charter['lift_pct']:+d}%",
+                metric_label="charter flights, weekday vs weekend",
+                comparison=f"{charter['weekend_per_day']} a weekend day vs "
+                           f"{charter['weekday_per_day']} on a weekday",
+                where=span,
+                interpretation=(
+                    "Tour-operator flying is the purest leisure demand in the record — "
+                    "it exists because somebody booked a holiday. It runs opposite to "
+                    "freight, which is why the two cancel in the headline count."
+                ),
+                caveat=f"Only {charter['flights']} charter flights in the week. The "
+                       "direction is clear; the size of it is not, at this sample.",
+                confidence=charter["confidence"],
+                sql=("SELECT dow, COUNT(*) AS charter_flights\n"
+                     "FROM flights\n"
+                     f"WHERE carrier_kind = 'leisure'\n"
+                     f"  AND day BETWEEN '{week['from']}' AND '{week['to']}'\n"
+                     "GROUP BY 1;"),
+            )
 
     # 0) State of the record. When there is not yet enough history to compare
     #    periods, that IS the headline — publishing invented trends instead
@@ -514,8 +732,10 @@ def detect_signals(con, countries, regions, operators, types, daily,
         names = ", ".join(f"{t['key']}" for t in rare[:5])
         add(
             kind="outlier", scope="all",
-            title=f"{len(rare)} wide-body types seen exactly once",
-            metric=f"{len(rare)}", metric_label="one-off airframes",
+            title=f"{len(rare)} wide-body type{'s' if len(rare) != 1 else ''} "
+                  f"seen exactly once",
+            metric=f"{len(rare)}",
+            metric_label=f"one-off airframe{'s' if len(rare) != 1 else ''}",
             comparison=names,
             where=None,
             interpretation="Single appearances of long-haul airframes are usually "

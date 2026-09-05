@@ -509,6 +509,68 @@ textarea.sql-box:focus { border-color:var(--accent); }
 .prose ul { margin:0 0 13px 1.1em; max-width:var(--measure); }
 .prose li { font-size:.9rem; margin-bottom:5px; line-height:1.62; }
 
+/* ── The week ──────────────────────────────────────────────────────────── */
+/* Two neutral colours, because weekday-heavy and weekend-heavy are two kinds
+   of activity and neither is the good one. Amber is the working week, muted
+   navy is the weekend — the same pair the charts already use. */
+.wk { --wkday:var(--accent); --wkend:var(--bar); }
+
+.dbars { border-top:1px solid var(--ink); }
+.dbar { display:grid; grid-template-columns:132px minmax(0,1fr) 74px; gap:14px;
+        align-items:center; padding:11px 0; border-bottom:1px solid var(--rule);
+        text-decoration:none; color:inherit; }
+.dbar:hover { background:var(--surface); }
+.dbar-k { font-size:.85rem; font-weight:600; }
+.dbar-k span { display:block; font-family:var(--mono); font-size:.65rem;
+               font-weight:400; color:var(--mute); margin-top:2px; }
+/* The axis is the middle of the track, so the eye reads direction before size. */
+.dbar-t { position:relative; height:22px; }
+.dbar-t::before { content:''; position:absolute; left:50%; top:-4px; bottom:-4px;
+                  width:1px; background:var(--rule-2); }
+.dbar-t i { position:absolute; top:4px; height:14px; border-radius:2px; }
+.dbar-t i.pos { left:50%; background:var(--wkday); }
+.dbar-t i.neg { right:50%; background:var(--wkend); }
+.dbar-v { font-family:var(--mono); font-size:.9rem; text-align:right; }
+.dbar-v.pos { color:var(--accent); }
+.dbar-v.neg { color:var(--ink-2); }
+/* Fewer than a couple of hundred flights behind it: hatched, so the eye
+   discounts it without the row being hidden. */
+.dbar.thin .dbar-t i.pos { background:repeating-linear-gradient(45deg,
+    var(--accent), var(--accent) 3px, transparent 3px, transparent 6px); }
+.dbar.thin .dbar-t i.neg { background:repeating-linear-gradient(45deg,
+    var(--bar), var(--bar) 3px, transparent 3px, transparent 6px); }
+.dbar.thin .dbar-v { color:var(--mute); }
+.dbar-ends { display:grid; grid-template-columns:132px minmax(0,1fr) 74px; gap:14px;
+             font-size:.63rem; letter-spacing:.1em; text-transform:uppercase;
+             color:var(--mute); font-weight:600; padding-bottom:7px; }
+.dbar-ends b { display:flex; justify-content:space-between; font-weight:inherit; }
+/* On a phone the track is the point; the label gives up width for it. */
+@media (max-width:560px){
+  .dbar, .dbar-ends { grid-template-columns:88px minmax(0,1fr) 50px; gap:10px; }
+  .dbar-k { font-size:.78rem; }
+  .dbar-v { font-size:.8rem; }
+  .dbar-ends { font-size:.55rem; }
+}
+
+/* Seven days, one row per kind — enough to see freight climb through a week. */
+.spark { display:flex; gap:2px; align-items:flex-end; height:44px;
+         border-bottom:1px solid var(--rule-2); }
+.spark i { flex:1; background:var(--bar); border-radius:1px 1px 0 0; min-height:1px; }
+.spark i.we { background:var(--rule-2); }
+.spark i.hi { background:var(--accent); }
+.wk-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+           gap:26px 34px; }
+.wk-dow { display:flex; gap:2px; margin-top:5px; }
+.wk-dow span { flex:1; font-family:var(--mono); font-size:.58rem; color:var(--mute);
+               text-align:center; }
+.kind-note { font-size:.79rem; color:var(--ink-2); line-height:1.6; margin-top:3px; }
+/* A quiet label, not a badge — the operator's name is the thing being read. */
+.kind-tag { font-family:var(--mono); font-size:.6rem; letter-spacing:.06em;
+            text-transform:uppercase; color:var(--mute); border:1px solid var(--rule-2);
+            border-radius:4px; padding:1px 5px; white-space:nowrap; margin-left:5px; }
+.kind-tag[data-k="cargo"]  { color:var(--accent); border-color:var(--accent); }
+.kind-tag[data-k="bizjet"] { color:var(--accent); border-color:var(--rule-2); }
+
 /* ── Skip link ─────────────────────────────────────────────────────────── */
 .skip { position:absolute; left:-9999px; top:0; z-index:200;
         background:var(--surface); color:var(--ink); border:1px solid var(--accent);
@@ -796,6 +858,7 @@ th.sortable .dir { display:inline-block; transition: transform var(--t-base) var
       <nav id="nav" aria-label="Sections">
         <span id="nav-pill" aria-hidden="true"></span>
         <a href="#/"        data-r="/"       >Signals</a>
+        <a href="#/week"    data-r="/week"   >Week</a>
         <a href="#/globe"   data-r="/globe"  >Globe</a>
         <a href="#/explore" data-r="/explore">Explore</a>
         <a href="#/ask"     data-r="/ask"    >Ask</a>
@@ -845,7 +908,7 @@ const BASE = new URL('./data/adsb/', location.href).href;
    Two layers. `S` is the precomputed summary and arrives in one small fetch,
    which is what every page paints from. `deep` is DuckDB with the real flight
    table, loaded only when a page actually needs to run a query. */
-let S = null, TAX = null;
+let S = null, TAX = null, CAR = null;
 let deep = null, deepPromise = null;
 
 const $  = s => document.querySelector(s);
@@ -1190,6 +1253,14 @@ async function getDeep() {
     await conn.query(`CREATE TABLE country(cc VARCHAR, name VARCHAR, region VARCHAR, continent VARCHAR)`);
     await conn.query(`INSERT INTO country VALUES ${cRows}`);
 
+    // Who is flying, and what kind of flying it is. The same judgement the
+    // summary was built with, so a query here and a figure on the front page
+    // cannot disagree.
+    await conn.query(`CREATE TABLE carrier(prefix VARCHAR, op_name VARCHAR, kind VARCHAR)`);
+    const carRows = Object.entries(CAR.carriers || {}).map(([p, v]) =>
+      `('${p}',${q(v.name)},${q(v.kind)})`).join(',');
+    if (carRows) await conn.query(`INSERT INTO carrier VALUES ${carRows}`);
+
     await conn.query(`CREATE VIEW _raw AS SELECT * FROM read_parquet([${names}], union_by_name=true)`);
     await conn.query(`
       CREATE VIEW flights AS
@@ -1198,22 +1269,33 @@ async function getDeep() {
              ct.name      AS reg_country_name,
              ct.region    AS reg_region,
              ct.continent AS reg_continent,
-             CASE WHEN r.ac_type SIMILAR TO '(A30|A31|A33|A34|A35|A38|B74|B76|B77|B78|IL9|MD11|A124).*'
+             -- 'A310', not 'A31'. A31 also matches the A318 and A319, which are
+             -- narrow-bodies, and counting them as long-haul inflated the
+             -- wide-body figure by about a sixth.
+             CASE WHEN r.ac_type SIMILAR TO '(A30|A310|A33|A34|A35|A38|B74|B76|B77|B78|IL9|MD11|A124|C5M).*'
                   THEN 'widebody' ELSE 'narrowbody' END AS body,
-             r.airline_prefix IN ('FDX','UPS','GTI','CLX','CKS','ABW','CAO','CKK','GEC','BOX',
-                                  'SQC','MPH','TAY','ICV','RCF') AS is_cargo,
+             -- Cargo is a property of the operator, never the airframe: a
+             -- passenger 777 and a freighter share a type code.
+             car.kind = 'cargo' AS is_cargo,
+             car.kind AS carrier_kind,
+             COALESCE(car.op_name, r.airline) AS operator,
              -- A naive UTC timestamp, not TIMESTAMPTZ. duckdb-wasm ships
              -- without ICU, so strftime() cannot bind against a zoned value —
              -- which quietly broke every by-day and by-hour query on the site.
              -- make_timestamp() takes microseconds since the epoch, so this is
              -- the same instant with the zone stripped, already in UTC.
-             make_timestamp(r.first_seen * 1000000) AS seen_at
+             make_timestamp(r.first_seen * 1000000) AS seen_at,
+             strftime(make_timestamp(r.first_seen * 1000000), '%Y-%m-%d') AS day,
+             strftime(make_timestamp(r.first_seen * 1000000), '%a') AS dow,
+             CASE WHEN strftime(make_timestamp(r.first_seen * 1000000), '%a')
+                       IN ('Sat','Sun') THEN 'weekend' ELSE 'weekday' END AS daytype
       FROM _raw r
       LEFT JOIN country_block c
              ON r.hex >= c.lo AND r.hex <= c.hi
             AND c.width = (SELECT MIN(b2.width) FROM country_block b2
                            WHERE r.hex >= b2.lo AND r.hex <= b2.hi)
-      LEFT JOIN country ct ON ct.cc = c.cc`);
+      LEFT JOIN country ct ON ct.cc = c.cc
+      LEFT JOIN carrier car ON car.prefix = r.airline_prefix`);
     engineSay('Ready.', 1);
     deep = { db, conn };
     return deep;
@@ -1501,6 +1583,20 @@ function viewSignals(openId) {
     ])}
   </section>
 
+  ${S.week ? `<section>
+    <div class="sec-head">
+      <div><div class="eyebrow">Now on record</div>
+        <h2>A full week</h2></div>
+      <a class="btn primary" href="#/week">See what a week shows →</a>
+    </div>
+    <p class="sec-note" style="max-width:var(--measure)">
+      Seven consecutive complete days, one of every weekday. Traffic overhead is almost
+      identical on a weekday and at the weekend — but freight runs
+      ${S.week.kinds.find(k => k.key === 'cargo')?.lift_pct ?? 0}% heavier Monday to
+      Friday while holiday charters run the other way. The count hides what the
+      composition shows.</p>
+  </section>` : ''}
+
   <section>
     <div class="sec-head">
       <div><div class="eyebrow">What the data is telling us</div>
@@ -1587,8 +1683,11 @@ function viewExplore() {
     ${table(S.operators, [
       { k: 'key', h: 'Code', render: r => `<a href="#/operator/${esc(r.key)}" class="code">${esc(r.key)}</a>` },
       { k: 'name', h: 'Airline', render: r => r.name
-          ? esc(r.name) + (r.cargo_operator ? ' <span class="faint">· all-cargo</span>' : '')
-          : `<span class="unknown">Not in our airline table</span>` },
+          ? esc(r.name) : `<span class="unknown">Not in our carrier table</span>` },
+      { k: 'kind', h: 'Kind', render: r => r.kind
+          ? `<a href="#/kind/${esc(r.kind)}" class="kind-tag" data-k="${esc(r.kind)}"
+               style="margin:0">${esc(CAR?.kinds?.[r.kind]?.label || r.kind)}</a>`
+          : `<span class="unknown">unclassified</span>` },
       { k: 'flights', h: 'Flights', num: true, bar: true, render: r => n(r.flights) },
       { k: 'aircraft', h: 'Aircraft', num: true, render: r => n(r.aircraft) },
       { k: 'widebody', h: 'Wide-body', num: true, render: r => n(r.widebody) },
@@ -2009,6 +2108,47 @@ function viewGroup(kind, name) {
   });
 }
 
+function viewKind(key) {
+  const k = S.week?.kinds.find(x => x.key === key);
+  const meta = CAR?.kinds?.[key];
+  if (!k || !meta) return notFound(`No such kind of flying: ${esc(key)}.`);
+  const members = Object.entries(CAR.carriers)
+    .filter(([, v]) => v.kind === key)
+    .map(([p, v]) => ({ key: p, name: v.name, country: v.country }));
+  const seen = new Set(S.operators.map(o => o.key));
+
+  return entityShell({
+    crumbs: `<a href="#/week">Week</a> <em>/</em> ${esc(meta.label)}`,
+    title: esc(meta.label),
+    lede: `${esc(meta.reads)} ${k.lift_pct >= 0
+      ? `Over the week of ${niceDate(S.week.from)} this ran ${k.lift_pct}% heavier on weekdays than at the weekend.`
+      : `Over the week of ${niceDate(S.week.from)} this ran ${Math.abs(k.lift_pct)}% heavier at the weekend than on weekdays.`}`,
+    stats: readout([
+      { v: fig(k.flights), l: 'Flights in the week' },
+      { v: fig(Math.round(k.weekday_per_day)), l: 'On an average weekday' },
+      { v: fig(Math.round(k.weekend_per_day)), l: 'On an average weekend day' },
+      { v: fig(k.widebody), l: 'Wide-body',
+        s: k.flights ? `${(k.widebody / k.flights * 100).toFixed(0)}% of its flights` : null },
+    ]),
+    body: `
+      <section>
+        <div class="sec-head"><div><div class="eyebrow">Who is in it</div>
+          <h2>${n(members.length)} operators classified as ${esc(meta.label.toLowerCase())}</h2></div>
+          <p class="sec-note">Seen over Aarhus, or listed and not yet seen.</p></div>
+        ${table(members, [
+          { k: 'key', h: 'Code', render: r => `<a href="#/operator/${esc(r.key)}" class="code">${esc(r.key)}</a>` },
+          { k: 'name', h: 'Operator' },
+          { k: 'country', h: 'Home', render: r => esc(countryName(r.country)) },
+          { k: 'key', h: 'On record', render: r => seen.has(r.key)
+              ? '<span class="dim">seen</span>' : '<span class="unknown">not yet seen</span>' },
+        ], { id: 'kind-m', max: 60, csvName: `ovrhead-${key}` })}
+      </section>` +
+      evidence('kind', key, `Every ${esc(meta.label.toLowerCase())} flight on record`,
+        `SELECT callsign, operator, ac_desc, reg_country_name, seen_at\nFROM flights\nWHERE carrier_kind = '${key}'\nORDER BY first_seen DESC;`,
+        `ovrhead-flights-${key}`),
+  });
+}
+
 function viewOperator(code) {
   const o = S.operators.find(x => x.key === code);
   if (!o) return notFound(`No flights recorded for operator ${esc(code)}.`);
@@ -2016,9 +2156,14 @@ function viewOperator(code) {
     crumbs: `<a href="#/explore">Explore</a> <em>/</em> Operators <em>/</em> ${esc(code)}`,
     title: o.name ? esc(o.name) : `Operator ${esc(code)}`,
     lede: o.name
-      ? `ICAO code ${esc(code)}.${o.cargo_operator ? ' An all-cargo operator — the closest thing in this record to a trade signal.' : ''}`
-      : `We see the ICAO prefix ${esc(code)} on these flights but it is not in our airline
-         table yet, so we cannot name the operator. The flights themselves are real.`,
+      ? `ICAO code ${esc(code)}.${o.kind
+          ? ` Classified as <a href="#/kind/${esc(o.kind)}">${
+              esc((CAR?.kinds?.[o.kind]?.label || o.kind).toLowerCase())}</a> — ${
+              esc(CAR?.kinds?.[o.kind]?.reads || '')}`
+          : ''}`
+      : `We see the ICAO prefix ${esc(code)} on these flights but it is not in our carrier
+         table yet, so we can neither name the operator nor say what kind of flying this
+         is. The flights themselves are real.`,
     stats: readout([
       { v: fig(o.flights), l: 'Flights', s: `${o.share}% of all traffic` },
       { v: fig(o.aircraft), l: 'Distinct aircraft' },
@@ -2065,6 +2210,7 @@ async function fillLazy() {
   const { kind, arg, csvName } = host.dataset;
   const where = { place: `reg_country = ${q(arg)}`,
                   operator: `airline_prefix = ${q(arg)}`,
+                  kind: `carrier_kind = ${q(arg)}`,
                   type: `ac_type = ${q(arg)}` }[kind];
   if (shape) engineNote(shape);
   try {
@@ -2072,8 +2218,9 @@ async function fillLazy() {
     if (gen !== nav) return;
 
     const [flights, byDay, byHour] = await Promise.all([
-      query(`SELECT callsign, ac_type, ac_desc, reg, reg_country_name, airline,
-                    airline_prefix, seen_at, ROUND(duration_sec/60.0) AS mins
+      query(`SELECT callsign, ac_type, ac_desc, reg, reg_country_name, operator,
+                    carrier_kind, airline_prefix, seen_at,
+                    ROUND(duration_sec/60.0) AS mins
              FROM flights WHERE ${where} ORDER BY first_seen DESC LIMIT 300`),
       query(`SELECT strftime(seen_at, '%Y-%m-%d') AS day, COUNT(*) AS flights
              FROM flights WHERE ${where} GROUP BY 1`),
@@ -2123,7 +2270,10 @@ const FLIGHT_COLS = [
   { k: 'reg', h: 'Registration', render: r => r.reg ? `<span class="mono">${esc(r.reg)}</span>` : '—' },
   { k: 'reg_country_name', h: 'Registered in', render: r => r.reg_country_name
       ? esc(r.reg_country_name) : `<span class="unknown">Unallocated block</span>` },
-  { k: 'airline', h: 'Operator', render: r => r.airline ? esc(r.airline)
+  { k: 'operator', h: 'Operator', render: r => r.operator
+      ? `${esc(r.operator)}${r.carrier_kind
+          ? ` <span class="kind-tag" data-k="${esc(r.carrier_kind)}">${
+              esc(CAR?.kinds?.[r.carrier_kind]?.label || r.carrier_kind)}</span>` : ''}`
       : (r.airline_prefix ? `<span class="code">${esc(r.airline_prefix)}</span>`
                           : `<span class="unknown">Unknown</span>`) },
   // Exported as the same string the table shows — a raw epoch in a CSV column
@@ -2142,22 +2292,37 @@ const MEASURES = {
   flights:  { sql: 'COUNT(*)',                                          label: 'How many flights' },
   aircraft: { sql: 'COUNT(DISTINCT hex)',                               label: 'How many different aircraft' },
   widebody: { sql: "SUM(CASE WHEN body='widebody' THEN 1 ELSE 0 END)",  label: 'How many wide-body flights' },
-  cargo:    { sql: 'SUM(CASE WHEN is_cargo THEN 1 ELSE 0 END)',         label: 'How many all-cargo flights' },
+  cargo:    { sql: "SUM(CASE WHEN carrier_kind='cargo' THEN 1 ELSE 0 END)", label: 'How many freight flights' },
   operators:{ sql: 'COUNT(DISTINCT airline_prefix)',                    label: 'How many airlines' },
 };
 const DIMS = {
   country:   { sql: 'reg_country_name',                label: 'country',            head: 'Country' },
   region:    { sql: 'reg_region',                      label: 'economic region',    head: 'Region' },
   continent: { sql: 'reg_continent',                   label: 'continent',          head: 'Continent' },
-  operator:  { sql: 'airline',                         label: 'airline',            head: 'Airline' },
+  operator:  { sql: 'operator',                        label: 'airline',            head: 'Airline' },
+  kind:      { sql: 'carrier_kind',                    label: 'kind of flying',     head: 'Kind' },
   type:      { sql: 'ac_desc',                         label: 'aircraft type',      head: 'Aircraft' },
-  day:       { sql: "strftime(seen_at, '%Y-%m-%d')",   label: 'day',                head: 'Day' },
-  hour:      { sql: "strftime(seen_at, '%H') || ':00'",label: 'hour of the day',    head: 'Hour' },
+  day:       { sql: "strftime(seen_at, '%Y-%m-%d')",   label: 'day',                head: 'Day',
+               order: 'ORDER BY 1' },
+  // A week reads Monday to Sunday, not Friday to Wednesday, so it is ordered
+  // explicitly rather than alphabetically.
+  dow:       { sql: 'dow',                             label: 'day of the week',    head: 'Day',
+               order: "ORDER BY list_position(['Mon','Tue','Wed','Thu','Fri','Sat','Sun'], dow)" },
+  daytype:   { sql: 'daytype',                         label: 'weekday or weekend', head: 'Part of week',
+               order: 'ORDER BY 1' },
+  hour:      { sql: "strftime(seen_at, '%H') || ':00'",label: 'hour of the day',    head: 'Hour',
+               order: 'ORDER BY 1' },
 };
 const FILTERS = {
   '':           { sql: '',                            label: 'all aircraft' },
   widebody:     { sql: "body='widebody'",             label: 'only wide-bodies' },
-  cargo:        { sql: 'is_cargo',                    label: 'only all-cargo operators' },
+  cargo:        { sql: "carrier_kind='cargo'",        label: 'only freight' },
+  leisure:      { sql: "carrier_kind='leisure'",      label: 'only holiday charters' },
+  bizjet:       { sql: "carrier_kind='bizjet'",       label: 'only business jets' },
+  scheduled:    { sql: "carrier_kind IN ('network','lowcost','regional')",
+                                                      label: 'only scheduled airlines' },
+  weekday:      { sql: "daytype='weekday'",           label: 'only weekdays' },
+  weekend:      { sql: "daytype='weekend'",           label: 'only weekends' },
   nonEU:        { sql: "reg_continent<>'Europe'",     label: 'only non-European aircraft' },
   anon:         { sql: 'callsign IS NULL',            label: 'only aircraft with no callsign' },
 };
@@ -2170,12 +2335,15 @@ const WINDOWS = {
 /* Examples are builder states, not raw SQL, so clicking one shows the reader
    exactly which controls produce that answer. */
 const PRESETS = [
+  ['What kind of flying is this?',                 { m:'flights',  d:'kind',      f:'',        w:'' }],
+  ['Does freight keep office hours?',              { m:'flights',  d:'dow',       f:'cargo',   w:'' }],
+  ['When do the holiday charters go?',             { m:'flights',  d:'dow',       f:'leisure', w:'' }],
+  ['Weekday or weekend — who flies more?',         { m:'flights',  d:'daytype',   f:'',        w:'' }],
   ['Which countries send the most aircraft?',      { m:'flights',  d:'country',   f:'',        w:'' }],
   ['Who is flying in from outside Europe?',        { m:'flights',  d:'country',   f:'nonEU',   w:'' }],
   ['What does a normal day look like?',            { m:'flights',  d:'hour',      f:'',        w:'' }],
   ['Which wide-bodies pass overhead most?',        { m:'flights',  d:'type',      f:'widebody',w:'' }],
-  ['Which airlines are busiest right now?',        { m:'flights',  d:'operator',  f:'',        w:'168' }],
-  ['Is any freight moving through?',               { m:'flights',  d:'operator',  f:'cargo',   w:'' }],
+  ['Where are the business jets from?',            { m:'flights',  d:'country',   f:'bizjet',  w:'' }],
   ['How much long-haul, by region?',               { m:'widebody', d:'region',    f:'',        w:'' }],
 ];
 
@@ -2232,8 +2400,7 @@ function wireAsk() {
     if (f.sql) conds.push(f.sql);
     if (w.hours) conds.push(
       `first_seen >= (SELECT MAX(first_seen) FROM flights) - ${w.hours * 3600}`);
-    const ordering = ctl.d.value === 'day' || ctl.d.value === 'hour'
-      ? 'ORDER BY 1' : 'ORDER BY 2 DESC';
+    const ordering = d.order || 'ORDER BY 2 DESC';
     return `SELECT ${d.sql} AS "${d.head}",\n       ${m.sql} AS "${m.label.replace(/^How many /, '')}"\n`
          + `FROM flights\nWHERE ${conds.join('\n  AND ')}\nGROUP BY 1\n${ordering};`;
   }
@@ -2366,13 +2533,18 @@ const COLUMN_REF = [
   ['ac_type',            'text',      'raw',     'ICAO type code, e.g. B78X.'],
   ['ac_desc',            'text',      'raw',     'Human-readable type, e.g. BOEING 787-10.'],
   ['airline_prefix',     'text',      'raw',     'First three letters of the callsign — the operator’s ICAO code.'],
-  ['airline',            'text',      'raw',     'Operator name where the prefix is in our airline table.'],
+  ['airline',            'text',      'raw',     'Operator name as baked into the flight row when it was built.'],
+  ['operator',           'text',      'derived', 'Operator name, preferring the curated carrier table. Use this one.'],
+  ['carrier_kind',       'text',      'derived', "What kind of flying: cargo, bizjet, network, lowcost, leisure, regional, state. NULL where we cannot say."],
+  ['day',                'text',      'derived', 'Calendar day, UTC.'],
+  ['dow',                'text',      'derived', 'Mon–Sun.'],
+  ['daytype',            'text',      'derived', "'weekday' or 'weekend'."],
   ['reg_country',        'text',      'derived', 'ISO code of the state that allocated the transponder address.'],
   ['reg_country_name',   'text',      'derived', 'That state’s name. Where it is registered — not where it flew from.'],
   ['reg_region',         'text',      'derived', 'Economic region, e.g. Nordics, DACH, East Asia.'],
   ['reg_continent',      'text',      'derived', 'Continent of registration.'],
   ['body',               'text',      'derived', "'widebody' or 'narrowbody', inferred from the type code."],
-  ['is_cargo',           'boolean',   'derived', 'True when the operator is an all-cargo carrier. Attributed by operator, never by airframe.'],
+  ['is_cargo',           'boolean',   'derived', "True when carrier_kind is 'cargo'. Attributed by operator, never by airframe."],
 ];
 
 function viewData() {
@@ -2424,6 +2596,8 @@ function viewData() {
         <span class="meta">precomputed rollups &amp; signals</span></div>
       <div class="dl-row"><a href="${esc(BASE)}taxonomy.json" class="code">taxonomy.json</a>
         <span class="meta">ICAO address blocks → country → region</span></div>
+      <div class="dl-row"><a href="${esc(BASE)}carriers.json" class="code">carriers.json</a>
+        <span class="meta">callsign prefix → operator &amp; kind of flying</span></div>
       <div class="dl-row"><a href="${esc(BASE)}manifest.json" class="code">manifest.json</a>
         <span class="meta">the file list this page is built from</span></div>
     </div>
@@ -2754,6 +2928,168 @@ async function drawCoverage() {
   covStop = () => { cancelAnimationFrame(raf); ro.disconnect(); covStop = null; };
 }
 
+/* ── The week ────────────────────────────────────────────────────────────
+   The first page on this site that is about the economy rather than about the
+   antenna, and the reason the carrier taxonomy exists. It only appears once
+   seven consecutive complete days are on record; until then it says so. */
+const DOWS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const niceDate = d => new Date(d + 'T00:00:00Z')
+  .toLocaleDateString('en-GB', { day: 'numeric', month: 'long', timeZone: 'UTC' });
+
+/** Seven bars, weekend shaded differently, peak in accent. */
+function spark(values, dows) {
+  const max = values.reduce((m, v) => Math.max(m, v), 1);
+  const peak = Math.max(...values);
+  return `<div class="spark">${values.map((v, i) => `
+    <i class="${dows[i] === 'Sat' || dows[i] === 'Sun' ? 'we' : ''} ${
+      v === peak ? 'hi' : ''}" style="height:${(v / max * 100).toFixed(1)}%"
+      title="${esc(dows[i])} — ${n(v)}"></i>`).join('')}</div>
+    <div class="wk-dow">${dows.map(d => `<span>${esc(d[0])}</span>`).join('')}</div>`;
+}
+
+function viewWeek() {
+  const w = S.week;
+  if (!w) {
+    const have = S.window.complete_days;
+    return `<header class="page-head">
+      <div class="crumbs"><a href="#/">Signals</a> <em>/</em> Week</div>
+      <h1>Not a week yet</h1>
+      <p class="lede">This page needs seven consecutive complete days. The record
+        holds ${n(have)}. Describing “a week” out of ${n(have)} days would be the
+        easiest lie on this site to tell, so it waits.</p></header>
+      <a class="btn" href="#/">Back to the signals →</a>`;
+  }
+
+  const t = w.totals;
+  // Ordered by the thing the chart is about, so it reads top to bottom as
+  // "most a working-week activity" down to "most a weekend one".
+  const kinds = w.kinds
+    .filter(k => k.key !== 'unclassified' && k.lift_pct != null)
+    .sort((a, b) => b.lift_pct - a.lift_pct);
+  const un = w.kinds.find(k => k.key === 'unclassified');
+  const span = kinds.reduce((m, k) => Math.max(m, Math.abs(k.lift_pct)), 10);
+  const byDow = Object.fromEntries(w.days.map(d => [d.dow, d]));
+  const ordered = DOWS.filter(d => byDow[d]);
+
+  // A bar drawn from 25 flights and one from 4,700 should not look equally
+  // solid. Thin ones are hatched and labelled rather than dropped.
+  const dbar = k => {
+    const pos = k.lift_pct >= 0;
+    const thin = k.confidence === 'early';
+    const width = Math.abs(k.lift_pct) / span * 50;
+    return `<a class="dbar${thin ? ' thin' : ''}" href="#/kind/${esc(k.key)}">
+      <div class="dbar-k">${esc(k.label)}<span>${n(k.flights)} flights${
+        thin ? ' · small sample' : ''}</span></div>
+      <div class="dbar-t"><i class="${pos ? 'pos' : 'neg'}" style="width:${width.toFixed(1)}%"></i></div>
+      <div class="dbar-v ${pos ? 'pos' : 'neg'}">${k.lift_pct > 0 ? '+' : ''}${k.lift_pct}%</div>
+    </a>`;
+  };
+
+  return `
+  <header class="page-head">
+    <div class="crumbs"><a href="#/">Signals</a> <em>/</em> Week</div>
+    <h1>One week, and what it <span class="q">actually shows</span></h1>
+    <p class="lede">${niceDate(w.from)} to ${niceDate(w.to)} — seven consecutive complete
+      days, one of every weekday. Enough to describe the shape of a week. Not enough,
+      yet, to say whether that shape is changing.</p>
+  </header>
+
+  <section class="wk">
+    ${readout([
+      { v: fig(Math.round(t.weekday_per_day)), l: 'Flights on an average weekday' },
+      { v: fig(Math.round(t.weekend_per_day)), l: 'Flights on an average weekend day' },
+      { v: `${t.lift_pct > 0 ? '+' : ''}${t.lift_pct}%`, l: 'Difference between them',
+        s: 'almost nothing' },
+      { v: `${w.coverage.share}%`, txt: false,
+        l: 'Operators we can classify', s: `${n(w.coverage.no_callsign)} sent no callsign` },
+    ])}
+  </section>
+
+  <section class="wk">
+    <div class="sec-head">
+      <div><div class="eyebrow">The finding</div>
+        <h2>The working week changes what flies, not how much</h2></div>
+      <p class="sec-note">How much more each kind of flying happens on a weekday
+        than at the weekend.</p>
+    </div>
+    <div class="dbar-ends">
+      <span></span><b><span>← weekend business</span><span>working week →</span></b><span></span>
+    </div>
+    <div class="dbars">${kinds.map(dbar).join('')}</div>
+    <p class="sec-note" style="margin-top:16px;max-width:var(--measure)">
+      Freight and holidays run in opposite directions, at almost the same size. In a
+      single count of “flights overhead” they cancel, and the week looks flat — which
+      is exactly what the ${t.lift_pct > 0 ? '+' : ''}${t.lift_pct}% above is.
+      Hatched bars rest on fewer than 200 flights: read their direction, not their size.
+      State flying is in the chart for completeness and is not economic demand.
+      ${un ? `A further ${n(un.flights)} flights are from operators we cannot classify
+        and are left out of this chart rather than quietly assigned somewhere.` : ''}</p>
+  </section>
+
+  <section class="wk">
+    <div class="sec-head"><div><div class="eyebrow">Day by day</div>
+      <h2>How each kind moves through the week</h2></div>
+      <p class="sec-note">Weekends shaded. Tallest day in accent.</p></div>
+    <div class="wk-grid">
+      ${w.kinds.filter(k => k.flights >= 20).map(k => `
+        <div>
+          <div class="rhythm-t">${esc(k.label)} · ${n(k.flights)} flights</div>
+          ${spark(ordered.map(d => byDow[d].kinds[k.key] || 0), ordered)}
+          ${k.reads ? `<p class="kind-note">${esc(k.reads)}</p>` : ''}
+        </div>`).join('')}
+    </div>
+  </section>
+
+  <section class="wk">
+    <div class="sec-head"><div><div class="eyebrow">Rhythm</div>
+      <h2>A weekday and a weekend day, hour by hour</h2></div>
+      <p class="sec-note">Average flights per hour, UTC.</p></div>
+    <div class="wk-grid">
+      <div><div class="rhythm-t">Weekday average</div>
+        ${chart(w.hourly.map(h => ({ hour: String(h.hour).padStart(2, '0'), v: h.weekday })),
+                { key: 'hour', val: 'v', labelEvery: 3 })}</div>
+      <div><div class="rhythm-t">Weekend average</div>
+        ${chart(w.hourly.map(h => ({ hour: String(h.hour).padStart(2, '0'), v: h.weekend })),
+                { key: 'hour', val: 'v', labelEvery: 3 })}</div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><div><div class="eyebrow">Evidence</div>
+      <h2>The week, by day</h2></div>
+      <a class="btn" href="#/ask?sql=${encodeURIComponent(
+        `SELECT dow, carrier_kind, COUNT(*) AS flights\nFROM flights\nWHERE day BETWEEN '${w.from}' AND '${w.to}'\nGROUP BY 1, 2\nORDER BY 1, 3 DESC;`)}">Open in Ask →</a></div>
+    ${table(w.days.map(d => ({ ...d, ...d.kinds })), [
+      { k: 'day', h: 'Day', render: r => `<span class="mono">${esc(r.day)}</span>
+          <span class="dim">${esc(r.dow)}</span>` },
+      { k: 'flights', h: 'Flights', num: true, bar: true, render: r => n(r.flights) },
+      { k: 'network', h: 'Network', num: true, render: r => n(r.network || 0) },
+      { k: 'lowcost', h: 'Low-cost', num: true, render: r => n(r.lowcost || 0) },
+      { k: 'leisure', h: 'Charter', num: true, render: r => n(r.leisure || 0) },
+      { k: 'cargo', h: 'Cargo', num: true, render: r => n(r.cargo || 0) },
+      { k: 'widebody', h: 'Wide-body', num: true, render: r => n(r.widebody) },
+    ], { id: 'wk-d', max: 7, csvName: 'ovrhead-week' })}
+  </section>
+
+  <section class="prose">
+    <h3>What this can and cannot carry</h3>
+    <ul>
+      <li><b>It is composition, not trend.</b> Every figure here is a direct count
+      within one week. Nothing on this page compares one week to another, because
+      there is only one.</li>
+      <li><b>The kinds are a judgement.</b> Which carriers count as low-cost rather
+      than network is editorial, published in
+      <a href="${esc(BASE)}carriers.json" class="code">carriers.json</a>, and
+      arguable. Hybrids are filed under the model they mostly fly.</li>
+      <li><b>${w.coverage.share}% of flights are classified.</b> The rest are operators
+      not in the table, or the ${n(w.coverage.no_callsign)} flights that transmitted no
+      callsign at all. They are excluded, never distributed.</li>
+      <li><b>An overflight is not a destination.</b> Most of what passes here is at
+      cruise on the way somewhere else, which is why the total is so flat.</li>
+    </ul>
+  </section>`;
+}
+
 function viewAbout() {
   const t = S.totals, w = S.window;
   return `
@@ -2835,6 +3171,11 @@ function buildIndex() {
                                      n: o.flights, s: ((o.name || '') + ' ' + o.key).toLowerCase() }));
   S.types.forEach(t => ix.push({ t: t.desc || t.key, k: 'Aircraft', h: `#/type/${t.key}`,
                                  n: t.flights, s: ((t.desc || '') + ' ' + t.key).toLowerCase() }));
+  (S.week?.kinds || []).forEach(k => {
+    if (k.key === 'unclassified') return;
+    ix.push({ t: k.label, k: 'Kind of flying', h: `#/kind/${k.key}`, n: k.flights,
+              s: (k.label + ' ' + k.key + ' ' + (k.reads || '')).toLowerCase() });
+  });
   return ix;
 }
 function wireSearch(ix) {
@@ -2953,6 +3294,9 @@ function resolve(p) {
   if (p[0] === 'data')           return { html: viewData(),     title: 'Data' };
   if (p[0] === 'method')         return { html: viewMethod(),   title: 'Method' };
   if (p[0] === 'about')          return { html: viewAbout(),    title: 'About' };
+  if (p[0] === 'week')           return { html: viewWeek(),     title: 'The week' };
+  if (p[0] === 'kind')           return { html: viewKind(p[1]),
+                                          title: CAR?.kinds?.[p[1]]?.label || 'Not found' };
   if (p[0] === 'place')          return { html: viewPlace(p[1]),
                                           title: S.countries.find(x => x.key === p[1])?.name || 'Not found' };
   if (p[0] === 'region' || p[0] === 'continent') {
@@ -3043,10 +3387,12 @@ const grab = (name, required = true) =>
   wireTheme();
   try {
     boot('Fetching the record');
-    const [summary, tax, manifest] = await Promise.all([
+    const [summary, tax, manifest, carriers] = await Promise.all([
       grab('summary.json'), grab('taxonomy.json'), grab('manifest.json', false),
+      grab('carriers.json', false),
     ]);
     S = summary; TAX = tax; S._manifest = manifest;
+    CAR = carriers || { kinds: {}, carriers: {} };
 
     const age = (Date.now() - new Date(S.generated_at)) / 3.6e6;
     const ago = age < 1 ? 'just now'

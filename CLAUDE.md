@@ -21,9 +21,10 @@ cannot support is the fastest way to make this untrustworthy.
 ## Site structure
 Static HTML. No build step — `index.html` is the entire application.
 - `index.html` — single-page app: tokens, styles and an ES module, in one file.
-  Hash routes: `#/` signals · `#/globe` · `#/explore` · `#/ask` · `#/data`
-  · `#/method` · `#/about` · `#/place/<cc>` · `#/region/<name>`
-  · `#/continent/<name>` · `#/operator/<icao>` · `#/type/<icao>` · `#/s/<signal-id>`
+  Hash routes: `#/` signals · `#/week` · `#/globe` · `#/explore` · `#/ask`
+  · `#/data` · `#/method` · `#/about` · `#/place/<cc>` · `#/region/<name>`
+  · `#/continent/<name>` · `#/operator/<icao>` · `#/type/<icao>`
+  · `#/kind/<kind>` · `#/s/<signal-id>`
 - `404.html`, `site.webmanifest`, `assets/` — social card and app icons
   (regenerate with `python scripts/make_og.py`)
 - `pages/about/`, `pages/methodology/` — redirect stubs only. The real pages are
@@ -49,14 +50,40 @@ The browser builds a `flights` view over the Parquet with derived columns
 The Data page documents all of them — keep `COLUMN_REF` in `index.html` in step
 with the view.
 
-### One trap worth knowing
-duckdb-wasm ships **without ICU**, so `strftime()` cannot bind against a
+### Carrier taxonomy — what makes the macro readings possible
+`data/adsb/carriers.json` (written by `scripts/adsb/carriers.py`) maps an ICAO
+callsign prefix to an operator name and a **kind**: `cargo`, `bizjet`, `network`,
+`lowcost`, `leisure`, `regional`, `state`. Without it a flight count says nothing
+about the economy — freight, a holiday charter and a Monday business shuttle are
+the same row. With it, `#/week` can separate them, and it does:
+
+> Traffic over Aarhus is 2% heavier on a weekday than at the weekend — almost
+> nothing. Underneath that flat total, freight runs +80% on weekdays and holiday
+> charter runs −29%. The composition is the signal; the count is not.
+
+Rules for editing it:
+- **Only list a carrier whose identity is not in doubt.** Guessing at a prefix to
+  raise coverage is the one change that makes everything downstream worthless.
+- Hybrids go under the model they mostly fly (airBaltic, Eurowings → `lowcost`).
+- Everything unlisted stays unclassified, and the site reports the share.
+- Cargo is attributed by **operator**, never by airframe.
+
+Both the pipeline and the browser read this same file, so a figure on the front
+page and a query in Ask cannot disagree.
+
+### Two traps worth knowing
+**No ICU in duckdb-wasm**, so `strftime()` cannot bind against a
 `TIMESTAMP WITH TIME ZONE`. `seen_at` is therefore built with
 `make_timestamp(first_seen * 1000000)` — a naive timestamp already in UTC.
 Any SQL published to the browser (including the `sql=` strings
 `scripts/adsb/build_summary.py` bakes into each signal) must use `seen_at`, never
 `TO_TIMESTAMP(first_seen)`. This is easy to reintroduce and fails only in the
 browser, never in a local DuckDB.
+
+**Wide-body matching is `A310`, not `A31`.** `A31` also catches the A318 and A319,
+which are narrow-bodies. It did for months and inflated the wide-body count — the
+site's long-haul proxy — by about a sixth. The prefix list lives in
+`WIDEBODY_PREFIXES` and in the browser's view regex; keep them in step.
 
 ## Graphics
 No mapping library. Two hand-rolled canvases:
@@ -101,6 +128,11 @@ Fonts. Two radii only: `--r-control: 7px`, `--r-card: 11px`.
 - `sortDir` is `1` ascending, `-1` descending, and the header arrow must always
   agree with the order on screen. Blanks sort last in both directions.
 - Partial days are hatched and excluded from comparisons, everywhere.
+- A week is the unit. A Tuesday and a Sunday are not two samples of the same
+  thing; `#/week` only appears once seven *consecutive complete* days exist, and
+  it says plainly that composition is not trend.
+- Where a figure rests on a small sample, show it — hatched bars and a
+  "small sample" label — rather than dropping the row.
 - Missing values render as missing (`—`, or a note saying why), never as zero.
 - Anything that awaits — the query engine, a fetch — must compare `nav` against
   the value it captured before painting, or a slow page will overwrite a newer one.
