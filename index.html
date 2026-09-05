@@ -176,7 +176,8 @@ button, input, textarea, select { font:inherit; color:inherit; }
 #nav a { font-size:.85rem; color:var(--on-navy-2); text-decoration:none;
          padding:7px 12px; border-radius:var(--r-control); white-space:nowrap; }
 #nav a:hover { color:var(--on-navy); background:rgba(238,241,248,.09); }
-#nav a.on { color:var(--navy); background:var(--on-navy); font-weight:600; }
+/* The active background is drawn by #nav-pill, which slides — see Motion. */
+#nav a.on { color:var(--navy); font-weight:600; }
 
 /* Freshness is a permanent fixture of the chrome, not a footnote — every page
    should say how current the record is without the reader going looking. */
@@ -289,8 +290,8 @@ section { margin-bottom:48px; }
         transition:transform .16s ease; }
 .sig[open] .chev, .sig.open .chev { transform:rotate(90deg); }
 
-.sig-body { display:none; padding:0 14px 20px; }
-.sig.open .sig-body { display:block; }
+/* Open/closed state lives in the Motion section at the foot of this sheet —
+   the panel animates its height, so it cannot be display:none. */
 .sig-grid { display:grid; grid-template-columns:128px minmax(0,1fr); gap:18px; }
 @media (max-width:680px){ .sig-grid{ grid-template-columns:1fr } }
 .sig-fields { display:flex; flex-direction:column; gap:16px; max-width:var(--measure); }
@@ -578,6 +579,194 @@ th.sortable:focus-visible { outline:2px solid var(--accent); outline-offset:-2px
 /* ── noscript ──────────────────────────────────────────────────────────── */
 .noscript { max-width:640px; margin:80px auto; padding:0 var(--pad);
             font-size:.95rem; line-height:1.7; color:var(--ink-2); }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   MOTION
+
+   No animation library. Every effect below is a CSS transition, a
+   scroll-driven reveal, or the Web Animations API — the same primitives the
+   React motion kits are built on, without the 40 KB of runtime.
+
+   The rule this page holds itself to: motion has to carry information.
+   Something moves because it arrived, changed place, or is still loading.
+   Nothing here moves to be noticed.
+
+   The global reduced-motion rule near the top of this stylesheet switches off
+   every CSS transition and animation. It cannot reach a script-driven
+   animation, so each of those checks the preference itself.
+   ═══════════════════════════════════════════════════════════════════════ */
+:root {
+  /* One easing for entrances (decelerating, lands softly), one for movement
+     within the page (symmetric), one duration scale. */
+  --ease-out:  cubic-bezier(.22, .61, .36, 1);
+  --ease-move: cubic-bezier(.4, .14, .3, 1);
+  --t-fast: .16s;
+  --t-base: .28s;
+  --t-slow: .46s;
+}
+@property --trail-angle { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+
+/* ── View transitions ───────────────────────────────────────────────────
+   Route changes cross-fade rather than snapping. The chrome is pulled out of
+   the snapshot by name so the bar and footer stay put while the page beneath
+   them changes — otherwise the whole window blinks. */
+@media (prefers-reduced-motion: no-preference) {
+  html.route-vt::view-transition-old(root) { animation: vt-out .16s ease-in both; }
+  html.route-vt::view-transition-new(root) { animation: vt-in var(--t-base) var(--ease-out) both; }
+  html.route-vt #topbar { view-transition-name: topbar; }
+  html.route-vt #foot   { view-transition-name: foot; }
+  /* Named separately so it is lifted out of the bar's snapshot and the browser
+     interpolates it between its old and new position — the slide comes free. */
+  html.route-vt #nav-pill { view-transition-name: navpill; }
+  ::view-transition-group(navpill) { animation-duration: var(--t-base); }
+}
+@keyframes vt-out { to { opacity:0 } }
+@keyframes vt-in  { from { opacity:0; transform:translateY(6px) } }
+/* The theme switch is its own gesture: the new theme wipes out from the
+   button that was pressed. The crossfade would fight it, so it is dropped. */
+html.theme-vt::view-transition-old(root),
+html.theme-vt::view-transition-new(root) { animation:none; mix-blend-mode:normal; }
+html.theme-vt::view-transition-old(root) { z-index:1; }
+html.theme-vt::view-transition-new(root) { z-index:2; }
+
+/* ── In-view reveal ─────────────────────────────────────────────────────
+   The class is added by script, never in the markup: if the observer never
+   runs, or motion is turned down, the content was simply never hidden. */
+.rise { opacity:0; transform:translateY(9px);
+        transition: opacity var(--t-slow) var(--ease-out),
+                    transform var(--t-slow) var(--ease-out);
+        transition-delay: var(--rise-d, 0ms); }
+.rise.in { opacity:1; transform:none; }
+
+/* ── Nav: the pill follows ──────────────────────────────────────────────
+   One element sliding between links, instead of a background appearing on the
+   new one. It is the shortest possible explanation of what just happened. */
+#nav { position:relative; }
+#nav-pill { position:absolute; left:0; top:0; z-index:0; border-radius:var(--r-control);
+            background:var(--on-navy); opacity:0; pointer-events:none;
+            transform:translate3d(0,0,0); transform-origin:0 0;
+            transition: transform var(--t-base) var(--ease-move),
+                        width var(--t-base) var(--ease-move),
+                        height var(--t-base) var(--ease-move),
+                        opacity var(--t-fast) linear; }
+#nav a { position:relative; z-index:1; transition:color var(--t-fast) linear; }
+#nav a.on { color:var(--navy); background:none; font-weight:600; }
+
+/* ── Scroll progress ────────────────────────────────────────────────────
+   A hairline of how far through a long page you are. Method and Data are the
+   only pages long enough to need it; it costs nothing on the short ones. */
+#scrollbar { position:absolute; left:0; bottom:0; height:2px; width:100%;
+             transform:scaleX(0); transform-origin:0 50%;
+             background:var(--accent); opacity:.85; pointer-events:none; }
+
+/* ── Disclosure ─────────────────────────────────────────────────────────
+   The panel animates between 0 and its measured height. The tidier CSS trick —
+   transitioning a grid track from 0fr to 1fr — resolves the track to zero here
+   however the child is sized, so the height is measured in script instead and
+   handed to the Web Animations API. CSS still owns the resting states, so the
+   panel is correct even if the animation never runs.
+
+   `visibility` is what keeps a closed panel out of the tab order and the
+   accessibility tree; `height: 0` alone would leave its buttons focusable. */
+.sig-body { height:0; overflow:hidden;
+            visibility:hidden; transition: visibility 0s var(--t-base); }
+.sig.open .sig-body { height:auto; visibility:visible; transition-delay:0s; }
+.sig-grid { padding:0 14px 20px; }
+@media (max-width:680px){ .sig-grid{ padding:0 12px 16px } }
+
+/* ── Shimmer ────────────────────────────────────────────────────────────
+   Used in two places and only while something is genuinely pending: over the
+   skeleton of a table that is loading, and over the boot line. */
+@keyframes shimmer { to { background-position:-200% 0; } }
+
+/* Off-screen but read aloud — a shimmering rectangle says "loading" to a
+   sighted reader and nothing at all to a screen reader. */
+.sr { position:absolute; width:1px; height:1px; overflow:hidden;
+      clip-path:inset(50%); white-space:nowrap; }
+
+.skel { border-top:1px solid var(--rule-2); }
+.skel-row { display:grid; grid-template-columns:1.1fr 2fr 1fr 1.2fr 1.4fr 1fr;
+            gap:18px; align-items:center; height:37px;
+            border-bottom:1px solid var(--rule); padding-right:12px; }
+.skel-row i { display:block; height:8px; border-radius:3px;
+              background:linear-gradient(90deg, var(--sunken) 0%, var(--rule-2) 45%,
+                                          var(--sunken) 70%);
+              background-size:200% 100%; animation:shimmer 1.5s linear infinite;
+              animation-delay:var(--sd, 0s); }
+@media (max-width:680px){ .skel-row{ grid-template-columns:1fr 1.6fr 1fr; } }
+
+.shimmer-text { background:linear-gradient(90deg, var(--mute) 35%, var(--ink) 50%,
+                                            var(--mute) 65%);
+                background-size:200% 100%; animation:shimmer 2.4s linear infinite;
+                -webkit-background-clip:text; background-clip:text; color:transparent; }
+
+/* ── Border trail ───────────────────────────────────────────────────────
+   A light running the perimeter of the one operation on this site that takes
+   real time. The determinate bar inside says how far along it is; the trail
+   only says that it has not stalled. */
+/* Sized to its contents, with a faint resting edge under the moving light —
+   a trail on an invisible border reads as a tick floating in space. */
+.engine { position:relative; padding:12px 14px; border-radius:var(--r-control);
+          max-width:min(100%, 400px);
+          box-shadow:inset 0 0 0 1px var(--rule); }
+.engine .msg { flex:1; }
+.engine::before {
+  content:''; position:absolute; inset:0; border-radius:inherit; padding:1px;
+  background:conic-gradient(from var(--trail-angle),
+             transparent 0deg 296deg, var(--accent) 344deg, transparent 360deg);
+  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor; mask-composite:exclude;
+  animation:trail 2.6s linear infinite;
+}
+@keyframes trail { to { --trail-angle:360deg; } }
+/* Where @property is unsupported the gradient simply sits still — a plain
+   accent-tinted edge, which is a fine resting state. */
+
+/* ── Charts grow in ─────────────────────────────────────────────────────
+   Bars rise from the axis in reading order, so the shape assembles left to
+   right the way you would read it off a page. */
+.chart.grow .cbar i { transform:scaleY(0); transform-origin:bottom; }
+.chart.grow.in .cbar i { transform:none;
+  transition: transform var(--t-slow) var(--ease-out);
+  transition-delay: calc(var(--i, 0) * 11ms); }
+
+/* ── Search results ─────────────────────────────────────────────────────
+   `allow-discrete` plus @starting-style animates a box that is display:none
+   between states — no wrapper element, no script. */
+#results { opacity:0; transform:translateY(-5px) scale(.99); transform-origin:100% 0;
+           transition: opacity var(--t-fast) var(--ease-out),
+                       transform var(--t-fast) var(--ease-out),
+                       display var(--t-fast) allow-discrete; }
+#results.open { opacity:1; transform:none; }
+@starting-style { #results.open { opacity:0; transform:translateY(-5px) scale(.99); } }
+#results a { transition: background var(--t-fast) linear, color var(--t-fast) linear; }
+
+/* ── Micro-interactions ─────────────────────────────────────────────────
+   Small, fast, and only on things you can press. */
+.btn { transition: border-color var(--t-fast) linear, color var(--t-fast) linear,
+                   background var(--t-fast) linear, transform var(--t-fast) var(--ease-out); }
+.btn:active:not(:disabled) { transform:translateY(1px); }
+.chip { transition: border-color var(--t-fast) linear, color var(--t-fast) linear,
+                    background var(--t-fast) linear, transform var(--t-fast) var(--ease-out); }
+.chip:hover { transform:translateY(-1px); }
+.chip:active { transform:translateY(0); }
+.sig { transition: background var(--t-fast) linear, border-left-color var(--t-fast) linear; }
+.chev { transition: transform var(--t-base) var(--ease-move), color var(--t-fast) linear; }
+.sig:hover .chev { color:var(--accent); }
+.gl-item, .hrow, .dl-row { transition: background var(--t-fast) linear,
+                                       color var(--t-fast) linear,
+                                       padding-left var(--t-fast) var(--ease-out); }
+.gl-item:hover, .hrow:hover { padding-left:11px; }
+.freshness, #theme button, .gl-label { transition: color var(--t-fast) linear,
+                                                   border-color var(--t-fast) linear,
+                                                   background var(--t-fast) linear; }
+tbody tr { transition: background var(--t-fast) linear; }
+th.sortable .dir { display:inline-block; transition: transform var(--t-base) var(--ease-move); }
+
+/* The counted-up readouts must not reflow while they run: the figures are
+   already tabular, and this stops the label beneath them from twitching. */
+.ro-v { font-variant-numeric:tabular-nums; }
 </style>
 </head>
 <body>
@@ -596,7 +785,7 @@ th.sortable:focus-visible { outline:2px solid var(--accent); outline-offset:-2px
 
 <div id="boot"><div class="boot-in">
   <div class="boot-rings"></div>
-  <div class="boot-t" id="boot-t" role="status" aria-live="polite">Reading the record</div>
+  <div class="boot-t shimmer-text" id="boot-t" role="status" aria-live="polite">Reading the record</div>
 </div></div>
 
 <div id="shell">
@@ -605,6 +794,7 @@ th.sortable:focus-visible { outline:2px solid var(--accent); outline-offset:-2px
     <div class="bar">
       <a class="mark" href="#/"><b>OVRHEAD</b><span>Aarhus</span></a>
       <nav id="nav" aria-label="Sections">
+        <span id="nav-pill" aria-hidden="true"></span>
         <a href="#/"        data-r="/"       >Signals</a>
         <a href="#/globe"   data-r="/globe"  >Globe</a>
         <a href="#/explore" data-r="/explore">Explore</a>
@@ -633,6 +823,7 @@ th.sortable:focus-visible { outline:2px solid var(--accent); outline-offset:-2px
         </button>
       </div>
     </div>
+    <div id="scrollbar" aria-hidden="true"></div>
   </header>
   <main id="main" tabindex="-1"><div class="wrap">
     <div id="view"></div>
@@ -690,6 +881,239 @@ const CONF_TEXT = {
   observed: 'Directly counted. No inference involved.',
   early:    'Real, but the record is too short to call it a trend.',
 };
+
+/* ── Motion ──────────────────────────────────────────────────────────────
+   The stylesheet's global reduced-motion rule switches off every CSS
+   animation and transition, but it cannot reach anything driven from script,
+   so `still()` gates all of those by hand. Read it as: if the reader has asked
+   for less movement, every function here does the work and skips the show. */
+const REDUCE = matchMedia('(prefers-reduced-motion: reduce)');
+const still = () => REDUCE.matches;
+
+/** A figure that counts up when it first comes into view. */
+const fig = (value, text) =>
+  `<span class="ro-n" data-count="${value}">${text ?? n(value)}</span>`;
+
+/**
+ * Run a DOM change inside a View Transition, tagging <html> so the stylesheet
+ * knows which kind it is. Falls back to a plain mutation where the API is
+ * missing or motion is turned down. The depth count matters because a theme
+ * switch and a route change can overlap, and the first to finish must not
+ * strip the other's tag.
+ */
+const vtDepth = {};
+function withTransition(cls, mutate) {
+  if (still() || !document.startViewTransition) { mutate(); return null; }
+  const root = document.documentElement;
+  vtDepth[cls] = (vtDepth[cls] || 0) + 1;
+  root.classList.add(cls);
+  const t = document.startViewTransition(mutate);
+  // A transition is skipped — and all three of its promises reject — whenever
+  // the tab is hidden or a second one starts on top of it. That is ordinary,
+  // not an error, so every promise gets a handler and none of them reach the
+  // console as an unhandled rejection.
+  const quiet = p => p.then(() => {}, () => {});
+  quiet(t.ready); quiet(t.updateCallbackDone);
+  quiet(t.finished).then(() => {
+    if (--vtDepth[cls] <= 0) { vtDepth[cls] = 0; root.classList.remove(cls); }
+  });
+  return t;
+}
+
+/**
+ * Entrance choreography for a freshly painted subtree.
+ *
+ *   mode 'route'  — the page just changed, and the view transition has already
+ *                   carried everything the reader can see. Only what is still
+ *                   below the fold is staged, so nothing animates twice.
+ *   mode 'insert' — rows arrived inside a page the reader is already looking
+ *                   at. Those should announce themselves wherever they are.
+ *
+ * Figures count up either way: a number ticking to its value is a different
+ * channel from a fade, and it is the one piece of motion here that says
+ * something the static page does not — that this was counted, not asserted.
+ */
+let revealObs = null;
+function animateIn(root, mode = 'insert') {
+  root.querySelectorAll('[data-count]').forEach(observeCount);
+  if (still() || !root || !('IntersectionObserver' in window)) return;
+
+  if (!revealObs) {
+    revealObs = new IntersectionObserver((entries, obs) => {
+      for (const e of entries) {
+        if (!e.isIntersecting) continue;
+        e.target.classList.add('in');
+        obs.unobserve(e.target);
+      }
+    }, { rootMargin: '0px 0px -6% 0px', threshold: .01 });
+  }
+
+  const fold = innerHeight * 0.92;
+  const staged = [];
+  const stage = (el, delay) => {
+    if (mode === 'route' && el.getBoundingClientRect().top < fold) return;
+    el.style.setProperty('--rise-d', delay + 'ms');
+    el.classList.add('rise');
+    staged.push(el);
+    revealObs.observe(el);
+  };
+
+  if (mode === 'route') {
+    let i = 0;
+    root.querySelectorAll(':scope > header, :scope > section').forEach(sec => {
+      // The signals list stages its own rows, so its section stays put and the
+      // reader watches the claims arrive one at a time instead of as a slab.
+      const list = sec.querySelector('.signals');
+      if (list) [...list.children].forEach((row, j) => stage(row, Math.min(j, 9) * 34));
+      else stage(sec, Math.min(i, 5) * 55);
+      i++;
+    });
+  } else {
+    [...root.children].forEach((child, i) => stage(child, Math.min(i, 6) * 45));
+  }
+
+  root.querySelectorAll('.chart').forEach(c => {
+    if (mode === 'route' && c.getBoundingClientRect().top < fold) return;
+    c.classList.add('grow');
+    staged.push(c);
+    revealObs.observe(c);
+  });
+
+  // Staged elements start invisible, so anything that never gets its callback
+  // would stay that way. Observers do go quiet — a backgrounded tab is the
+  // common case — so after a moment, show whatever is on screen regardless.
+  // Content below the fold is left alone: it still has a reveal coming.
+  setTimeout(() => {
+    for (const el of staged) {
+      if (el.classList.contains('in')) continue;
+      const r = el.getBoundingClientRect();
+      if (r.bottom > 0 && r.top < innerHeight) el.classList.add('in');
+    }
+  }, 2500);
+}
+
+/** AnimatedNumber: ease a figure from zero to its value, once, in view. */
+let countObs = null;
+function observeCount(el) {
+  if (el.dataset.counted) return;
+  el.dataset.counted = '1';
+  if (still()) return;
+  if (!countObs) {
+    countObs = new IntersectionObserver((entries, obs) => {
+      for (const e of entries) {
+        if (!e.isIntersecting) continue;
+        obs.unobserve(e.target);
+        countTo(e.target);
+      }
+    }, { threshold: .3 });
+  }
+  countObs.observe(el);
+}
+function countTo(el) {
+  const to = Number(el.dataset.count);
+  if (!Number.isFinite(to) || Math.abs(to) > 1e9) return;
+  const dur = 640, t0 = performance.now();
+  const step = now => {
+    const p = Math.min(1, (now - t0) / dur);
+    const eased = 1 - Math.pow(1 - p, 3);          // ease-out cubic
+    el.textContent = n(Math.round(to * eased));
+    if (p < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+/**
+ * FLIP. Measure every row, let `render` reorder them, then animate each row
+ * from where it used to be to where it now is. Sorting a table is the one
+ * moment on this site where a row genuinely moves, and watching it move is
+ * the difference between "the numbers changed" and "this row went there".
+ */
+function flip(host, render) {
+  const rows = host.querySelectorAll('tbody tr[data-key]');
+  if (still() || rows.length === 0 || rows.length > 120 || !rows[0].animate) return render();
+  const before = new Map();
+  rows.forEach(tr => before.set(tr.dataset.key, tr.getBoundingClientRect().top));
+  render();
+  host.querySelectorAll('tbody tr[data-key]').forEach(tr => {
+    const was = before.get(tr.dataset.key);
+    if (was == null) {
+      tr.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: 'ease-out' });
+      return;
+    }
+    const dy = was - tr.getBoundingClientRect().top;
+    if (Math.abs(dy) < 1) return;
+    tr.animate([{ transform: `translateY(${dy}px)` }, { transform: 'none' }],
+               { duration: 340, easing: 'cubic-bezier(.22,.61,.36,1)' });
+  });
+}
+
+/** The nav pill slides to whichever section is current. */
+let pillPlaced = false;
+function movePill() {
+  const pill = el('nav-pill');
+  if (!pill) return;
+  const on = document.querySelector('#nav a.on');
+  if (!on) { pill.style.opacity = '0'; return; }
+  if (!pillPlaced) {                    // don't slide in from the corner
+    pill.style.transition = 'none';
+    requestAnimationFrame(() => { pill.style.transition = ''; });
+    pillPlaced = true;
+  }
+  pill.style.width = on.offsetWidth + 'px';
+  pill.style.height = on.offsetHeight + 'px';
+  pill.style.transform = `translate3d(${on.offsetLeft}px, ${on.offsetTop}px, 0)`;
+  pill.style.opacity = '1';
+}
+
+/** How far through a long page you are. Hidden on pages that don't scroll. */
+function wireScrollProgress() {
+  const bar = el('scrollbar');
+  let queued = false;
+  const paint = () => {
+    queued = false;
+    const span = document.documentElement.scrollHeight - innerHeight;
+    bar.style.opacity = span > 500 ? '.8' : '0';
+    bar.style.transform = `scaleX(${span > 0 ? Math.min(1, scrollY / span) : 0})`;
+  };
+  addEventListener('scroll', () => {
+    if (!queued) { queued = true; requestAnimationFrame(paint); }
+  }, { passive: true });
+  addEventListener('resize', paint, { passive: true });
+  return paint;
+}
+
+/**
+ * Open or close a signal, animating between zero and the panel's real height.
+ * scrollHeight reports the content height in both states — the panel is
+ * overflow-hidden — so one measurement before the class flips serves both
+ * directions. The animation does not fill: when it ends the element falls back
+ * to whatever CSS says for the state it is now in.
+ */
+function toggleSig(btn) {
+  const sig = btn.closest('.sig');
+  const body = sig.querySelector('.sig-body');
+  const h = body.scrollHeight;
+  const open = !sig.classList.contains('open');
+  sig.classList.toggle('open', open);
+  btn.setAttribute('aria-expanded', String(open));
+  if (still() || !body.animate || !h) return;
+  const frames = [{ height: '0px' }, { height: h + 'px' }];
+  // Cancel the previous run rather than layering a second one over it, so
+  // hammering the row cannot leave two animations fighting for the height.
+  body._anim?.cancel();
+  body._anim = body.animate(open ? frames : frames.slice().reverse(),
+                            { duration: 280, easing: 'cubic-bezier(.4,.14,.3,1)' });
+}
+
+/** Shimmering placeholder with the shape of the table that is coming. */
+function skeleton(rows = 7) {
+  const cells = r => Array.from({ length: 6 }, (_, c) =>
+    `<i style="--sd:${(((r * 6 + c) % 9) * .09).toFixed(2)}s;width:${
+      46 + ((r * 7 + c * 23) % 45)}%"></i>`).join('');
+  return `<div class="skel" aria-hidden="true">${
+    Array.from({ length: rows }, (_, r) => `<div class="skel-row">${cells(r)}</div>`).join('')
+  }</div>`;
+}
 
 /* ── Engine progress ─────────────────────────────────────────────────────
    Standing up DuckDB is the one slow thing on the site — several megabytes of
@@ -812,7 +1236,8 @@ const confChip = c => `<span class="conf" data-c="${esc(c)}" title="${esc(CONF_T
 function readout(items) {
   return `<div class="readout">${items.map(i => `
     <div class="ro">
-      <div class="ro-v${(i.txt ?? /[A-Za-z]{2}/.test(String(i.v))) ? ' txt' : ''}">${i.v}</div>
+      <div class="ro-v${(i.txt ?? /[A-Za-z]{2}/.test(
+          String(i.v).replace(/<[^>]*>/g, ''))) ? ' txt' : ''}">${i.v}</div>
       <div class="ro-l">${esc(i.l)}</div>
       ${i.s ? `<div class="ro-s">${esc(i.s)}</div>` : ''}
     </div>`).join('')}</div>`;
@@ -824,11 +1249,11 @@ function chart(data, { key, val, partial, labelEvery = 1 } = {}) {
   if (!data.length) return `<div class="empty">Nothing recorded yet.</div>`;
   const max = data.reduce((m, d) => Math.max(m, +d[val] || 0), 1);
   const peak = data.reduce((a, b) => (+b[val] > +a[val] ? b : a));
-  const bars = data.map(d => {
+  const bars = data.map((d, i) => {
     const isP = partial && d[partial];
     return `<div class="cbar ${d === peak ? 'hi' : ''} ${isP ? 'partial' : ''}"
       title="${esc(d[key])} — ${n(d[val])}${isP ? ' (partial coverage)' : ''}">
-      <i style="height:${(+d[val] / max * 100).toFixed(1)}%"></i></div>`;
+      <i style="height:${(+d[val] / max * 100).toFixed(1)}%;--i:${i}"></i></div>`;
   }).join('');
   // Dates read best trimmed to MM-DD, but anything else has to keep its start
   // or it turns to nonsense ("Sweden" -> "weden").
@@ -913,7 +1338,9 @@ function tableInner(id) {
       >${esc(c.h)}${on ? `<span class="dir" aria-hidden="true"> ${st.dir > 0 ? '↑' : '↓'}</span>` : ''}</th>`;
   }).join('');
 
-  const body = sorted.slice(0, st.max).map(r => `<tr>${cols.map(c => {
+  const keyOf = cols[0].k;
+  const body = sorted.slice(0, st.max).map(r =>
+    `<tr data-key="${esc(String(r[keyOf] ?? ''))}">${cols.map(c => {
     const v = c.render ? c.render(r) : esc(r[c.k] ?? '—');
     if (c.bar) return `<td class="num barcell">
         <div class="fill" style="width:${(+r[c.k] / top * 100).toFixed(1)}%"></div>
@@ -943,7 +1370,7 @@ function repaintTable(id) {
   const host = document.querySelector(`[data-tbl="${CSS.escape(id)}"]`);
   if (!host) return;
   const wasFiltering = document.activeElement?.dataset?.tf === id;
-  host.innerHTML = tableInner(id);
+  flip(host, () => { host.innerHTML = tableInner(id); });
   if (wasFiltering) {
     const box = host.querySelector('.tbl-filter');
     if (box) { box.focus(); box.setSelectionRange(box.value.length, box.value.length); }
@@ -1066,10 +1493,10 @@ function viewSignals(openId) {
 
   <section>
     ${readout([
-      { v: n(t.flights),   l: 'Flights recorded', s: `over ${w.days_observed} days` },
-      { v: n(t.aircraft),  l: 'Distinct aircraft', s: `${n(t.operators)} operators` },
-      { v: n(t.countries), l: 'Registration countries' },
-      { v: n(t.widebody),  l: 'Wide-body movements',
+      { v: fig(t.flights),   l: 'Flights recorded', s: `over ${w.days_observed} days` },
+      { v: fig(t.aircraft),  l: 'Distinct aircraft', s: `${n(t.operators)} operators` },
+      { v: fig(t.countries), l: 'Registration countries' },
+      { v: fig(t.widebody),  l: 'Wide-body movements',
         s: `${(t.widebody / t.flights * 100).toFixed(0)}% of traffic` },
     ])}
   </section>
@@ -1517,9 +1944,9 @@ function viewPlace(cc) {
          cruise altitude on intercontinental routings, passing through this antenna's range.`
       : `Aircraft registered in ${esc(c.name)}, as recorded passing over Aarhus.`,
     stats: readout([
-      { v: n(c.flights),  l: 'Flights', s: `${share}% of all traffic` },
-      { v: n(c.aircraft), l: 'Distinct aircraft' },
-      { v: n(c.widebody), l: 'Wide-body', s: `${wbShare}% of its traffic` },
+      { v: fig(c.flights),  l: 'Flights', s: `${share}% of all traffic` },
+      { v: fig(c.aircraft), l: 'Distinct aircraft' },
+      { v: fig(c.widebody), l: 'Wide-body', s: `${wbShare}% of its traffic` },
       { v: c.change_pct == null ? '—' : pct(c.change_pct), l: 'Change vs prev. 24h',
         s: c.change_pct == null ? 'baseline too short' : null },
     ]),
@@ -1553,7 +1980,8 @@ function evidence(kind, arg, heading, sql, csvName) {
       <a class="btn" href="#/ask?sql=${encodeURIComponent(sql)}">Open in Ask →</a></div>
     <div id="lazy" data-kind="${esc(kind)}" data-arg="${esc(arg)}"
          data-csv-name="${esc(csvName)}">
-      <div class="status">Loading the flight table…</div></div>
+      <span class="sr" role="status">Loading the flight table…</span>
+      ${skeleton(7)}</div>
   </section>`;
 }
 
@@ -1567,9 +1995,9 @@ function viewGroup(kind, name) {
     title: esc(name),
     lede: `${kids.length} registration countries, aggregated.`,
     stats: readout([
-      { v: n(g.flights), l: 'Flights', s: `${g.share}% of all traffic` },
-      { v: n(kids.length), l: 'Countries' },
-      { v: n(g.aircraft), l: 'Distinct aircraft' },
+      { v: fig(g.flights), l: 'Flights', s: `${g.share}% of all traffic` },
+      { v: fig(kids.length), l: 'Countries' },
+      { v: fig(g.aircraft), l: 'Distinct aircraft' },
       { v: g.change_pct == null ? '—' : pct(g.change_pct), l: 'Change vs prev. 24h',
         s: g.change_pct == null ? 'baseline too short' : `${n(g.widebody)} wide-body` },
     ]),
@@ -1592,9 +2020,9 @@ function viewOperator(code) {
       : `We see the ICAO prefix ${esc(code)} on these flights but it is not in our airline
          table yet, so we cannot name the operator. The flights themselves are real.`,
     stats: readout([
-      { v: n(o.flights), l: 'Flights', s: `${o.share}% of all traffic` },
-      { v: n(o.aircraft), l: 'Distinct aircraft' },
-      { v: n(o.widebody), l: 'Wide-body' },
+      { v: fig(o.flights), l: 'Flights', s: `${o.share}% of all traffic` },
+      { v: fig(o.aircraft), l: 'Distinct aircraft' },
+      { v: fig(o.widebody), l: 'Wide-body' },
       { v: o.change_pct == null ? '—' : pct(o.change_pct), l: 'Change vs prev. 24h' },
     ]),
     body: evidence('operator', code, 'Flights recorded',
@@ -1612,8 +2040,8 @@ function viewType(code) {
     lede: `ICAO type code ${esc(code)} · ${t.widebody_type ? 'wide-body' : 'narrow-body'} airframe.
            ${t.widebody_type ? 'Wide-bodies over Aarhus are almost always intercontinental routings at cruise.' : ''}`,
     stats: readout([
-      { v: n(t.flights), l: 'Flights', s: `${t.share}% of all traffic` },
-      { v: n(t.aircraft), l: 'Distinct airframes' },
+      { v: fig(t.flights), l: 'Flights', s: `${t.share}% of all traffic` },
+      { v: fig(t.aircraft), l: 'Distinct airframes' },
       { v: t.change_pct == null ? '—' : pct(t.change_pct), l: 'Change vs prev. 24h' },
     ]),
     body: evidence('type', code, 'Flights recorded',
@@ -1657,6 +2085,7 @@ async function fillLazy() {
     host.innerHTML = table(flights.rows, FLIGHT_COLS,
       { id: 'lz', max: 60, sortKey: 'seen_at', sortDir: -1,
         filter: 'Filter these flights…', csvName });
+    animateIn(host);
 
     if (shape) {
       // Zero-fill from the site's own calendar so a quiet day reads as quiet
@@ -1673,6 +2102,7 @@ async function fillLazy() {
         <div><div class="rhythm-t">By hour, UTC — all days combined</div>
           ${chart(hours, { key: 'hour', val: 'flights', labelEvery: 3 })}</div>
       </div>`;
+      animateIn(shape);
     }
   } catch (e) {
     if (gen !== nav) return;
@@ -1830,6 +2260,7 @@ function wireAsk() {
         : '';
       out.innerHTML = rows.length ? renderResult(rows, cols)
         : `<div class="empty">Nothing in the record matches that.</div>`;
+      animateIn(out);
     } catch (e) {
       if (gen !== nav) return;
       st.textContent = '';
@@ -2202,14 +2633,15 @@ async function drawCoverage() {
   const scale = Math.ceil(Math.max(p95 * 1.25, 120) / 50) * 50;   // outer ring, km
   const rings = [scale / 4, scale / 2, scale * 3 / 4, scale].map(v => Math.round(v));
 
-  const km = v => `${n(Math.round(v))}<span class="u">km</span>`;
+  const km = v => `${fig(Math.round(v))}<span class="u">km</span>`;
   stats.innerHTML = readout([
     { v: km(p50), txt: false, l: 'Median first-contact range' },
     { v: km(p95), txt: false, l: '95% of contacts within' },
     { v: km(far), txt: false, l: 'Furthest contact on record' },
-    { v: n(pts.length), l: 'Positions plotted',
+    { v: fig(pts.length), l: 'Positions plotted',
       s: `${(pts.length / S.totals.flights * 100).toFixed(0)}% of flights report one` },
   ]);
+  animateIn(stats);
 
   const beyond = pts.filter(p => p.km > scale).length;
   const note = el('cov-note');
@@ -2223,7 +2655,7 @@ async function drawCoverage() {
   const tok = k => css.getPropertyValue(k).trim();
   let R = 0, cx = 0, cy = 0;
 
-  function draw() {
+  function draw(rev = 1) {
     const w = cv.clientWidth, h = cv.clientHeight;
     const dpr = Math.min(devicePixelRatio || 1, 2);
     if (cv.width !== w * dpr || cv.height !== h * dpr) {
@@ -2260,10 +2692,16 @@ async function drawCoverage() {
       ctx.fillText(t, x, y);
     }
 
+    // Contacts and envelope appear behind a sweep, the way the receiver found
+    // them: one bearing at a time, all the way round. It runs once.
+    const TAU = Math.PI * 2;
+    const swept = rev * TAU;
+    const reached = brg => rev >= 1 || ((brg % TAU) + TAU) % TAU <= swept;
+
     ctx.fillStyle = tok('--accent');
     ctx.globalAlpha = pts.length > 4000 ? .13 : .22;
     for (const p of pts) {
-      if (p.km > scale) continue;
+      if (p.km > scale || !reached(p.brg)) continue;
       const [x, y] = xy(p.km, p.brg);
       ctx.fillRect(x - .9, y - .9, 1.8, 1.8);
     }
@@ -2273,21 +2711,47 @@ async function drawCoverage() {
     let started = false;
     for (let i = 0; i <= SECTORS; i++) {
       const v = env[i % SECTORS];
-      if (v == null) { started = false; continue; }
-      const [x, y] = xy(Math.min(v, scale), (i % SECTORS) / SECTORS * 2 * Math.PI);
+      const a = (i % SECTORS) / SECTORS * TAU;
+      if (v == null || !reached(a)) { started = false; continue; }
+      const [x, y] = xy(Math.min(v, scale), a);
       started ? ctx.lineTo(x, y) : (ctx.moveTo(x, y), started = true);
     }
     ctx.strokeStyle = tok('--ink');
     ctx.lineWidth = 1.6; ctx.stroke();
 
+    if (rev < 1) {
+      const trail = Math.PI / 3;      // how far the wedge lags the leading edge
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, R, swept - trail - Math.PI / 2, swept - Math.PI / 2);
+      ctx.closePath();
+      ctx.fillStyle = tok('--accent'); ctx.globalAlpha = .07; ctx.fill();
+      ctx.globalAlpha = 1;
+      const [ex, ey] = xy(scale, swept);
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(ex, ey);
+      ctx.strokeStyle = tok('--accent'); ctx.lineWidth = 1.2;
+      ctx.globalAlpha = .5; ctx.stroke(); ctx.globalAlpha = 1;
+    }
+
     ctx.beginPath(); ctx.arc(cx, cy, 4, 0, Math.PI * 2);
     ctx.fillStyle = tok('--fall'); ctx.fill();
   }
 
-  const ro = new ResizeObserver(draw);
+  const ro = new ResizeObserver(() => draw(1));
   ro.observe(cv);
-  draw();
-  covStop = () => { ro.disconnect(); covStop = null; };
+
+  if (still() || !('requestAnimationFrame' in window)) {
+    draw(1);
+    covStop = () => { ro.disconnect(); covStop = null; };
+    return;
+  }
+  const t0 = performance.now(), span = 1150;
+  let raf = requestAnimationFrame(function frame(now) {
+    const p = Math.min(1, (now - t0) / span);
+    draw(p * p * (3 - 2 * p));            // smoothstep, so it settles rather than stops
+    if (p < 1) raf = requestAnimationFrame(frame);
+  });
+  covStop = () => { cancelAnimationFrame(raf); ro.disconnect(); covStop = null; };
 }
 
 function viewAbout() {
@@ -2303,8 +2767,8 @@ function viewAbout() {
 
   <section>
     ${readout([
-      { v: n(t.flights), l: 'Flights on record', s: `${w.days_observed} days` },
-      { v: n(t.countries), l: 'Registration countries' },
+      { v: fig(t.flights), l: 'Flights on record', s: `${w.days_observed} days` },
+      { v: fig(t.countries), l: 'Registration countries' },
       { v: '1', l: 'Receivers', s: '56.16°N, 10.20°E' },
       { v: '0', l: 'Servers', s: 'static files only' },
     ])}
@@ -2454,7 +2918,20 @@ function wireTheme() {
     const mode = b.dataset.themeSet;
     try { mode === 'system' ? localStorage.removeItem('ovrhead.theme')
                             : localStorage.setItem('ovrhead.theme', mode); } catch {}
-    paint(mode);
+
+    // The new theme wipes out from the button that was pressed, so the change
+    // reads as something the reader did rather than something that happened.
+    const r = b.getBoundingClientRect();
+    const t = withTransition('theme-vt', () => paint(mode));
+    if (!t) return;
+    t.ready.then(() => {
+      const x = r.left + r.width / 2, y = r.top + r.height / 2;
+      const reach = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+      document.documentElement.animate(
+        { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${reach}px at ${x}px ${y}px)`] },
+        { duration: 460, easing: 'cubic-bezier(.4,.14,.3,1)',
+          pseudoElement: '::view-transition-new(root)' });
+    }, () => {});   // skipped transition: the theme still changed, just plainly
   });
   paint(read());
 }
@@ -2464,6 +2941,7 @@ function wireTheme() {
    engine, a fetch — compares against it afterwards so a slow page cannot
    paint over the one the reader has already moved on to. */
 let nav = 0;
+let paintScroll = () => {};
 
 function resolve(p) {
   if (!p.length)                 return { html: viewSignals(),  title: null };
@@ -2517,35 +2995,41 @@ function route() {
     r = { html: notFound(`Something broke rendering this page: ${esc(e.message)}`),
           title: 'Error' };
   }
-  view.innerHTML = r.html;
-  document.title = r.title ? `${r.title} · OvrHead` : 'OvrHead — an observatory over Aarhus';
 
-  const base = '/' + (p[0] === 's' ? '' : p[0] || '');
-  document.querySelectorAll('#nav a').forEach(a =>
-    a.classList.toggle('on', a.dataset.r === base));
+  // The whole page swap happens in one pass so the View Transition captures a
+  // settled layout: content, title, nav, scroll position and staging together.
+  // Anything measured after this — the fold test in animateIn, the pill's new
+  // rect — would be measuring the old page if it ran outside.
+  withTransition('route-vt', () => {
+    view.innerHTML = r.html;
+    document.title = r.title ? `${r.title} · OvrHead` : 'OvrHead — an observatory over Aarhus';
 
-  view.querySelectorAll('[data-sig]').forEach(b => b.onclick = () => {
-    const s = b.closest('.sig');
-    const open = s.classList.toggle('open');
-    b.setAttribute('aria-expanded', String(open));
+    const base = '/' + (p[0] === 's' ? '' : p[0] || '');
+    document.querySelectorAll('#nav a').forEach(a =>
+      a.classList.toggle('on', a.dataset.r === base));
+
+    view.querySelectorAll('[data-sig]').forEach(b => b.onclick = () => toggleSig(b));
+    view.querySelectorAll('[data-permalink]').forEach(b => b.onclick = async () => {
+      const url = new URL(location.href);
+      url.hash = '#/s/' + b.dataset.permalink;
+      try { await navigator.clipboard.writeText(url.href); b.textContent = 'Link copied'; }
+      catch { location.hash = url.hash; b.textContent = 'Link is in the address bar'; }
+      setTimeout(() => { b.textContent = 'Copy link'; }, 1800);
+    });
+
+    if (p[0] === 'ask')    wireAsk();
+    if (p[0] === 'globe')  initGlobe();
+    if (p[0] === 'method') initCoverage();
+    if (el('lazy')) fillLazy();
+
+    const target = r.sig && el(r.sig);
+    if (target) target.scrollIntoView({ block: 'center', behavior: still() ? 'auto' : 'smooth' });
+    else window.scrollTo(0, 0);
+
+    movePill();
+    animateIn(view, 'route');
+    paintScroll();
   });
-  view.querySelectorAll('[data-permalink]').forEach(b => b.onclick = async () => {
-    const url = new URL(location.href);
-    url.hash = '#/s/' + b.dataset.permalink;
-    try { await navigator.clipboard.writeText(url.href); b.textContent = 'Link copied'; }
-    catch { location.hash = url.hash; b.textContent = 'Link is in the address bar'; }
-    setTimeout(() => { b.textContent = 'Copy link'; }, 1800);
-  });
-
-  if (p[0] === 'ask')    wireAsk();
-  if (p[0] === 'globe')  initGlobe();
-  if (p[0] === 'method') initCoverage();
-  if (el('lazy')) fillLazy();
-
-  const target = r.sig && el(r.sig);
-  if (target) target.scrollIntoView({ block: 'center',
-    behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
-  else window.scrollTo(0, 0);
 }
 
 /* ── Boot ────────────────────────────────────────────────────────────── */
@@ -2583,6 +3067,13 @@ const grab = (name, required = true) =>
     });
 
     wireSearch(buildIndex());
+    paintScroll = wireScrollProgress();
+    // The nav wraps to a second row on a phone, so the pill has to be told
+    // where its link went whenever the bar reflows — and once more when the
+    // web font lands and every link changes width.
+    new ResizeObserver(movePill).observe(el('nav'));
+    document.fonts?.ready.then(movePill).catch(() => {});
+
     addEventListener('hashchange', route);
     route();
     el('boot').classList.add('gone');
