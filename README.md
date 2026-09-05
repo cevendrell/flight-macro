@@ -1,45 +1,125 @@
 # OvrHead
 
-Reading global flight-route data as a lens on macroeconomic shifts — tourism, business travel, migration, supply chains.
+An observatory over Aarhus, Denmark. One ADS-B receiver records every aircraft
+that passes overhead; this repository holds the whole record and the static site
+that reads it.
 
-## Structure
-- `index.html` — 3D globe view (globe.gl on three.js). Click any country to load its corridors.
-- `data/insights.json` — the signals the site consumes (small, committed).
-- `pages/about/` — project intro
-- `pages/methodology/` — how flight data maps to macro signals
-- `scripts/` — Python pipeline (ingest → warehouse → rollup → Claude enrichment → JSON)
-- `docs/ARCHITECTURE.md` — architecture overview
-- `docs/GETTING_STARTED.md` — setup on the laptop, copy-paste
+**Live:** https://cevendrell.github.io/flight-macro/
 
-## Data flow
+The long-term question is macroeconomic — what flight volume says about tourism,
+business travel, migration and supply chains. The site does not pretend to
+answer it yet. It publishes what a few days of one antenna can honestly support,
+with the limits attached to every figure.
+
+## The site
+
+`index.html` is the entire application: tokens, styles and one ES module. No
+build step, no backend, no analytics.
+
+| Route | What it is |
+| --- | --- |
+| `#/` | Signals — headline counts and the detected claims, each with what it does *not* show |
+| `#/globe` | Orthographic globe of registration countries, with corridor arcs |
+| `#/explore` | Countries, airlines and aircraft types — sortable, filterable, exportable |
+| `#/ask` | Build a question from dropdowns, or write SQL. Runs in your browser |
+| `#/data` | Every file the site reads, and a reference for every column |
+| `#/method` | What the record can and cannot show, including the receiver's real coverage footprint |
+| `#/about` | Why it exists |
+
+Entity pages hang off those: `#/place/SE`, `#/operator/SAS`, `#/type/A20N`,
+`#/region/Nordics`, `#/continent/Europe`. Individual signals are linkable at
+`#/s/<id>`.
+
+## How it reads the data
+
+Two layers, so the first paint never waits on the second:
+
+1. **`data/adsb/summary.json`** (~50 KB) — precomputed totals, rollups, series
+   and signals. Everything paints from this immediately.
+2. **DuckDB-Wasm over `data/adsb/flights/*.parquet`** — loaded on demand when a
+   page actually needs to query. Powers Ask, the per-entity evidence tables and
+   the coverage plot. Nothing is sampled or rounded.
 
 ```
-Sources                    Laptop warehouse                      Repo         Site
-────────                   ────────────────────                  ─────        ────
-OpenSky REST         ──▶   raw/opensky/*.parquet    ──▶
-                                                        rollup ──▶  curated  ──▶  generate
-Eurostat avia_par_*  ──▶   raw/eurostat/*.parquet   ──▶                            insights.json  ──▶  git push  ──▶  GitHub Pages
+Sources                          Laptop                         Repo                Site
+───────                          ──────                         ────                ────
+Raspberry Pi (readsb/tar1090)
+  1090 MHz ADS-B, on the LAN
+        │  poller.py, every 15 s
+        ▼
+  snapshots/*.parquet  ──▶  reconstruct.py  ──▶  flights/*.parquet ──▶ git push ──▶ GitHub Pages
+                            enrich.py            summary.json
+                            build_summary.py     taxonomy.json
 ```
 
-- **Warehouse** lives outside git (`~/data/ovrhead-warehouse/`), driven by DuckDB + Parquet
-- **Only the small extracted JSON** is committed and served
-- **Cadence**: daily cron on the laptop → repo → site refreshes ~1–2 min later
+## Repository
 
-## Aesthetic
-Refined finance-terminal palette: warm midnight-navy ground, brass/teak primary accent (LayOvr family), sage green for up trends, burnt sienna for down. Inter + JetBrains Mono.
+```
+index.html              the whole site
+404.html                served for unknown paths
+site.webmanifest        installable metadata
+assets/                 social card + app icons  (python scripts/make_og.py)
+data/adsb/
+  summary.json          fast layer: rollups + signals
+  taxonomy.json         ICAO address blocks → country → region
+  manifest.json         file list the Data page is built from
+  land.json             coastline for the globe
+  flights/*.parquet     one row per aircraft visit  ← the table Ask queries
+  snapshots/*.parquet   raw 15-second observations
+  enrichment/*.parquet  aircraft, airline and airport reference tables
+scripts/adsb/           the live pipeline
+scripts/                older Eurostat / OpenSky prototype, not feeding the site
+pages/                  redirect stubs for pre-rebuild URLs
+docs/                   architecture + laptop setup for the prototype pipeline
+```
 
-## Quickstart
+## Take the data
+
+Everything is a static file, so you do not need this site to use the record:
+
+```sql
+INSTALL httpfs; LOAD httpfs;
+
+SELECT ac_type, ac_desc, COUNT(*) AS flights
+FROM read_parquet('https://cevendrell.github.io/flight-macro/data/adsb/flights/*.parquet')
+GROUP BY 1, 2
+ORDER BY 3 DESC;
+```
+
+Every table on the site also exports to CSV, and every signal links to the query
+that produced it.
+
+## Running it locally
+
+```bash
+python3 -m http.server 8000
+```
+
+Then open http://localhost:8000/. A file:// URL will not work — the module and
+the Parquet fetches need an origin.
+
+## Pipeline
+
 ```bash
 pip install -r scripts/requirements.txt
-python scripts/ingest_opensky.py --day 2026-08-27
-python scripts/ingest_eurostat.py --from 2026-05 --to 2026-05 --reporters DE,FR,ES
-python scripts/rollup.py
-python scripts/warehouse_inspect.py
-python scripts/generate_insights.py --source warehouse --dry-run
+python scripts/adsb/reconstruct.py     # snapshots → flight sessions
+python scripts/adsb/enrich.py          # registration / type / operator tables
+python scripts/adsb/build_summary.py   # summary.json + signal detection
 ```
 
-See [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) for the full walkthrough.
+See [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) for laptop setup and
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the warehouse design of the
+earlier prototype.
+
+## Design
+
+The LayOvr palette: navy dominant, amber as the action accent, burgundy reserved
+for critical signals, periwinkle as the secondary voice on navy. Light theme on a
+warm off-white ground; dark theme goes near-black with the navy kept only in the
+pinned top bar. Three-state theme control in the header. Archivo and IBM Plex
+Mono. Full token list in [CLAUDE.md](CLAUDE.md).
 
 ## Workflow
-- Site edits: locally → GitHub Desktop push
-- Data updates: `python scripts/run_pipeline.py` on the laptop (daily cron) → auto-push
+
+Site edits: locally, then push. Data updates: the laptop pipeline pushes to
+`main` on its own; GitHub Pages redeploys either way.

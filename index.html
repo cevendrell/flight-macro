@@ -6,8 +6,37 @@
 <title>OvrHead — an observatory over Aarhus</title>
 <meta name="description" content="One antenna over Aarhus, Denmark. We turn a continuous record of aircraft passing overhead into signals about connectivity, capacity and trade — with the evidence attached.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2305164D'/%3E%3Ccircle cx='16' cy='16' r='2.6' fill='%238A5A33'/%3E%3Ccircle cx='16' cy='16' r='7.5' fill='none' stroke='%2382A5D6' stroke-width='1.1' opacity='.75'/%3E%3Ccircle cx='16' cy='16' r='12.5' fill='none' stroke='%2382A5D6' stroke-width='1.1' opacity='.35'/%3E%3C/svg%3E">
+<link rel="canonical" href="https://cevendrell.github.io/flight-macro/">
+<meta name="author" content="Carlos Ebrahim Vendrell">
+<meta name="color-scheme" content="light dark">
+<!-- The bar is pinned navy in both themes, so the browser chrome should match
+     it in both — one value, no media query. -->
+<meta name="theme-color" content="#05164d">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="OvrHead">
+<meta property="og:url" content="https://cevendrell.github.io/flight-macro/">
+<meta property="og:title" content="OvrHead — an observatory over Aarhus">
+<meta property="og:description" content="One antenna over Aarhus, Denmark. A continuous record of every aircraft passing overhead, turned into signals about connectivity, capacity and trade — with the evidence attached.">
+<meta property="og:image" content="https://cevendrell.github.io/flight-macro/assets/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="OvrHead — an observatory over Aarhus, Denmark.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="OvrHead — an observatory over Aarhus">
+<meta name="twitter:description" content="One antenna. Every aircraft overhead. The whole record queryable in your browser.">
+<meta name="twitter:image" content="https://cevendrell.github.io/flight-macro/assets/og.png">
+<link rel="apple-touch-icon" href="assets/icon-180.png">
+<link rel="manifest" href="site.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Theme is resolved before first paint so a stored choice never flashes the
+     other theme. Inline and synchronous on purpose. -->
+<script>
+  try {
+    var t = localStorage.getItem('ovrhead.theme');
+    if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+  } catch (e) {}
+</script>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 /* ─────────────────────────────────────────────────────────────────────────
@@ -127,7 +156,15 @@ button, input, textarea, select { font:inherit; color:inherit; }
 #topbar { position:sticky; top:0; z-index:80; background:var(--topbar); color:var(--on-navy); }
 .bar { max-width:1240px; margin:0 auto; padding:0 var(--pad);
        display:flex; align-items:center; gap:20px; min-height:56px; flex-wrap:wrap; }
-@media (max-width:760px){ .bar{ padding:10px var(--pad); gap:10px } }
+/* The bar needs three rows on a phone. Pinning a quarter of the screen for it
+   is a worse trade than making the reader scroll up for the nav, so below this
+   width it scrolls away with the page. */
+@media (max-width:760px){
+  #topbar { position:static; }
+  .bar { padding:10px var(--pad); gap:10px; }
+  .mark { order:0; }
+  #nav  { order:2; }
+}
 
 .mark { display:flex; align-items:baseline; gap:9px; text-decoration:none; flex-shrink:0; }
 .mark b { font-family:var(--mono); font-size:.82rem; font-weight:600;
@@ -299,6 +336,7 @@ td a:hover { color:var(--accent); border-bottom-color:var(--accent); }
 .barcell span { position:relative; }
 
 /* ── Charts ────────────────────────────────────────────────────────────── */
+.chart-fig { margin:0; }
 .chart { display:flex; align-items:flex-end; gap:3px; height:150px;
          border-bottom:1px solid var(--ink); padding-top:8px; }
 .cbar { flex:1; min-width:3px; display:flex; flex-direction:column; justify-content:flex-end;
@@ -310,6 +348,10 @@ td a:hover { color:var(--accent); border-bottom-color:var(--accent); }
 .caxis { display:flex; gap:3px; margin-top:6px; }
 .caxis span { flex:1; min-width:3px; font-family:var(--mono); font-size:.6rem;
               color:var(--mute); text-align:center; overflow:hidden; white-space:nowrap; }
+.ro-v .u { font-size:.56em; color:var(--mute); margin-left:4px; letter-spacing:0; }
+.rhythm { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:24px 34px; }
+.rhythm-t { font-size:.67rem; font-weight:600; letter-spacing:.11em; text-transform:uppercase;
+            color:var(--mute); margin-bottom:9px; }
 
 /* ── Globe ─────────────────────────────────────────────────────────────── */
 #globe-layout { display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:26px;
@@ -341,6 +383,13 @@ td a:hover { color:var(--accent); border-bottom-color:var(--accent); }
 .globe-legend i { display:inline-block; width:8px; height:8px; border-radius:50%;
                   background:var(--accent); margin-right:6px; vertical-align:middle; }
 .globe-legend i.home { background:var(--fall); }
+.globe-legend i.dot  { width:5px; height:5px; }
+.globe-legend i.env  { width:16px; height:2px; border-radius:0; background:var(--ink); }
+
+/* ── Coverage ──────────────────────────────────────────────────────────── */
+#cov-stage { position:relative; aspect-ratio:1/1; width:100%;
+             max-width:min(100%, 520px); margin:22px auto 0; }
+#cov-canvas { width:100%; height:100%; display:block; }
 
 .gl-list { display:flex; flex-direction:column; border-top:1px solid var(--ink); }
 .gl-item { display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:11px;
@@ -419,7 +468,7 @@ textarea.sql-box:focus { border-color:var(--accent); }
 .chips { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
 .chip { font-size:.78rem; padding:8px 13px; border:1px solid var(--rule-2);
         border-radius:var(--r-control); background:var(--surface); cursor:pointer;
-        color:var(--ink-2); text-align:left; }
+        color:var(--ink-2); text-align:left; text-decoration:none; }
 .chip:hover { border-color:var(--accent); color:var(--accent); background:var(--accent-bg); }
 
 /* ── Notices ───────────────────────────────────────────────────────────── */
@@ -458,20 +507,104 @@ textarea.sql-box:focus { border-color:var(--accent); }
             text-transform:uppercase; color:var(--accent); }
 .prose ul { margin:0 0 13px 1.1em; max-width:var(--measure); }
 .prose li { font-size:.9rem; margin-bottom:5px; line-height:1.62; }
+
+/* ── Skip link ─────────────────────────────────────────────────────────── */
+.skip { position:absolute; left:-9999px; top:0; z-index:200;
+        background:var(--surface); color:var(--ink); border:1px solid var(--accent);
+        border-radius:var(--r-control); padding:10px 16px; font-size:.82rem; font-weight:600; }
+.skip:focus { left:var(--pad); top:9px; }
+
+/* ── Theme switch ──────────────────────────────────────────────────────── */
+/* Three states, not two: a reader who has never chosen should keep following
+   their system, and that has to be visible as its own setting. */
+#theme { display:flex; gap:1px; padding:2px; flex-shrink:0;
+         border:1px solid rgba(130,165,214,.28); border-radius:var(--r-control); }
+#theme button { background:none; border:none; cursor:pointer; line-height:0;
+                padding:5px 7px; border-radius:5px; color:var(--on-navy-2); }
+#theme button:hover { color:var(--on-navy); background:rgba(238,241,248,.10); }
+#theme button[aria-pressed="true"] { color:var(--navy); background:var(--on-navy); }
+:root[data-theme="dark"] #theme button[aria-pressed="true"],
+:root:not([data-theme="light"]) #theme button[aria-pressed="true"] { color:#05164d; }
+#theme svg { width:14px; height:14px; display:block; fill:none;
+             stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+/* Rides up beside the wordmark on a phone rather than claiming a row. */
+@media (max-width:760px){ #theme{ order:1; margin-left:auto } }
+
+/* ── Table utilities ───────────────────────────────────────────────────── */
+th.sortable { position:relative; }
+th.sortable:focus-visible { outline:2px solid var(--accent); outline-offset:-2px; }
+.tbl-bar { display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+           margin-bottom:11px; }
+.tbl-filter { flex:0 1 240px; background:var(--surface); color:var(--ink);
+              border:1px solid var(--rule-2); border-radius:var(--r-control);
+              padding:7px 11px; font-size:.8rem; }
+.tbl-filter::placeholder { color:var(--mute); }
+.tbl-filter:focus { border-color:var(--accent); outline:none; }
+.tbl-count { font-family:var(--mono); font-size:.7rem; color:var(--mute); }
+.tbl-bar .btn { margin-left:auto; }
+
+/* A linked-to signal keeps the open treatment plus a moment of emphasis, so
+   somebody arriving from a shared link can see which row was meant. */
+.sig.target { box-shadow:inset 3px 0 0 -1px var(--accent); }
+
+/* ── Engine loading ────────────────────────────────────────────────────── */
+.engine { display:flex; align-items:center; gap:10px; font-family:var(--mono);
+          font-size:.71rem; color:var(--mute); padding:12px 0; }
+.engine .track { flex:0 1 160px; height:3px; border-radius:2px;
+                 background:var(--rule); overflow:hidden; }
+.engine .track i { display:block; height:100%; background:var(--accent);
+                   width:0; transition:width .3s ease; }
+.engine-rest { display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+               padding:14px 0; font-size:.82rem; color:var(--mute);
+               max-width:var(--measure); }
+
+/* ── Footer ────────────────────────────────────────────────────────────── */
+#foot { border-top:1px solid var(--rule); margin-top:12px; padding:26px 0 0;
+        display:flex; gap:16px 28px; flex-wrap:wrap; align-items:baseline;
+        font-size:.78rem; color:var(--mute); }
+#foot a { color:var(--ink-2); text-decoration:none;
+          border-bottom:1px solid var(--rule-2); }
+#foot a:hover { color:var(--accent); border-bottom-color:var(--accent); }
+#foot .sep { margin-left:auto; font-family:var(--mono); font-size:.68rem; }
+
+/* ── Keyboard hint ─────────────────────────────────────────────────────── */
+.kbd { font-family:var(--mono); font-size:.62rem; border:1px solid rgba(130,165,214,.34);
+       border-radius:4px; padding:1px 4px; color:var(--on-navy-2);
+       position:absolute; right:8px; top:50%; transform:translateY(-50%);
+       pointer-events:none; }
+#search-wrap:focus-within .kbd, #search-wrap.filled .kbd { display:none; }
+@media (max-width:520px){ .kbd{ display:none } }
+
+/* ── noscript ──────────────────────────────────────────────────────────── */
+.noscript { max-width:640px; margin:80px auto; padding:0 var(--pad);
+            font-size:.95rem; line-height:1.7; color:var(--ink-2); }
 </style>
 </head>
 <body>
 
+<noscript>
+  <div class="noscript">
+    <h1 style="margin-bottom:14px">OvrHead</h1>
+    <p>This page reads a Parquet record and runs its queries in your browser, so it
+    needs JavaScript. The data itself does not — every figure on the site comes from
+    static files you can take and query yourself:</p>
+    <p style="margin-top:14px"><a href="data/adsb/summary.json">summary.json</a> ·
+    <a href="data/adsb/manifest.json">manifest.json</a> ·
+    <a href="data/adsb/flights/">flights/*.parquet</a></p>
+  </div>
+</noscript>
+
 <div id="boot"><div class="boot-in">
   <div class="boot-rings"></div>
-  <div class="boot-t" id="boot-t">Reading the record</div>
+  <div class="boot-t" id="boot-t" role="status" aria-live="polite">Reading the record</div>
 </div></div>
 
 <div id="shell">
+  <a class="skip" href="#main">Skip to content</a>
   <header id="topbar">
     <div class="bar">
       <a class="mark" href="#/"><b>OVRHEAD</b><span>Aarhus</span></a>
-      <nav id="nav">
+      <nav id="nav" aria-label="Sections">
         <a href="#/"        data-r="/"       >Signals</a>
         <a href="#/globe"   data-r="/globe"  >Globe</a>
         <a href="#/explore" data-r="/explore">Explore</a>
@@ -480,13 +613,38 @@ textarea.sql-box:focus { border-color:var(--accent); }
         <a href="#/method"  data-r="/method" >Method</a>
       </nav>
       <div id="search-wrap">
-        <input id="search" type="search" placeholder="Country, airline, aircraft…" autocomplete="off" spellcheck="false">
-        <div id="results"></div>
+        <label class="skip" for="search">Search the record</label>
+        <input id="search" type="search" placeholder="Country, airline, aircraft…"
+               autocomplete="off" spellcheck="false" role="combobox"
+               aria-expanded="false" aria-controls="results" aria-autocomplete="list">
+        <span class="kbd" aria-hidden="true">/</span>
+        <div id="results" role="listbox" aria-label="Search results"></div>
       </div>
       <a class="freshness" href="#/data" id="stamp" title="When the record was last updated"></a>
+      <div id="theme" role="group" aria-label="Colour theme">
+        <button data-theme-set="light" title="Light" aria-label="Light theme">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.4v2.2M12 19.4v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.4 12h2.2M19.4 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/></svg>
+        </button>
+        <button data-theme-set="system" title="Match my system" aria-label="Match system theme">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.6" y="4.2" width="18.8" height="12.6" rx="1.8"/><path d="M8.4 20.2h7.2"/></svg>
+        </button>
+        <button data-theme-set="dark" title="Dark" aria-label="Dark theme">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.4 13.8A8.4 8.4 0 1 1 10.2 3.6a6.6 6.6 0 0 0 10.2 10.2z"/></svg>
+        </button>
+      </div>
     </div>
   </header>
-  <main id="main"><div class="wrap" id="view"></div></main>
+  <main id="main" tabindex="-1"><div class="wrap">
+    <div id="view"></div>
+    <footer id="foot">
+      <span>OvrHead — one antenna over Aarhus, Denmark.</span>
+      <a href="#/about">About</a>
+      <a href="#/method">Method</a>
+      <a href="#/data">Data</a>
+      <a href="https://github.com/cevendrell/flight-macro" rel="noopener">Source</a>
+      <span class="sep" id="foot-stamp"></span>
+    </footer>
+  </div></main>
 </div>
 
 <script type="module">
@@ -504,7 +662,9 @@ const el = document.getElementById.bind(document);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
   ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const n = v => Number(v ?? 0).toLocaleString('en-US');
-const pct = v => (v > 0 ? '+' : '') + Number(v).toFixed(0) + '%';
+/* Small changes keep a decimal — rounding 0.4% to "+0%" reads as "no change",
+   which is a different claim from the one the data is making. */
+const pct = v => (v > 0 ? '+' : '') + Number(v).toFixed(Math.abs(v) < 10 ? 1 : 0) + '%';
 
 /** Arrow hands timestamps back as epoch milliseconds, Dates, or strings
  *  depending on the column. Normalise all three to "YYYY-MM-DD HH:MM". */
@@ -531,6 +691,31 @@ const CONF_TEXT = {
   early:    'Real, but the record is too short to call it a trend.',
 };
 
+/* ── Engine progress ─────────────────────────────────────────────────────
+   Standing up DuckDB is the one slow thing on the site — several megabytes of
+   WebAssembly on a cold cache. A spinner would be a lie about how long that
+   takes, so the pages that trigger it say what is happening instead. */
+const engineWatchers = new Set();
+let engineState = { msg: 'Starting the query engine…', frac: 0 };
+function engineSay(msg, frac) {
+  engineState = { msg, frac };
+  engineWatchers.forEach(fn => fn(engineState));
+}
+/** Paint engine start-up into `host` until the engine is up. No-op once warm. */
+function engineNote(host) {
+  if (deep) return;
+  host.innerHTML = `<div class="engine"><span class="track"><i></i></span>
+    <span class="msg">${esc(engineState.msg)}</span></div>`;
+  const bar = host.querySelector('.track i'), msg = host.querySelector('.msg');
+  const fn = s => {
+    if (!host.isConnected) return engineWatchers.delete(fn);
+    bar.style.width = Math.round(s.frac * 100) + '%';
+    msg.textContent = s.msg;
+  };
+  engineWatchers.add(fn);
+  getDeep().finally(() => engineWatchers.delete(fn));
+}
+
 /* ── Deep layer: DuckDB-Wasm ─────────────────────────────────────────────
    Loaded on demand. We deliberately do NOT load aircraft_db.parquet (4.7 MB):
    type, registration and description are already denormalised onto each
@@ -539,21 +724,32 @@ async function getDeep() {
   if (deep) return deep;
   if (deepPromise) return deepPromise;
   deepPromise = (async () => {
+    engineSay('Fetching the query engine…', .06);
     const duckdb = await import('https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/+esm');
     const bundle = await duckdb.selectBundle(duckdb.getJsDelivrBundles());
     const workerUrl = URL.createObjectURL(
       new Blob([`importScripts("${bundle.mainWorker}");`], { type: 'text/javascript' }));
     const worker = new Worker(workerUrl);
     const db = new duckdb.AsyncDuckDB(new duckdb.VoidLogger(), worker);
+    engineSay('Starting DuckDB in a worker…', .3);
     await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
     URL.revokeObjectURL(workerUrl);
     const conn = await db.connect();
 
     const man = await fetch(BASE + 'manifest.json').then(r => r.json());
+    const total = man.flights.reduce((a, f) => a + (f.bytes || 0), 0) || 1;
+    let got = 0;
     for (const f of man.flights) {
-      const buf = await fetch(BASE + f.path.replace(/^data\/adsb\//, '')).then(r => r.arrayBuffer());
+      engineSay(`Loading the flight record — ${(got / 1024).toFixed(0)} of ${
+        (total / 1024).toFixed(0)} KB`, .6 + .3 * (got / total));
+      const buf = await fetch(BASE + f.path.replace(/^data\/adsb\//, '')).then(r => {
+        if (!r.ok) throw new Error(`${f.name} — ${r.status}`);
+        return r.arrayBuffer();
+      });
       await db.registerFileBuffer(f.name, new Uint8Array(buf));
+      got += f.bytes || buf.byteLength;
     }
+    engineSay('Building the views…', .94);
     const names = man.flights.map(f => `'${f.name}'`).join(',');
 
     // Country attribution as a pure range join. ICAO addresses are always six
@@ -582,16 +778,23 @@ async function getDeep() {
                   THEN 'widebody' ELSE 'narrowbody' END AS body,
              r.airline_prefix IN ('FDX','UPS','GTI','CLX','CKS','ABW','CAO','CKK','GEC','BOX',
                                   'SQC','MPH','TAY','ICV','RCF') AS is_cargo,
-             TO_TIMESTAMP(r.first_seen) AS seen_at
+             -- A naive UTC timestamp, not TIMESTAMPTZ. duckdb-wasm ships
+             -- without ICU, so strftime() cannot bind against a zoned value —
+             -- which quietly broke every by-day and by-hour query on the site.
+             -- make_timestamp() takes microseconds since the epoch, so this is
+             -- the same instant with the zone stripped, already in UTC.
+             make_timestamp(r.first_seen * 1000000) AS seen_at
       FROM _raw r
       LEFT JOIN country_block c
              ON r.hex >= c.lo AND r.hex <= c.hi
             AND c.width = (SELECT MIN(b2.width) FROM country_block b2
                            WHERE r.hex >= b2.lo AND r.hex <= b2.hi)
       LEFT JOIN country ct ON ct.cc = c.cc`);
+    engineSay('Ready.', 1);
     deep = { db, conn };
     return deep;
   })();
+  deepPromise.catch(() => { deepPromise = null; });   // let a failed start retry
   return deepPromise;
 }
 const q = v => v == null ? 'NULL' : `'${String(v).replace(/'/g, "''")}'`;
@@ -609,7 +812,7 @@ const confChip = c => `<span class="conf" data-c="${esc(c)}" title="${esc(CONF_T
 function readout(items) {
   return `<div class="readout">${items.map(i => `
     <div class="ro">
-      <div class="ro-v${/[A-Za-z]{2}/.test(String(i.v)) ? ' txt' : ''}">${i.v}</div>
+      <div class="ro-v${(i.txt ?? /[A-Za-z]{2}/.test(String(i.v))) ? ' txt' : ''}">${i.v}</div>
       <div class="ro-l">${esc(i.l)}</div>
       ${i.s ? `<div class="ro-s">${esc(i.s)}</div>` : ''}
     </div>`).join('')}</div>`;
@@ -619,7 +822,7 @@ function readout(items) {
  *  as a genuine dip. */
 function chart(data, { key, val, partial, labelEvery = 1 } = {}) {
   if (!data.length) return `<div class="empty">Nothing recorded yet.</div>`;
-  const max = Math.max(...data.map(d => +d[val]), 1);
+  const max = data.reduce((m, d) => Math.max(m, +d[val] || 0), 1);
   const peak = data.reduce((a, b) => (+b[val] > +a[val] ? b : a));
   const bars = data.map(d => {
     const isP = partial && d[partial];
@@ -635,48 +838,177 @@ function chart(data, { key, val, partial, labelEvery = 1 } = {}) {
   };
   const axis = data.map((d, i) =>
     `<span title="${esc(d[key])}">${i % labelEvery === 0 ? esc(tick(d[key])) : ''}</span>`).join('');
-  return `<div class="chart">${bars}</div><div class="caxis">${axis}</div>`;
+  // A wall of bare divs is nothing to a screen reader, so the figure carries a
+  // one-line reading of its own shape.
+  const sum = data.reduce((a, d) => a + (+d[val] || 0), 0);
+  const alt = `Bar chart. ${data.length} values from ${data[0][key]} to `
+            + `${data[data.length - 1][key]}. Highest is ${peak[key]} at ${n(peak[val])}; `
+            + `${n(sum)} in total.`;
+  return `<figure class="chart-fig" role="img" aria-label="${esc(alt)}">
+    <div class="chart">${bars}</div><div class="caxis">${axis}</div></figure>`;
 }
 
-/** A sortable, drillable entity table. `cols` describe how to read each row. */
-function table(rows, cols, { max = 40, sortKey, sortDir = -1, id = 't' } = {}) {
-  if (!rows.length) return `<div class="empty">No rows.</div>`;
-  const sorted = sortKey
-    ? [...rows].sort((a, b) => {
-        const x = a[sortKey], y = b[sortKey];
-        if (typeof x === 'number' || typeof y === 'number')
-          return ((y ?? -Infinity) - (x ?? -Infinity)) * -sortDir * -1;
-        return String(x ?? '').localeCompare(String(y ?? '')) * sortDir * -1;
-      })
-    : rows;
-  const top = Math.max(...rows.map(r => +r[cols.find(c => c.bar)?.k] || 0), 1);
-  const head = cols.map(c =>
-    `<th class="${c.num ? 'num' : ''} sortable" data-t="${id}" data-k="${esc(c.k)}">
-      ${esc(c.h)}${sortKey === c.k ? `<span class="dir"> ${sortDir > 0 ? '↑' : '↓'}</span>` : ''}
-     </th>`).join('');
-  const body = sorted.slice(0, max).map(r => `<tr>${cols.map(c => {
+/* ── Tables ──────────────────────────────────────────────────────────────
+   A table owns its own state — sort, filter, how many rows are showing — and
+   repaints itself in place. Routing a column sort back through the router
+   would also scroll the reader to the top of the page and re-run whatever
+   query filled the table, which is the wrong amount of machinery for a sort. */
+const TABLES = new Map();
+const tblState = {};
+
+/** dir: 1 ascending, -1 descending — and the header arrow always says which.
+ *  Blanks sort last in both directions; a missing value is not a small one. */
+const comparator = (key, dir) => (a, b) => {
+  // Arrow hands timestamps back as epoch numbers on some columns and Dates on
+  // others; sorting a Date by its string puts Friday before Monday.
+  const num = v => (v instanceof Date ? v.getTime() : v);
+  const x = num(a[key]), y = num(b[key]);
+  const xn = x == null || x === '', yn = y == null || y === '';
+  if (xn || yn) return xn && yn ? 0 : xn ? 1 : -1;
+  const numeric = ['number', 'bigint'].includes(typeof x) ||
+                  ['number', 'bigint'].includes(typeof y);
+  return numeric ? (Number(x) - Number(y)) * dir
+                 : String(x).localeCompare(String(y)) * dir;
+};
+
+/**
+ * A sortable, filterable, drillable entity table.
+ *   cols     — { k, h, num?, bar?, render?, csvValue? } per column
+ *   sortKey  — column sorted on first paint
+ *   sortDir  — 1 ascending, -1 descending
+ *   filter   — placeholder text; presence enables the filter box
+ *   csv      — false to suppress the export button
+ */
+function table(rows, cols, opts = {}) {
+  const id = opts.id || 't';
+  const st = tblState[id] || (tblState[id] = {
+    key: opts.sortKey ?? null, dir: opts.sortDir ?? -1, filter: '', max: opts.max ?? 40,
+  });
+  if (st.max !== Infinity) st.max = opts.max ?? 40;   // null after a navigation
+  TABLES.set(id, { rows, cols, opts });
+  return `<div class="tbl" data-tbl="${esc(id)}">${tableInner(id)}</div>`;
+}
+
+function tableInner(id) {
+  const t = TABLES.get(id);
+  if (!t) return '';
+  const { cols, opts } = t, st = tblState[id];
+  if (!t.rows.length) return `<div class="empty">${esc(opts.empty || 'No rows.')}</div>`;
+
+  const needle = st.filter.trim().toLowerCase();
+  const rows = needle
+    ? t.rows.filter(r => cols.some(c => String(r[c.k] ?? '').toLowerCase().includes(needle)))
+    : t.rows;
+  const sorted = st.key ? [...rows].sort(comparator(st.key, st.dir)) : rows;
+
+  const barKey = cols.find(c => c.bar)?.k;
+  const top = barKey ? rows.reduce((m, r) => Math.max(m, +r[barKey] || 0), 1) : 1;
+
+  const head = cols.map(c => {
+    const on = st.key === c.k;
+    const next = on ? -st.dir : (c.num ? -1 : 1);   // numbers open big-first, words A–Z
+    return `<th class="${c.num ? 'num ' : ''}sortable" data-t="${esc(id)}" data-k="${esc(c.k)}"
+        tabindex="0" aria-sort="${on ? (st.dir > 0 ? 'ascending' : 'descending') : 'none'}"
+        title="Sort by ${esc(c.h)} — ${next > 0 ? 'ascending' : 'descending'}"
+      >${esc(c.h)}${on ? `<span class="dir" aria-hidden="true"> ${st.dir > 0 ? '↑' : '↓'}</span>` : ''}</th>`;
+  }).join('');
+
+  const body = sorted.slice(0, st.max).map(r => `<tr>${cols.map(c => {
     const v = c.render ? c.render(r) : esc(r[c.k] ?? '—');
     if (c.bar) return `<td class="num barcell">
         <div class="fill" style="width:${(+r[c.k] / top * 100).toFixed(1)}%"></div>
         <span>${v}</span></td>`;
     return `<td class="${c.num ? 'num' : ''}">${v}</td>`;
   }).join('')}</tr>`).join('');
-  const more = rows.length > max
-    ? `<div class="status">Showing ${max} of ${n(rows.length)}.</div>` : '';
-  return `<div class="tbl-wrap"><table data-tid="${id}">
-    <thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>${more}`;
+
+  const bar = (opts.filter || opts.csv !== false) ? `<div class="tbl-bar">
+    ${opts.filter ? `<input class="tbl-filter" type="search" data-tf="${esc(id)}"
+        placeholder="${esc(opts.filter)}" aria-label="${esc(opts.filter)}"
+        value="${esc(st.filter)}" autocomplete="off" spellcheck="false">` : ''}
+    ${needle ? `<span class="tbl-count">${n(rows.length)} of ${n(t.rows.length)}</span>` : ''}
+    ${opts.csv === false ? '' : `<button class="btn" data-csv="${esc(id)}">Export CSV</button>`}
+  </div>` : '';
+
+  const empty = !sorted.length
+    ? `<div class="empty">Nothing matches “${esc(st.filter)}”.</div>` : '';
+  const more = sorted.length > st.max
+    ? `<div class="status">Showing ${n(st.max)} of ${n(sorted.length)}.
+       <button class="btn" data-all="${esc(id)}" style="margin-left:9px">Show all</button></div>` : '';
+
+  return bar + (empty || `<div class="tbl-wrap"><table data-tid="${esc(id)}">
+    <thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`) + more;
 }
 
-/* Sorting is delegated: tables re-render through the view that owns them. */
-const sortState = {};
+function repaintTable(id) {
+  const host = document.querySelector(`[data-tbl="${CSS.escape(id)}"]`);
+  if (!host) return;
+  const wasFiltering = document.activeElement?.dataset?.tf === id;
+  host.innerHTML = tableInner(id);
+  if (wasFiltering) {
+    const box = host.querySelector('.tbl-filter');
+    if (box) { box.focus(); box.setSelectionRange(box.value.length, box.value.length); }
+  }
+}
+
+/* One delegated listener for every table on the page. */
+function sortBy(id, key) {
+  const st = tblState[id];
+  const col = TABLES.get(id)?.cols.find(c => c.k === key);
+  st.dir = st.key === key ? -st.dir : (col?.num ? -1 : 1);
+  st.key = key;
+  repaintTable(id);
+}
 document.addEventListener('click', e => {
   const th = e.target.closest('th.sortable');
-  if (!th) return;
-  const t = th.dataset.t, k = th.dataset.k;
-  const cur = sortState[t] || {};
-  sortState[t] = { key: k, dir: cur.key === k ? -(cur.dir || -1) : -1 };
-  route();
+  if (th) return sortBy(th.dataset.t, th.dataset.k);
+  const all = e.target.closest('[data-all]');
+  if (all) { tblState[all.dataset.all].max = Infinity; return repaintTable(all.dataset.all); }
+  const csv = e.target.closest('[data-csv]');
+  if (csv) return exportTable(csv.dataset.csv);
 });
+document.addEventListener('keydown', e => {
+  const th = e.target.closest?.('th.sortable');
+  if (!th || (e.key !== 'Enter' && e.key !== ' ')) return;
+  e.preventDefault();
+  sortBy(th.dataset.t, th.dataset.k);
+});
+document.addEventListener('input', e => {
+  const box = e.target.closest('.tbl-filter');
+  if (!box) return;
+  tblState[box.dataset.tf].filter = box.value;
+  repaintTable(box.dataset.tf);
+});
+
+/* ── Taking the data with you ────────────────────────────────────────────
+   The site's claim is that you don't have to trust it. Every table on it is
+   therefore one click from a file you can open somewhere else. */
+const csvCell = v => {
+  if (v == null) return '';
+  const s = v instanceof Date ? v.toISOString() : String(v);
+  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+};
+function exportTable(id) {
+  const t = TABLES.get(id);
+  if (!t) return;
+  const needle = tblState[id].filter.trim().toLowerCase();
+  const rows = needle
+    ? t.rows.filter(r => t.cols.some(c => String(r[c.k] ?? '').toLowerCase().includes(needle)))
+    : t.rows;
+  const st = tblState[id];
+  const out = st.key ? [...rows].sort(comparator(st.key, st.dir)) : rows;
+  const csv = [t.cols.map(c => csvCell(c.h)).join(','),
+               ...out.map(r => t.cols.map(c =>
+                 csvCell(c.csvValue ? c.csvValue(r) : r[c.k])).join(','))].join('\r\n');
+  download(`${t.opts.csvName || 'ovrhead-' + id}-${S.generated_at.slice(0, 10)}.csv`, csv);
+}
+function download(name, text, type = 'text/csv;charset=utf-8') {
+  // Leading BOM: without it Excel opens a UTF-8 CSV as Latin-1 and mangles
+  // every non-ASCII airline and country name in the file.
+  const url = URL.createObjectURL(new Blob(['\uFEFF' + text], { type }));
+  const a = Object.assign(document.createElement('a'), { href: url, download: name });
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
 
 function changeCell(v) {
   if (v == null) return `<span class="faint" title="Not enough baseline to compare">—</span>`;
@@ -685,15 +1017,16 @@ function changeCell(v) {
 const countryName = cc => TAX?.countries?.[cc]?.name || cc;
 
 /* ── Signals view ────────────────────────────────────────────────────── */
-function viewSignals() {
+function viewSignals(openId) {
   const t = S.totals, w = S.window;
   const stale = (Date.now() - new Date(S.generated_at)) / 3.6e6;
 
   const sigs = S.signals.map((s, i) => {
-    const dir = /up |↑|\+/.test(s.metric) && s.metric.startsWith('+') ? 'up'
-              : s.metric.startsWith('-') ? 'down' : '';
-    return `<div class="sig" id="${esc(s.id)}">
-      <button class="sig-top" data-sig="${i}" aria-expanded="false">
+    const dir = /^\+/.test(s.metric) ? 'up' : /^[-−]/.test(s.metric) ? 'down' : '';
+    const open = s.id === openId;
+    return `<div class="sig${open ? ' open target' : ''}" id="${esc(s.id)}">
+      <button class="sig-top" data-sig="${i}" aria-expanded="${open}"
+              aria-controls="body-${esc(s.id)}">
         <div>
           <div class="sig-metric ${dir}">${esc(s.metric)}</div>
           <div class="sig-mlabel">${esc(s.metric_label)}</div>
@@ -703,15 +1036,17 @@ function viewSignals() {
           ${s.comparison ? `<div class="sig-sub">${esc(s.comparison)}</div>` : ''}
           ${s.where ? `<div class="sig-where">${esc(s.where)}</div>` : ''}
         </div>
-        <div class="sig-right">${confChip(s.confidence)}<span class="chev">›</span></div>
+        <div class="sig-right">${confChip(s.confidence)}<span class="chev" aria-hidden="true">›</span></div>
       </button>
-      <div class="sig-body"><div class="sig-grid"><div></div><div class="sig-fields">
+      <div class="sig-body" id="body-${esc(s.id)}"><div class="sig-grid"><div></div>
+        <div class="sig-fields">
         <div><div class="field-k">What it might mean</div>
              <div class="field-v">${esc(s.interpretation)}</div></div>
         <div><div class="field-k">What it does not show</div>
              <div class="field-v caveat">${esc(s.caveat)}</div></div>
-        <div><a class="btn" href="#/ask?sql=${
-               encodeURIComponent(s.sql)}">See the evidence →</a></div>
+        <div class="adv-bar"><a class="btn" href="#/ask?sql=${
+               encodeURIComponent(s.sql)}">See the evidence →</a>
+          <button class="btn" data-permalink="${esc(s.id)}">Copy link</button></div>
       </div></div></div>
     </div>`;
   }).join('');
@@ -763,7 +1098,7 @@ function viewSignals() {
       <a class="btn" href="#/explore">Explore all →</a>
     </div>
     ${table(S.countries.slice(0, 12), COUNTRY_COLS, { id: 'home-c', max: 12,
-       ...(sortState['home-c'] || { sortKey: 'flights', sortDir: -1 }) })}
+       sortKey: 'flights', sortDir: -1, csv: false })}
   </section>
 
   <section>
@@ -817,7 +1152,7 @@ function viewExplore() {
     <div class="sec-head"><div><div class="eyebrow">Full table</div>
       <h2>All ${S.countries.length} countries</h2></div></div>
     ${table(S.countries, COUNTRY_COLS, { id: 'exp-c', max: 200,
-      ...(sortState['exp-c'] || { sortKey: 'flights', sortDir: -1 }) })}
+      sortKey: 'flights', sortDir: -1, filter: 'Filter countries…', csvName: 'ovrhead-countries' })}
   </section>
 
   <section>
@@ -830,7 +1165,8 @@ function viewExplore() {
       { k: 'flights', h: 'Flights', num: true, bar: true, render: r => n(r.flights) },
       { k: 'aircraft', h: 'Aircraft', num: true, render: r => n(r.aircraft) },
       { k: 'widebody', h: 'Wide-body', num: true, render: r => n(r.widebody) },
-    ], { id: 'exp-o', max: 60, ...(sortState['exp-o'] || { sortKey: 'flights', sortDir: -1 }) })}
+    ], { id: 'exp-o', max: 60, sortKey: 'flights', sortDir: -1,
+         filter: 'Filter airlines…', csvName: 'ovrhead-operators' })}
   </section>
 
   <section>
@@ -842,7 +1178,8 @@ function viewExplore() {
       { k: 'aircraft', h: 'Airframes', num: true, render: r => n(r.aircraft) },
       { k: 'widebody_type', h: 'Class', render: r =>
           r.widebody_type ? '<span class="code">wide-body</span>' : '<span class="dim">narrow-body</span>' },
-    ], { id: 'exp-t', max: 60, ...(sortState['exp-t'] || { sortKey: 'flights', sortDir: -1 }) })}
+    ], { id: 'exp-t', max: 60, sortKey: 'flights', sortDir: -1,
+         filter: 'Filter aircraft types…', csvName: 'ovrhead-types' })}
   </section>`;
 }
 
@@ -895,10 +1232,16 @@ function viewGlobe() {
 async function initGlobe() {
   const cv = el('globe-canvas'), overlay = el('globe-overlay');
   if (!cv) return;
+  const gen = nav;
   if (!LAND) {
-    try { LAND = await fetch(BASE + 'land.json').then(r => r.json()); }
-    catch { LAND = []; }
+    try {
+      LAND = await fetch(BASE + 'land.json')
+        .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); });
+    } catch { LAND = []; }        // a globe without coastlines still turns
   }
+  // The coastline fetch is the one await here, and the reader may well have
+  // navigated on during it. Starting the draw loop now would leak it.
+  if (gen !== nav || !cv.isConnected) return;
 
   const pts = S.countries.map(c => {
     const m = TAX.countries[c.key];
@@ -1180,24 +1523,38 @@ function viewPlace(cc) {
       { v: c.change_pct == null ? '—' : pct(c.change_pct), l: 'Change vs prev. 24h',
         s: c.change_pct == null ? 'baseline too short' : null },
     ]),
-    body: `
-      <section>
-        <div class="sec-head"><div><div class="eyebrow">Evidence</div>
-          <h2>Every ${esc(c.name)} flight on record</h2></div>
-          <a class="btn" href="#/ask?sql=${encodeURIComponent(
-            `SELECT callsign, ac_type, ac_desc, reg, seen_at, airline\nFROM flights\nWHERE reg_country = '${cc}'\nORDER BY first_seen DESC;`)}">Open in Ask →</a>
-        </div>
-        <div id="lazy" data-kind="place" data-arg="${esc(cc)}">
-          <div class="status">Loading the flight table…</div></div>
-      </section>
-
+    body: evidence('place', cc, `Every ${esc(c.name)} flight on record`,
+        `SELECT callsign, ac_type, ac_desc, reg, seen_at, airline\nFROM flights\nWHERE reg_country = '${cc}'\nORDER BY first_seen DESC;`,
+        `ovrhead-flights-${cc}`) + `
       <section>
         <div class="sec-head"><div><div class="eyebrow">Context</div>
           <h2>How ${esc(c.name)} compares in ${esc(c.region)}</h2></div></div>
         ${table(S.countries.filter(x => x.region === c.region), COUNTRY_COLS,
-          { id: 'pl-c', max: 20, sortKey: 'flights', sortDir: -1 })}
+          { id: 'pl-c', max: 20, sortKey: 'flights', sortDir: -1, csv: false })}
       </section>`,
   });
+}
+
+/** The evidence half of an entity page. All three entity pages get the same
+ *  two sections — a shape, then the rows it was computed from — so they can't
+ *  drift apart, and both are filled by one trip to DuckDB. */
+function evidence(kind, arg, heading, sql, csvName) {
+  return `
+  <section>
+    <div class="sec-head"><div><div class="eyebrow">Rhythm</div>
+      <h2>When it passes over</h2></div>
+      <p class="sec-note">Counted in your browser from the same rows as the table below.</p></div>
+    <div id="lazy-rhythm"><div class="status">Waiting on the query engine…</div></div>
+  </section>
+
+  <section>
+    <div class="sec-head"><div><div class="eyebrow">Evidence</div>
+      <h2>${heading}</h2></div>
+      <a class="btn" href="#/ask?sql=${encodeURIComponent(sql)}">Open in Ask →</a></div>
+    <div id="lazy" data-kind="${esc(kind)}" data-arg="${esc(arg)}"
+         data-csv-name="${esc(csvName)}">
+      <div class="status">Loading the flight table…</div></div>
+  </section>`;
 }
 
 function viewGroup(kind, name) {
@@ -1240,13 +1597,9 @@ function viewOperator(code) {
       { v: n(o.widebody), l: 'Wide-body' },
       { v: o.change_pct == null ? '—' : pct(o.change_pct), l: 'Change vs prev. 24h' },
     ]),
-    body: `<section>
-      <div class="sec-head"><div><div class="eyebrow">Evidence</div><h2>Flights recorded</h2></div>
-        <a class="btn" href="#/ask?sql=${encodeURIComponent(
-          `SELECT callsign, ac_type, reg, reg_country_name, seen_at\nFROM flights\nWHERE airline_prefix = '${code}'\nORDER BY first_seen DESC;`)}">Open in Ask →</a></div>
-      <div id="lazy" data-kind="operator" data-arg="${esc(code)}">
-        <div class="status">Loading the flight table…</div></div>
-    </section>`,
+    body: evidence('operator', code, 'Flights recorded',
+      `SELECT callsign, ac_type, reg, reg_country_name, seen_at\nFROM flights\nWHERE airline_prefix = '${code}'\nORDER BY first_seen DESC;`,
+      `ovrhead-flights-${code}`),
   });
 }
 
@@ -1263,13 +1616,9 @@ function viewType(code) {
       { v: n(t.aircraft), l: 'Distinct airframes' },
       { v: t.change_pct == null ? '—' : pct(t.change_pct), l: 'Change vs prev. 24h' },
     ]),
-    body: `<section>
-      <div class="sec-head"><div><div class="eyebrow">Evidence</div><h2>Flights recorded</h2></div>
-        <a class="btn" href="#/ask?sql=${encodeURIComponent(
-          `SELECT callsign, reg, reg_country_name, airline, seen_at\nFROM flights\nWHERE ac_type = '${code}'\nORDER BY first_seen DESC;`)}">Open in Ask →</a></div>
-      <div id="lazy" data-kind="type" data-arg="${esc(code)}">
-        <div class="status">Loading the flight table…</div></div>
-    </section>`,
+    body: evidence('type', code, 'Flights recorded',
+      `SELECT callsign, reg, reg_country_name, airline, seen_at\nFROM flights\nWHERE ac_type = '${code}'\nORDER BY first_seen DESC;`,
+      `ovrhead-flights-${code}`),
   });
 }
 
@@ -1279,23 +1628,57 @@ const notFound = msg => `<header class="page-head">
   <a class="btn" href="#/explore">Browse what we do have →</a>`;
 
 /** Entity pages paint instantly from the summary, then fill their evidence
- *  table from DuckDB once it is up. */
+ *  from DuckDB once it is up. The reader has usually navigated on by the time
+ *  a cold engine finishes, so every await is followed by a generation check. */
 async function fillLazy() {
-  const host = el('lazy');
+  const host = el('lazy'), shape = el('lazy-rhythm');
   if (!host) return;
-  const { kind, arg } = host.dataset;
+  const gen = nav;
+  const { kind, arg, csvName } = host.dataset;
   const where = { place: `reg_country = ${q(arg)}`,
                   operator: `airline_prefix = ${q(arg)}`,
                   type: `ac_type = ${q(arg)}` }[kind];
+  if (shape) engineNote(shape);
   try {
-    const { rows } = await query(`
-      SELECT callsign, ac_type, ac_desc, reg, reg_country_name, airline,
-             airline_prefix, seen_at, ROUND(duration_sec/60.0) AS mins
-      FROM flights WHERE ${where} ORDER BY first_seen DESC LIMIT 300`);
-    host.innerHTML = table(rows, FLIGHT_COLS,
-      { id: 'lz', max: 100, ...(sortState['lz'] || {}) });
+    await getDeep();
+    if (gen !== nav) return;
+
+    const [flights, byDay, byHour] = await Promise.all([
+      query(`SELECT callsign, ac_type, ac_desc, reg, reg_country_name, airline,
+                    airline_prefix, seen_at, ROUND(duration_sec/60.0) AS mins
+             FROM flights WHERE ${where} ORDER BY first_seen DESC LIMIT 300`),
+      query(`SELECT strftime(seen_at, '%Y-%m-%d') AS day, COUNT(*) AS flights
+             FROM flights WHERE ${where} GROUP BY 1`),
+      query(`SELECT CAST(strftime(seen_at, '%H') AS INTEGER) AS hour, COUNT(*) AS flights
+             FROM flights WHERE ${where} GROUP BY 1`),
+    ]);
+    if (gen !== nav) return;
+
+    host.innerHTML = table(flights.rows, FLIGHT_COLS,
+      { id: 'lz', max: 60, sortKey: 'seen_at', sortDir: -1,
+        filter: 'Filter these flights…', csvName });
+
+    if (shape) {
+      // Zero-fill from the site's own calendar so a quiet day reads as quiet
+      // rather than as a gap, and keeps the partial-day hatching.
+      const dayN = new Map(byDay.rows.map(r => [String(r.day), Number(r.flights)]));
+      const days = S.daily.map(d =>
+        ({ day: d.day, flights: dayN.get(d.day) || 0, partial: d.partial }));
+      const hourN = new Map(byHour.rows.map(r => [Number(r.hour), Number(r.flights)]));
+      const hours = Array.from({ length: 24 }, (_, h) =>
+        ({ hour: String(h).padStart(2, '0'), flights: hourN.get(h) || 0 }));
+      shape.innerHTML = `<div class="rhythm">
+        <div><div class="rhythm-t">By day</div>
+          ${chart(days, { key: 'day', val: 'flights', partial: 'partial' })}</div>
+        <div><div class="rhythm-t">By hour, UTC — all days combined</div>
+          ${chart(hours, { key: 'hour', val: 'flights', labelEvery: 3 })}</div>
+      </div>`;
+    }
   } catch (e) {
-    host.innerHTML = `<div class="notice warn">Could not load the flight table: ${esc(e.message)}</div>`;
+    if (gen !== nav) return;
+    const msg = `<div class="notice warn">Could not read the flight record: ${esc(e.message)}</div>`;
+    host.innerHTML = msg;
+    if (shape) shape.innerHTML = '';
   }
 }
 
@@ -1313,7 +1696,10 @@ const FLIGHT_COLS = [
   { k: 'airline', h: 'Operator', render: r => r.airline ? esc(r.airline)
       : (r.airline_prefix ? `<span class="code">${esc(r.airline_prefix)}</span>`
                           : `<span class="unknown">Unknown</span>`) },
-  { k: 'seen_at', h: 'Seen (UTC)', render: r => `<span class="mono">${esc(ts(r.seen_at))}</span>` },
+  // Exported as the same string the table shows — a raw epoch in a CSV column
+  // called "Seen (UTC)" is technically the value and practically useless.
+  { k: 'seen_at', h: 'Seen (UTC)', csvValue: r => ts(r.seen_at),
+    render: r => `<span class="mono">${esc(ts(r.seen_at))}</span>` },
   { k: 'mins', h: 'In range', num: true, render: r => r.mins ? `${n(r.mins)} min` : '—' },
 ];
 
@@ -1396,7 +1782,8 @@ function viewAsk() {
       <textarea class="sql-box" id="sql" spellcheck="false"></textarea>
       <div class="adv-bar">
         <button class="btn primary" id="run">Run this query</button>
-        <button class="btn" id="copy-sql">Copy</button>
+        <button class="btn" id="copy-sql">Copy SQL</button>
+        <button class="btn" id="link-sql">Copy link to this query</button>
         <a class="btn" href="#/data">Column reference →</a>
       </div>
     </details>
@@ -1425,14 +1812,18 @@ function wireAsk() {
     sql = (sql || ta.value).trim();
     if (!sql) return;
     ta.value = sql;
-    st.textContent = 'Working…';
+    const gen = nav;
+    if (deep) st.textContent = 'Working…';
+    else engineNote(st);              // a cold start deserves a running account
     try {
       // Warm the engine before starting the clock. The first call pays for
       // downloading and instantiating DuckDB, which is not what the reader is
       // being told the query cost.
       await getDeep();
+      if (gen !== nav) return;
       const t0 = performance.now();
       const { rows, cols } = await query(sql);
+      if (gen !== nav) return;
       const ms = Math.round(performance.now() - t0);
       st.innerHTML = rows.length
         ? `<b>${n(rows.length)}</b> ${rows.length === 1 ? 'row' : 'rows'} · answered in ${ms} ms, in your browser`
@@ -1440,6 +1831,7 @@ function wireAsk() {
       out.innerHTML = rows.length ? renderResult(rows, cols)
         : `<div class="empty">Nothing in the record matches that.</div>`;
     } catch (e) {
+      if (gen !== nav) return;
       st.textContent = '';
       out.innerHTML = `<div class="notice warn"><b>That didn't run.</b> ${esc(e.message)}</div>`;
       el('adv').open = true;   // the SQL is where the problem is, so show it
@@ -1456,10 +1848,21 @@ function wireAsk() {
   });
 
   el('run').onclick = () => run();
+  const flash = (b, text, back) => {
+    b.textContent = text; setTimeout(() => { b.textContent = back; }, 1800);
+  };
   el('copy-sql').onclick = async () => {
-    try { await navigator.clipboard.writeText(ta.value); el('copy-sql').textContent = 'Copied'; }
-    catch { el('copy-sql').textContent = 'Select and copy'; }
-    setTimeout(() => { el('copy-sql').textContent = 'Copy'; }, 1600);
+    try { await navigator.clipboard.writeText(ta.value); flash(el('copy-sql'), 'Copied', 'Copy SQL'); }
+    catch { flash(el('copy-sql'), 'Select and copy', 'Copy SQL'); }
+  };
+  el('link-sql').onclick = async () => {
+    // Any query is a shareable address — that is how a signal hands its
+    // evidence over, and it should work the other way too.
+    const url = new URL(location.href);
+    url.hash = '#/ask?sql=' + encodeURIComponent(ta.value.trim());
+    try { await navigator.clipboard.writeText(url.href); flash(el('link-sql'), 'Link copied', 'Copy link to this query'); }
+    catch { history.replaceState(null, '', url.href);
+            flash(el('link-sql'), 'Link is in the address bar', 'Copy link to this query'); }
   };
   ta.addEventListener('keydown', e => {
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); run(); }
@@ -1471,7 +1874,9 @@ function wireAsk() {
   else runComposed();
 }
 
-/** Result rendering picks a chart when the shape is label + one number. */
+/** Result rendering picks a chart when the shape is label + one number. The
+ *  chart keeps the query's own ordering; the table below it can be re-sorted,
+ *  filtered and exported like any other on the site. */
 function renderResult(rows, cols) {
   let chartHtml = '';
   if (cols.length >= 2 && rows.length > 1 && rows.length <= 60) {
@@ -1482,31 +1887,79 @@ function renderResult(rows, cols) {
         chart(data, { key: 'k', val: 'v', labelEvery: Math.ceil(data.length / 14) })}</div>`;
     }
   }
-  const cells = rows.slice(0, 400).map(r => `<tr>${cols.map(c => {
-    const v = r[c];
-    if (v == null) return `<td class="faint">—</td>`;
-    // Only reformat genuine temporal values. A strftime() result is already
-    // a formatted string and must be left exactly as the query produced it.
-    if (v instanceof Date || (looksLikeTime(c) && typeof v !== 'string'))
-      return `<td class="mono">${esc(ts(v))}</td>`;
-    const num = typeof v === 'number' || typeof v === 'bigint';
-    return `<td class="${num ? 'num' : ''}">${num ? n(v) : esc(String(v).slice(0, 60))}</td>`;
-  }).join('')}</tr>`).join('');
-  return chartHtml + `<div class="tbl-wrap"><table><thead><tr>${
-    cols.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${cells}</tbody></table></div>` +
-    (rows.length > 400 ? `<div class="status">Showing 400 of ${n(rows.length)} rows.</div>` : '');
+  const isNum = c => rows.some(r => typeof r[c] === 'number' || typeof r[c] === 'bigint');
+  // Only reformat genuine temporal values. A strftime() result is already a
+  // formatted string and must be left exactly as the query produced it.
+  const isTime = (c, v) => v instanceof Date || (looksLikeTime(c) && typeof v !== 'string');
+  const tcols = cols.map(c => ({
+    k: c, h: c, num: isNum(c),
+    csvValue: r => (r[c] != null && isTime(c, r[c])) ? ts(r[c]) : r[c],
+    render: r => {
+      const v = r[c];
+      if (v == null) return `<span class="faint">—</span>`;
+      if (isTime(c, v)) return `<span class="mono">${esc(ts(v))}</span>`;
+      return (typeof v === 'number' || typeof v === 'bigint')
+        ? n(v) : esc(String(v).slice(0, 80));
+    },
+  }));
+  // The SQL said what order it wanted, so a fresh result arrives in that order.
+  delete tblState.ask;
+  return chartHtml + table(rows, tcols,
+    { id: 'ask', max: 200, filter: 'Filter these rows…', csvName: 'ovrhead-query' });
 }
 
 /* ── Data & Method ───────────────────────────────────────────────────── */
+const bytes = b =>
+  b >= 1048576 ? `${(b / 1048576).toFixed(1)} MB`
+  : b >= 1024  ? `${Math.round(b / 1024)} KB`
+  : `${b} B`;
+
+/** Columns of the `flights` view, as the Ask page and the published SQL see
+ *  it. Derived columns are marked, because they are our reading of the row
+ *  rather than something an aircraft transmitted. */
+const COLUMN_REF = [
+  ['hex',                'text',      'raw',     'ICAO 24-bit transponder address. The only truly stable identifier here.'],
+  ['callsign',           'text',      'raw',     'Flight identifier as transmitted. Often absent; never invent one.'],
+  ['first_seen',         'integer',   'raw',     'Unix seconds at first contact.'],
+  ['last_seen',          'integer',   'raw',     'Unix seconds at last contact.'],
+  ['seen_at',            'timestamp', 'derived', 'first_seen as a UTC timestamp. Use this for strftime().'],
+  ['duration_sec',       'integer',   'raw',     'Seconds the aircraft stayed in range — not flight time.'],
+  ['n_obs',              'integer',   'raw',     'Number of 15-second snapshots the session was built from.'],
+  ['first_lat, first_lon', 'double',  'raw',     'Position at first contact. Missing on ~13% of rows.'],
+  ['last_lat, last_lon', 'double',    'raw',     'Position at last contact.'],
+  ['min_alt, max_alt',   'integer',   'raw',     'Always NULL so far — the collector read the wrong field names.'],
+  ['max_gs',             'double',    'raw',     'Ground speed. Also NULL for the same reason.'],
+  ['near_first_airport', 'text',      'raw',     'Nearest airport to first contact. At cruise this describes us, not the flight.'],
+  ['near_last_airport',  'text',      'raw',     'Nearest airport to last contact. Same caveat.'],
+  ['reg',                'text',      'raw',     'Civil registration, from the aircraft database.'],
+  ['ac_type',            'text',      'raw',     'ICAO type code, e.g. B78X.'],
+  ['ac_desc',            'text',      'raw',     'Human-readable type, e.g. BOEING 787-10.'],
+  ['airline_prefix',     'text',      'raw',     'First three letters of the callsign — the operator’s ICAO code.'],
+  ['airline',            'text',      'raw',     'Operator name where the prefix is in our airline table.'],
+  ['reg_country',        'text',      'derived', 'ISO code of the state that allocated the transponder address.'],
+  ['reg_country_name',   'text',      'derived', 'That state’s name. Where it is registered — not where it flew from.'],
+  ['reg_region',         'text',      'derived', 'Economic region, e.g. Nordics, DACH, East Asia.'],
+  ['reg_continent',      'text',      'derived', 'Continent of registration.'],
+  ['body',               'text',      'derived', "'widebody' or 'narrowbody', inferred from the type code."],
+  ['is_cargo',           'boolean',   'derived', 'True when the operator is an all-cargo carrier. Attributed by operator, never by airframe.'],
+];
+
 function viewData() {
-  const files = [...(S._manifest?.flights || []), ...(S._manifest?.snapshots || []),
-                 ...(S._manifest?.enrichment || [])];
+  const man = S._manifest || {};
+  const groups = [
+    ['Flights', 'One row per aircraft visit. This is the table the site queries.', man.flights],
+    ['Snapshots', 'The raw 15-second observations the flights were reconstructed from.', man.snapshots],
+    ['Enrichment', 'Reference tables: aircraft registry, airline codes, airports.', man.enrichment],
+  ].filter(g => g[2]?.length);
+  const total = groups.reduce((a, g) => a + g[2].reduce((b, f) => b + (f.bytes || 0), 0), 0);
+  const newest = (man.flights || []).slice(-1)[0]?.name || 'flights_2026-08.parquet';
+
   return `
   <header class="page-head">
     <div class="crumbs"><a href="#/">Signals</a> <em>/</em> Data</div>
     <h1>We don't ask you to trust us</h1>
     <p class="lede">Every number here comes from these files — plain Parquet, served as
-      static assets. Take them.</p>
+      static assets, ${bytes(total)} in total. Take them.</p>
   </header>
 
   <section>
@@ -1526,15 +1979,42 @@ function viewData() {
   <section>
     <div class="sec-head"><div><div class="eyebrow">Download</div><h2>The files</h2></div>
       <p class="sec-note">Parquet opens directly in DuckDB, pandas, Polars and R.</p></div>
-    <div class="dl">
-      ${files.map(f => `<div class="dl-row">
+    ${groups.map(([name, note, list]) => `
+      <h3 style="margin:22px 0 4px">${esc(name)}</h3>
+      <p class="sec-note" style="margin-bottom:8px">${esc(note)}</p>
+      <div class="dl">${list.map(f => `<div class="dl-row">
         <a href="${esc(BASE + f.path.replace(/^data\/adsb\//, ''))}" class="code">${esc(f.name)}</a>
-        <span class="meta">${(f.bytes / 1024).toFixed(0)} KB</span></div>`).join('')}
+        <span class="meta">${bytes(f.bytes || 0)}</span></div>`).join('')}</div>`).join('')}
+    <h3 style="margin:22px 0 4px">Derived</h3>
+    <p class="sec-note" style="margin-bottom:8px">What this page paints from before the
+      Parquet is loaded.</p>
+    <div class="dl">
       <div class="dl-row"><a href="${esc(BASE)}summary.json" class="code">summary.json</a>
         <span class="meta">precomputed rollups &amp; signals</span></div>
       <div class="dl-row"><a href="${esc(BASE)}taxonomy.json" class="code">taxonomy.json</a>
         <span class="meta">ICAO address blocks → country → region</span></div>
+      <div class="dl-row"><a href="${esc(BASE)}manifest.json" class="code">manifest.json</a>
+        <span class="meta">the file list this page is built from</span></div>
     </div>
+  </section>
+
+  <section id="columns">
+    <div class="sec-head"><div><div class="eyebrow">Reference</div>
+      <h2>Columns of the <span class="code">flights</span> view</h2></div>
+      <p class="sec-note">What the Ask page and every published query see.</p></div>
+    ${table(COLUMN_REF.map(([name, type, kind, note]) => ({ name, type, kind, note })), [
+      { k: 'name', h: 'Column', render: r => `<span class="code">${esc(r.name)}</span>` },
+      { k: 'type', h: 'Type', render: r => `<span class="dim">${esc(r.type)}</span>` },
+      { k: 'kind', h: 'Origin', render: r => r.kind === 'raw'
+          ? '<span class="dim">as received</span>'
+          : '<span class="conf" data-c="moderate">derived</span>' },
+      { k: 'note', h: 'What it is' },
+    ], { id: 'cols', max: 40, csv: false })}
+    <p class="sec-note" style="margin-top:14px;max-width:var(--measure)">
+      Derived columns are our reading of a row, not something an aircraft transmitted.
+      Each one is defined in the view this page builds, which you can read in
+      <a href="https://github.com/cevendrell/flight-macro/blob/main/index.html"
+         rel="noopener" style="color:var(--accent)">index.html</a>.</p>
   </section>
 
   <section>
@@ -1543,7 +2023,7 @@ function viewData() {
 INSTALL httpfs; LOAD httpfs;
 
 SELECT ac_type, ac_desc, COUNT(*) AS flights
-FROM read_parquet('${BASE}flights/flights_2026-08.parquet')
+FROM read_parquet('${BASE}flights/${esc(newest)}')
 GROUP BY 1, 2
 ORDER BY 3 DESC;</div>
   </section>`;
@@ -1605,7 +2085,276 @@ function viewMethod() {
     <h3>What we're blind to</h3>
     <p>We see one point in Jutland. Scandinavia–Europe and Europe–Asia routings are
     over-represented; anything routed around Denmark is invisible. Absence here is not
-    absence in the sky.</p>
+    absence in the sky. Rather than ask you to take that on trust, the figure below is
+    the receiver's actual footprint, drawn from where each aircraft was standing when
+    we first heard it.</p>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <div><div class="eyebrow">Coverage</div><h2>What this antenna can hear</h2></div>
+      <p class="sec-note">Every first contact plotted by true bearing and ground
+        distance from the receiver.</p>
+    </div>
+    <div id="cov-stats">
+      <div class="engine-rest">
+        <span>Drawn from the full flight record — a few megabytes of query engine,
+          fetched only if you want the figure.</span>
+        <button class="btn primary" id="cov-go">Draw it</button>
+      </div>
+    </div>
+    <div id="cov-stage">
+      <canvas id="cov-canvas"></canvas>
+    </div>
+    <div class="globe-legend">
+      <span><i class="home"></i>The receiver</span>
+      <span><i class="dot"></i>First contact with an aircraft</span>
+      <span><i class="env"></i>Reception envelope — 95th percentile range per bearing</span>
+    </div>
+    <p class="sec-note" id="cov-note" style="margin:16px auto 0;max-width:var(--measure)">
+      The shape is set by terrain, antenna siting and how high the aircraft was flying,
+      not by where the traffic is. A direction that reaches less far here is a direction
+      we are deaf in — not a quiet one.</p>
+  </section>`;
+}
+
+/* ── Coverage plot ───────────────────────────────────────────────────────
+   Azimuthal equidistant, centred on the receiver: distance from the middle of
+   the figure is true ground distance in every direction, so the range rings
+   are real circles and the envelope is the honest shape of what we hear.
+   The site's own coastline file is far too coarse at this scale to draw under
+   it, and a wrong coastline would be worse than none. */
+let covStop = null;
+
+function initCoverage() {
+  // The plot needs the full flight record, and the Method page is mostly prose.
+  // Wait until the figure is actually approaching the viewport before spending
+  // several megabytes of query engine on somebody who came here to read — but
+  // leave a button as well, so it is never a figure that mysteriously refuses
+  // to appear.
+  const stage = el('cov-stage');
+  if (!stage) return;
+  let started = false;
+  const go = () => { if (!started) { started = true; drawCoverage(); } };
+  el('cov-go').onclick = go;
+  if (deep) return go();                       // engine already warm — no cost to pay
+  if (!('IntersectionObserver' in window)) return;
+  const io = new IntersectionObserver(entries => {
+    if (!entries.some(e => e.isIntersecting)) return;
+    io.disconnect();
+    go();
+  }, { rootMargin: '300px' });
+  io.observe(stage);
+  covStop = () => { io.disconnect(); covStop = null; };
+}
+
+async function drawCoverage() {
+  const cv = el('cov-canvas'), stats = el('cov-stats');
+  if (!cv) return;
+  const gen = nav;
+  engineNote(stats);
+  let rows;
+  try {
+    await getDeep();
+    if (gen !== nav) return;
+    ({ rows } = await query(`
+      SELECT first_lat AS lat, first_lon AS lon
+      FROM flights WHERE first_lat IS NOT NULL AND first_lon IS NOT NULL`));
+  } catch (e) {
+    if (gen !== nav) return;
+    stats.innerHTML = `<div class="notice warn">Could not read positions: ${esc(e.message)}</div>`;
+    return;
+  }
+  if (gen !== nav || !cv.isConnected) return;
+
+  const HOME = { lat: S.origin?.lat ?? 56.16, lng: S.origin?.lng ?? 10.20 };
+  const rad = d => d * Math.PI / 180;
+  const φ0 = rad(HOME.lat);
+  const pts = [];
+  for (const r of rows) {
+    const φ = rad(Number(r.lat)), Δλ = rad(Number(r.lon) - HOME.lng);
+    const cosd = Math.sin(φ0) * Math.sin(φ) + Math.cos(φ0) * Math.cos(φ) * Math.cos(Δλ);
+    const km = Math.acos(Math.max(-1, Math.min(1, cosd))) * 6371;
+    const brg = Math.atan2(Math.sin(Δλ) * Math.cos(φ),
+                           Math.cos(φ0) * Math.sin(φ) - Math.sin(φ0) * Math.cos(φ) * Math.cos(Δλ));
+    if (Number.isFinite(km)) pts.push({ km, brg });
+  }
+  if (!pts.length) { stats.innerHTML = ''; return; }
+
+  const sorted = [...pts].map(p => p.km).sort((a, b) => a - b);
+  const at = f => sorted[Math.min(sorted.length - 1, Math.floor(f * sorted.length))];
+  const p50 = at(.5), p95 = at(.95), far = sorted[sorted.length - 1];
+
+  // Envelope: the 95th percentile range in each 5° sector. A single freak
+  // contact should not inflate the shape, and the median would understate it.
+  const SECTORS = 72;
+  const buckets = Array.from({ length: SECTORS }, () => []);
+  for (const p of pts) {
+    let i = Math.floor(((p.brg + 2 * Math.PI) % (2 * Math.PI)) / (2 * Math.PI) * SECTORS);
+    buckets[i % SECTORS].push(p.km);
+  }
+  const env = buckets.map(b => {
+    if (b.length < 4) return null;         // too few contacts to claim a reach
+    b.sort((x, y) => x - y);
+    return b[Math.floor(0.95 * b.length)];
+  });
+
+  const scale = Math.ceil(Math.max(p95 * 1.25, 120) / 50) * 50;   // outer ring, km
+  const rings = [scale / 4, scale / 2, scale * 3 / 4, scale].map(v => Math.round(v));
+
+  const km = v => `${n(Math.round(v))}<span class="u">km</span>`;
+  stats.innerHTML = readout([
+    { v: km(p50), txt: false, l: 'Median first-contact range' },
+    { v: km(p95), txt: false, l: '95% of contacts within' },
+    { v: km(far), txt: false, l: 'Furthest contact on record' },
+    { v: n(pts.length), l: 'Positions plotted',
+      s: `${(pts.length / S.totals.flights * 100).toFixed(0)}% of flights report one` },
+  ]);
+
+  const beyond = pts.filter(p => p.km > scale).length;
+  const note = el('cov-note');
+  if (note && beyond) note.insertAdjacentHTML('afterbegin',
+    `The frame stops at ${scale} km, which leaves ${n(beyond)} more distant
+     contact${beyond === 1 ? '' : 's'} (${(beyond / pts.length * 100).toFixed(1)}%)
+     outside it — the furthest at ${n(Math.round(far))} km. `);
+
+  const ctx = cv.getContext('2d');
+  const css = getComputedStyle(document.documentElement);
+  const tok = k => css.getPropertyValue(k).trim();
+  let R = 0, cx = 0, cy = 0;
+
+  function draw() {
+    const w = cv.clientWidth, h = cv.clientHeight;
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    if (cv.width !== w * dpr || cv.height !== h * dpr) {
+      cv.width = w * dpr; cv.height = h * dpr;
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    R = Math.min(w, h) / 2 - 26; cx = w / 2; cy = h / 2;
+    const xy = (km, brg) => [cx + R * (km / scale) * Math.sin(brg),
+                             cy - R * (km / scale) * Math.cos(brg)];
+
+    ctx.font = `500 10px ${tok('--mono') || 'monospace'}`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+
+    for (const km of rings) {
+      const r = R * (km / scale);
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.strokeStyle = tok('--rule-2'); ctx.lineWidth = 1;
+      ctx.setLineDash(km === scale ? [] : [2, 4]); ctx.stroke(); ctx.setLineDash([]);
+      // Sat on the vertical, these collided with the N spoke and its label.
+      const [lx, ly] = xy(km, rad(22));
+      const label = `${km} km`, tw = ctx.measureText(label).width + 8;
+      ctx.fillStyle = tok('--bg'); ctx.fillRect(lx - tw / 2, ly - 6, tw, 12);
+      ctx.fillStyle = tok('--mute'); ctx.fillText(label, lx, ly);
+    }
+    for (let b = 0; b < 360; b += 45) {
+      const [x, y] = xy(scale, rad(b));
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(x, y);
+      ctx.strokeStyle = tok('--rule'); ctx.lineWidth = 1; ctx.stroke();
+    }
+    ctx.fillStyle = tok('--mute');
+    for (const [b, t] of [[0, 'N'], [90, 'E'], [180, 'S'], [270, 'W']]) {
+      const [x, y] = xy(scale * 1.09, rad(b));
+      ctx.fillText(t, x, y);
+    }
+
+    ctx.fillStyle = tok('--accent');
+    ctx.globalAlpha = pts.length > 4000 ? .13 : .22;
+    for (const p of pts) {
+      if (p.km > scale) continue;
+      const [x, y] = xy(p.km, p.brg);
+      ctx.fillRect(x - .9, y - .9, 1.8, 1.8);
+    }
+    ctx.globalAlpha = 1;
+
+    ctx.beginPath();
+    let started = false;
+    for (let i = 0; i <= SECTORS; i++) {
+      const v = env[i % SECTORS];
+      if (v == null) { started = false; continue; }
+      const [x, y] = xy(Math.min(v, scale), (i % SECTORS) / SECTORS * 2 * Math.PI);
+      started ? ctx.lineTo(x, y) : (ctx.moveTo(x, y), started = true);
+    }
+    ctx.strokeStyle = tok('--ink');
+    ctx.lineWidth = 1.6; ctx.stroke();
+
+    ctx.beginPath(); ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+    ctx.fillStyle = tok('--fall'); ctx.fill();
+  }
+
+  const ro = new ResizeObserver(draw);
+  ro.observe(cv);
+  draw();
+  covStop = () => { ro.disconnect(); covStop = null; };
+}
+
+function viewAbout() {
+  const t = S.totals, w = S.window;
+  return `
+  <header class="page-head">
+    <div class="crumbs"><a href="#/">Signals</a> <em>/</em> About</div>
+    <h1>One antenna, and everything it hears.</h1>
+    <p class="lede">OvrHead is a small observatory in Aarhus, Denmark. It listens to the
+      transponders of passing aircraft, keeps every observation, and publishes the whole
+      record — not a summary of it.</p>
+  </header>
+
+  <section>
+    ${readout([
+      { v: n(t.flights), l: 'Flights on record', s: `${w.days_observed} days` },
+      { v: n(t.countries), l: 'Registration countries' },
+      { v: '1', l: 'Receivers', s: '56.16°N, 10.20°E' },
+      { v: '0', l: 'Servers', s: 'static files only' },
+    ])}
+  </section>
+
+  <section class="prose">
+    <h3>Why bother</h3>
+    <p>Aviation statistics arrive late, aggregated, and already interpreted. A receiver on a
+    roof arrives instantly, ungrouped, and interpreted by nobody. That is a worse dataset in
+    almost every way except the one that matters here: you can check it. Every figure on this
+    site traces back to a row in a file you can download, and every claim comes with the
+    query that produced it.</p>
+
+    <h3>What it is not</h3>
+    <p>Not a flight tracker — it will not tell you where a particular aeroplane is. Not a
+    news source. And not a measure of the economy: aircraft counts are an input to that kind
+    of question, never the answer. Where a reading looks like a conclusion, the
+    <a href="#/method">method page</a> says what it actually rests on.</p>
+
+    <h3>How it works</h3>
+    <p>A Raspberry Pi with a software-defined radio listens on 1090 MHz. A poller snapshots
+    everything visible every fifteen seconds. Overnight those snapshots are stitched into
+    flight sessions, enriched with registration and aircraft type, and committed to a public
+    repository. The site is static HTML on GitHub Pages; when you ask it something, it loads
+    DuckDB into your browser and runs the query there. There is no backend, no account, and
+    no analytics — nothing you do here is recorded anywhere.</p>
+
+    <h3>Honesty rules</h3>
+    <ul>
+      <li>Partial days are hatched in every chart and excluded from every comparison.</li>
+      <li>Nothing is called a trend until the record is long enough to support one. Right
+      now nothing is.</li>
+      <li>Missing values are shown as missing. An unreadable callsign is never a zero.</li>
+      <li>Every signal carries what it does <em>not</em> show, alongside what it might.</li>
+    </ul>
+
+    <h3>Who made it</h3>
+    <p>Built by <a href="https://cevendrell.com" rel="noopener">Carlos Ebrahim Vendrell</a>.
+    The source, the pipeline and the whole record live at
+    <a href="https://github.com/cevendrell/flight-macro" rel="noopener">github.com/cevendrell/flight-macro</a>.
+    Set in Archivo and IBM Plex Mono; the palette is shared with LayOvr.</p>
+  </section>
+
+  <section>
+    <div class="sec-head"><div><div class="eyebrow">Next</div><h2>Where to go from here</h2></div></div>
+    <div class="chips">
+      <a class="chip" href="#/method">What the record can and cannot show →</a>
+      <a class="chip" href="#/data">Take the files →</a>
+      <a class="chip" href="#/ask">Ask it something →</a>
+    </div>
   </section>`;
 }
 
@@ -1625,63 +2374,153 @@ function buildIndex() {
   return ix;
 }
 function wireSearch(ix) {
-  const box = el('search'), out = el('results');
+  const box = el('search'), out = el('results'), wrap = el('search-wrap');
   let cursor = -1, hits = [];
-  const close = () => { out.classList.remove('open'); cursor = -1; };
+  const close = () => {
+    out.classList.remove('open'); cursor = -1;
+    box.setAttribute('aria-expanded', 'false');
+    box.removeAttribute('aria-activedescendant');
+  };
+  const go = h => { location.hash = h; box.value = ''; wrap.classList.remove('filled'); close(); };
+  const mark = () => out.querySelectorAll('a').forEach((a, i) => {
+    a.classList.toggle('cursor', i === cursor);
+    a.setAttribute('aria-selected', String(i === cursor));
+  });
+
   box.addEventListener('input', () => {
     const v = box.value.trim().toLowerCase();
+    wrap.classList.toggle('filled', box.value.length > 0);
     if (v.length < 2) return close();
     hits = ix.filter(x => x.s.includes(v))
              .sort((a, b) => (b.s.startsWith(v) - a.s.startsWith(v)) || b.n - a.n)
              .slice(0, 12);
     out.innerHTML = hits.length
-      ? hits.map((x, i) => `<a href="${x.h}" data-i="${i}">
+      ? hits.map((x, i) => `<a href="${x.h}" data-i="${i}" id="hit-${i}"
+            role="option" aria-selected="false">
           <span>${esc(x.t)}</span>
           <span class="k">${esc(x.k)} · ${n(x.n)}</span></a>`).join('')
-      : `<a><span class="dim">Nothing matches “${esc(box.value)}”.</span></a>`;
+      : `<a role="option" aria-selected="false"><span class="dim">Nothing matches “${esc(box.value)}”.</span></a>`;
     out.classList.add('open');
+    box.setAttribute('aria-expanded', 'true');
   });
+
   box.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { close(); box.blur(); }
+    if (e.key === 'Escape') {
+      if (out.classList.contains('open')) { close(); }
+      else { box.value = ''; wrap.classList.remove('filled'); box.blur(); }
+      return;
+    }
     if (!hits.length) return;
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
       cursor = (cursor + (e.key === 'ArrowDown' ? 1 : -1) + hits.length) % hits.length;
-      out.querySelectorAll('a').forEach((a, i) => a.classList.toggle('cursor', i === cursor));
+      mark();
+      box.setAttribute('aria-activedescendant', 'hit-' + cursor);
     }
-    if (e.key === 'Enter' && cursor >= 0) { location.hash = hits[cursor].h; box.value = ''; close(); }
+    // Enter with nothing highlighted takes the best match, which is what
+    // typing three letters and hitting return is asking for.
+    if (e.key === 'Enter') { e.preventDefault(); go(hits[Math.max(cursor, 0)].h); }
   });
-  out.addEventListener('click', () => { box.value = ''; close(); });
+
+  out.addEventListener('click', () => { box.value = ''; wrap.classList.remove('filled'); close(); });
   document.addEventListener('click', e => { if (!e.target.closest('#search-wrap')) close(); });
+
+  // "/" is the convention readers of dense pages already have their hands on;
+  // ⌘K is the one everyone else has. Both, and neither steals a keystroke that
+  // was going into a field.
+  document.addEventListener('keydown', e => {
+    const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable;
+    if (e.key === '/' && !typing && !e.metaKey && !e.ctrlKey) { e.preventDefault(); box.focus(); box.select(); }
+    if (e.key.toLowerCase() === 'k' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); box.focus(); box.select(); }
+  });
 }
 
-/* ── Router ──────────────────────────────────────────────────────────── */
+/* ── Theme ───────────────────────────────────────────────────────────────
+   Three states. "System" is the default and is a real choice, not the absence
+   of one, so it gets its own button and its own stored value. */
+function wireTheme() {
+  const host = el('theme');
+  const read = () => { try { return localStorage.getItem('ovrhead.theme') || 'system'; }
+                       catch { return 'system'; } };
+  const paint = mode => {
+    if (mode === 'system') delete document.documentElement.dataset.theme;
+    else document.documentElement.dataset.theme = mode;
+    host.querySelectorAll('button').forEach(b =>
+      b.setAttribute('aria-pressed', String(b.dataset.themeSet === mode)));
+  };
+  host.addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    const mode = b.dataset.themeSet;
+    try { mode === 'system' ? localStorage.removeItem('ovrhead.theme')
+                            : localStorage.setItem('ovrhead.theme', mode); } catch {}
+    paint(mode);
+  });
+  paint(read());
+}
+
+/* ── Router ────────────────────────────────────────────────────────────
+   `nav` is bumped on every navigation. Anything that awaits — the query
+   engine, a fetch — compares against it afterwards so a slow page cannot
+   paint over the one the reader has already moved on to. */
+let nav = 0;
+
+function resolve(p) {
+  if (!p.length)                 return { html: viewSignals(),  title: null };
+  if (p[0] === 's')              return { html: viewSignals(p[1]), sig: p[1],
+                                          title: S.signals.find(x => x.id === p[1])?.title || 'Signal' };
+  if (p[0] === 'globe')          return { html: viewGlobe(),    title: 'Globe' };
+  if (p[0] === 'explore')        return { html: viewExplore(),  title: 'Explore' };
+  if (p[0] === 'ask')            return { html: viewAsk(),      title: 'Ask the data' };
+  if (p[0] === 'data')           return { html: viewData(),     title: 'Data' };
+  if (p[0] === 'method')         return { html: viewMethod(),   title: 'Method' };
+  if (p[0] === 'about')          return { html: viewAbout(),    title: 'About' };
+  if (p[0] === 'place')          return { html: viewPlace(p[1]),
+                                          title: S.countries.find(x => x.key === p[1])?.name || 'Not found' };
+  if (p[0] === 'region' || p[0] === 'continent') {
+    const name = decodeURIComponent(p[1] || '');
+    const list = p[0] === 'region' ? S.regions : S.continents;
+    return { html: viewGroup(p[0], name),
+             title: list.some(x => x.key === name) ? name : 'Not found' };
+  }
+  if (p[0] === 'operator')       return { html: viewOperator(p[1]),
+                                          title: S.operators.find(x => x.key === p[1])
+                                                 ? (S.operators.find(x => x.key === p[1]).name || p[1])
+                                                 : 'Not found' };
+  if (p[0] === 'type')           return { html: viewType(p[1]),
+                                          title: S.types.find(x => x.key === p[1])
+                                                 ? (S.types.find(x => x.key === p[1]).desc || p[1])
+                                                 : 'Not found' };
+  return { html: notFound('That page does not exist.'), title: 'Not found' };
+}
+
 function route() {
-  const raw = (location.hash.replace(/^#/, '') || '/').split('?')[0];
+  const hash = location.hash.replace(/^#/, '');
+  // A bare anchor (#main from the skip link) is not a route. Leave the page be.
+  if (hash && !hash.startsWith('/')) return;
+
+  nav++;
+  const raw = (hash || '/').split('?')[0];
   const p = raw.split('/').filter(Boolean);
   const view = el('view');
   if (globeStop) globeStop();   // stop the previous page's animation loop
-  let html;
+  if (covStop) covStop();
+  // Sort preference is worth carrying between pages; a filter and an expanded
+  // row count are about the page you were on, so they reset with it.
+  Object.values(tblState).forEach(s => { s.filter = ''; s.max = null; });
+
+  let r;
   try {
-    if (!p.length)                     html = viewSignals();
-    else if (p[0] === 'globe')         html = viewGlobe();
-    else if (p[0] === 'explore')       html = viewExplore();
-    else if (p[0] === 'ask')           html = viewAsk();
-    else if (p[0] === 'data')          html = viewData();
-    else if (p[0] === 'method')        html = viewMethod();
-    else if (p[0] === 'place')         html = viewPlace(p[1]);
-    else if (p[0] === 'region')        html = viewGroup('region', decodeURIComponent(p[1] || ''));
-    else if (p[0] === 'continent')     html = viewGroup('continent', decodeURIComponent(p[1] || ''));
-    else if (p[0] === 'operator')      html = viewOperator(p[1]);
-    else if (p[0] === 'type')          html = viewType(p[1]);
-    else                               html = notFound('That page does not exist.');
+    r = resolve(p);
   } catch (e) {
     console.error(e);
-    html = notFound(`Something broke rendering this page: ${esc(e.message)}`);
+    r = { html: notFound(`Something broke rendering this page: ${esc(e.message)}`),
+          title: 'Error' };
   }
-  view.innerHTML = html;
+  view.innerHTML = r.html;
+  document.title = r.title ? `${r.title} · OvrHead` : 'OvrHead — an observatory over Aarhus';
 
-  const base = '/' + (p[0] || '');
+  const base = '/' + (p[0] === 's' ? '' : p[0] || '');
   document.querySelectorAll('#nav a').forEach(a =>
     a.classList.toggle('on', a.dataset.r === base));
 
@@ -1690,21 +2529,38 @@ function route() {
     const open = s.classList.toggle('open');
     b.setAttribute('aria-expanded', String(open));
   });
+  view.querySelectorAll('[data-permalink]').forEach(b => b.onclick = async () => {
+    const url = new URL(location.href);
+    url.hash = '#/s/' + b.dataset.permalink;
+    try { await navigator.clipboard.writeText(url.href); b.textContent = 'Link copied'; }
+    catch { location.hash = url.hash; b.textContent = 'Link is in the address bar'; }
+    setTimeout(() => { b.textContent = 'Copy link'; }, 1800);
+  });
 
-  if (p[0] === 'ask')   wireAsk();
-  if (p[0] === 'globe') initGlobe();
+  if (p[0] === 'ask')    wireAsk();
+  if (p[0] === 'globe')  initGlobe();
+  if (p[0] === 'method') initCoverage();
   if (el('lazy')) fillLazy();
-  window.scrollTo(0, 0);
+
+  const target = r.sig && el(r.sig);
+  if (target) target.scrollIntoView({ block: 'center',
+    behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  else window.scrollTo(0, 0);
 }
 
 /* ── Boot ────────────────────────────────────────────────────────────── */
+const grab = (name, required = true) =>
+  fetch(BASE + name).then(r => {
+    if (!r.ok) throw new Error(`${name} — ${r.status} ${r.statusText}`);
+    return r.json();
+  }).catch(e => { if (required) throw e; return null; });
+
 (async function main() {
+  wireTheme();
   try {
     boot('Fetching the record');
     const [summary, tax, manifest] = await Promise.all([
-      fetch(BASE + 'summary.json').then(r => { if (!r.ok) throw new Error(`summary.json — ${r.status}`); return r.json(); }),
-      fetch(BASE + 'taxonomy.json').then(r => r.json()),
-      fetch(BASE + 'manifest.json').then(r => r.json()).catch(() => null),
+      grab('summary.json'), grab('taxonomy.json'), grab('manifest.json', false),
     ]);
     S = summary; TAX = tax; S._manifest = manifest;
 
@@ -1717,6 +2573,14 @@ function route() {
     stampEl.innerHTML = `<span class="dot"></span>Updated <b>${ago}</b>`;
     stampEl.title = `Last data update ${S.generated_at.replace('T', ' ')} UTC · `
                   + `${n(S.totals.flights)} flights over ${S.window.days_observed} days`;
+    el('foot-stamp').textContent =
+      `${n(S.totals.flights)} flights · record to ${S.generated_at.slice(0, 10)}`;
+
+    // The skip link is an anchor, not a route, so it moves focus itself rather
+    // than letting the hash router try to make a page out of it.
+    document.querySelector('.skip').addEventListener('click', e => {
+      e.preventDefault(); el('main').focus();
+    });
 
     wireSearch(buildIndex());
     addEventListener('hashchange', route);
@@ -1725,9 +2589,16 @@ function route() {
   } catch (e) {
     console.error(e);
     el('boot').innerHTML =
-      `<div class="boot-in" style="max-width:440px;padding:26px">
+      `<div class="boot-in" style="max-width:460px;padding:26px;text-align:left">
          <div class="boot-t" style="color:var(--fall);margin-bottom:12px">The record would not load</div>
          <div style="font-size:.85rem;color:var(--ink-2);line-height:1.6">${esc(e.message)}</div>
+         <div style="font-size:.8rem;color:var(--mute);line-height:1.6;margin-top:14px">
+           The files are static, so this is usually a network problem rather than
+           a broken site. <a href="" style="color:var(--accent)">Try again</a>, or take
+           the data directly from
+           <a href="https://github.com/cevendrell/flight-macro/tree/main/data/adsb"
+              style="color:var(--accent)" rel="noopener">the repository</a>.
+         </div>
        </div>`;
   }
 })();

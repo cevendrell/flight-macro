@@ -3,13 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Methodology · OvrHead</title>
+<title>Not found · OvrHead</title>
 <meta name="robots" content="noindex">
-<!-- A stub. OvrHead was rebuilt around the Aarhus receiver and the methodology moved
-     into the single-page site, next to the data it describes. This file stays
-     so links made before the rebuild keep working. -->
-<link rel="canonical" href="../../index.html">
-<meta http-equiv="refresh" content="0; url=../../index.html#/method">
 <script>
   // The app's stored preference, so a side page never contradicts the theme
   // the reader chose on the site proper.
@@ -21,15 +16,16 @@
 <style>
   :root { color-scheme: light dark; }
   body { margin:0; display:grid; place-items:center; min-height:100vh;
-         background:#f5f3f0; color:#05164d; padding:24px; text-align:center;
+         background:#f5f3f0; color:#05164d; padding:24px;
          font:400 15px/1.65 'Archivo',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; }
-  main { max-width:46ch; }
+  main { max-width:48ch; }
   p { color:#777586; margin:0 0 14px; }
   a { color:#8a5a33; }
   code { font-family:'IBM Plex Mono',ui-monospace,Menlo,monospace; font-size:.9em; }
   .mark { font-family:'IBM Plex Mono',ui-monospace,Menlo,monospace; font-size:.72rem;
           letter-spacing:.24em; color:#8e8b9e; margin-bottom:22px; }
-
+  h1 { font-size:1.55rem; font-weight:600; letter-spacing:-.022em; margin:0 0 14px;
+       text-wrap:balance; }
   /* Dark applies for a dark system UNLESS light was explicitly chosen, and
      always when dark was. Same two-sided guard as the site. */
   @media (prefers-color-scheme: dark) {
@@ -45,8 +41,22 @@
 <body>
 <main>
   <div class="mark">OVRHEAD</div>
-  <p>The methodology now lives inside the site, next to the data it describes. Taking you there now.</p>
-  <p><a href="../../index.html#/method">Continue &rarr;</a></p>
+  <h1>There is nothing at this address.</h1>
+  <p>OvrHead is one page. Every view of the record lives behind a <code>#/</code>
+     address on the front page, so a path like this one never existed rather than
+     having been taken away.</p>
+  <p><a id="home" href="/">Go to the observatory &rarr;</a> &middot;
+     <a id="data" href="/#/data">the data files</a></p>
 </main>
+<script>
+  // GitHub Pages serves this file for any unknown path under the site, and a
+  // project site is not at the domain root — so work the root out from the URL
+  // rather than hard-coding a repository name that may change.
+  var base = location.hostname.endsWith('github.io')
+    ? '/' + (location.pathname.split('/').filter(Boolean)[0] || '') + '/'
+    : '/';
+  document.getElementById('home').href = base;
+  document.getElementById('data').href = base + '#/data';
+</script>
 </body>
 </html>

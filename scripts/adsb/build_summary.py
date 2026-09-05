@@ -317,6 +317,16 @@ def detect_signals(con, countries, regions, operators, types, daily,
     which baseline, where it is concentrated, what it might mean, how sure we
     are, and the SQL that reproduces it. The interpretation field is always
     phrased as a possibility, never a conclusion.
+
+    The `sql` field runs in the reader's browser, against the `flights` view
+    index.html builds over the Parquet — not against the local `fx` view used
+    here. Two consequences:
+
+      * refer to the browser's column names (`reg_country`, `body`, `is_cargo`);
+      * use `seen_at` for anything temporal, never `TO_TIMESTAMP(first_seen)`.
+        duckdb-wasm ships without ICU, so `strftime()` cannot bind against a
+        TIMESTAMP WITH TIME ZONE. This fails only in the browser, so a local
+        test of the same query will not catch it.
     """
     sig: list[dict] = []
 
@@ -344,7 +354,7 @@ def detect_signals(con, countries, regions, operators, types, daily,
                    "their own. Change figures are deliberately withheld until the "
                    "baseline supports them.",
             confidence="observed",
-            sql=("SELECT strftime(TO_TIMESTAMP(first_seen), '%Y-%m-%d') AS day,\n"
+            sql=("SELECT strftime(seen_at, '%Y-%m-%d') AS day,\n"
                  "       COUNT(*) AS flights,\n"
                  "       (MAX(first_seen) - MIN(first_seen)) / 3600.0 AS hours_covered\n"
                  "FROM flights GROUP BY 1 ORDER BY 1;"),
@@ -367,7 +377,7 @@ def detect_signals(con, countries, regions, operators, types, daily,
                            "as anything about demand.",
             caveat="Partial days are excluded from this comparison.",
             confidence="observed",
-            sql=("SELECT strftime(TO_TIMESTAMP(first_seen), '%Y-%m-%d') AS day,\n"
+            sql=("SELECT strftime(seen_at, '%Y-%m-%d') AS day,\n"
                  "       COUNT(*) AS flights\n"
                  "FROM flights GROUP BY 1 ORDER BY 2 DESC;"),
         )
@@ -417,7 +427,7 @@ def detect_signals(con, countries, regions, operators, types, daily,
             caveat="A 24-hour comparison on a few days of history is noise-dominated. "
                    "Treat as something to watch, not a finding.",
             confidence=c["confidence"],
-            sql=(f"SELECT strftime(TO_TIMESTAMP(first_seen), '%Y-%m-%d') AS day,\n"
+            sql=(f"SELECT strftime(seen_at, '%Y-%m-%d') AS day,\n"
                  f"       COUNT(*) AS flights\n"
                  f"FROM flights WHERE reg_country = '{c['key']}'\n"
                  f"GROUP BY 1 ORDER BY 1;"),
@@ -446,8 +456,7 @@ def detect_signals(con, countries, regions, operators, types, daily,
             caveat="Corridor routings shift with winds, airspace closures and slot "
                    "times. Volume here is not the same as trade or passenger volume.",
             confidence="observed",
-            sql=(f"SELECT callsign, ac_type, reg,\n"
-                 f"       TO_TIMESTAMP(first_seen) AS seen\n"
+            sql=(f"SELECT callsign, ac_type, reg, seen_at\n"
                  f"FROM flights WHERE reg_country = '{c['key']}'\n"
                  f"ORDER BY first_seen DESC;"),
         )
@@ -515,7 +524,7 @@ def detect_signals(con, countries, regions, operators, types, daily,
             caveat="One observation is an anecdote. These are listed because they are "
                    "interesting, not because they mean anything yet.",
             confidence="observed",
-            sql=("SELECT ac_type, ac_desc, callsign, TO_TIMESTAMP(first_seen) AS seen\n"
+            sql=("SELECT ac_type, ac_desc, callsign, seen_at\n"
                  "FROM flights\n"
                  "WHERE ac_type IN (SELECT ac_type FROM flights\n"
                  "                  GROUP BY 1 HAVING COUNT(*) = 1)\n"
