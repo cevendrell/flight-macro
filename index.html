@@ -555,9 +555,15 @@ textarea.sql-box:focus { border-color:var(--accent); }
 /* Seven days, one row per kind — enough to see freight climb through a week. */
 .spark { display:flex; gap:2px; align-items:flex-end; height:44px;
          border-bottom:1px solid var(--rule-2); }
-.spark i { flex:1; background:var(--bar); border-radius:1px 1px 0 0; min-height:1px; }
+.spark i { flex:1; background:var(--bar); border-radius:1px 1px 0 0; min-height:1px;
+           /* The React island scales these with a spring; growing from the
+              middle would make them look like they were being extruded. */
+           transform-origin: bottom; }
 .spark i.we { background:var(--rule-2); }
 .spark i.hi { background:var(--accent); }
+/* Same for the hourly chart in the React week — the vanilla chart() sets a
+   height % and does not need scaling. */
+.hchart .cbar i { transform-origin: bottom; }
 .wk-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
            gap:26px 34px; }
 .wk-dow { display:flex; gap:2px; margin-top:5px; }
@@ -2947,6 +2953,21 @@ function spark(values, dows) {
     <div class="wk-dow">${dows.map(d => `<span>${esc(d[0])}</span>`).join('')}</div>`;
 }
 
+/* ── The week: Framer Motion island ──────────────────────────────────────
+   /week is the one page where the motion actually says something — the
+   diverging bars are a comparison, the counters are numbers being computed,
+   the day-by-day rows step through a week in order. It is the right place to
+   spend a React runtime.
+
+   Everything else stays vanilla. The rest of the site is single-page HTML by
+   design, and paying 180KB of React + Framer Motion on the front door would
+   pay the reader nothing. The libraries are lazy-loaded from esm.sh the first
+   time /week is opened; the DuckDB payload is already an order of magnitude
+   larger, so this is not the site's biggest bet on a CDN. If the load fails
+   for any reason — offline, blocked, CDN outage — the fallback below paints
+   the same content in the same layout, without the motion.
+
+   Cache tips this at ~120 KB gzip on first hit, zero on subsequent visits. */
 function viewWeek() {
   const w = S.week;
   if (!w) {
@@ -2959,10 +2980,18 @@ function viewWeek() {
         easiest lie on this site to tell, so it waits.</p></header>
       <a class="btn" href="#/">Back to the signals →</a>`;
   }
+  // The mount slot is empty on first paint; the fallback fills it if React
+  // never arrives. We copy the whole static view into #week-fallback so it
+  // sits behind the React tree — React's root.render replaces its content
+  // entirely once it mounts, so the fallback never double-renders.
+  return `<div id="week-mount" class="wk-root"></div>
+    <div id="week-fallback" hidden>${viewWeekStatic(w)}</div>`;
+}
 
+/** The static view. Everything the React app renders, in plain HTML — the
+ *  reader who has JavaScript blocked, or is offline, gets this. */
+function viewWeekStatic(w) {
   const t = w.totals;
-  // Ordered by the thing the chart is about, so it reads top to bottom as
-  // "most a working-week activity" down to "most a weekend one".
   const kinds = w.kinds
     .filter(k => k.key !== 'unclassified' && k.lift_pct != null)
     .sort((a, b) => b.lift_pct - a.lift_pct);
@@ -2971,8 +3000,6 @@ function viewWeek() {
   const byDow = Object.fromEntries(w.days.map(d => [d.dow, d]));
   const ordered = DOWS.filter(d => byDow[d]);
 
-  // A bar drawn from 25 flights and one from 4,700 should not look equally
-  // solid. Thin ones are hatched and labelled rather than dropped.
   const dbar = k => {
     const pos = k.lift_pct >= 0;
     const thin = k.confidence === 'early';
@@ -3086,6 +3113,371 @@ function viewWeek() {
       callsign at all. They are excluded, never distributed.</li>
       <li><b>An overflight is not a destination.</b> Most of what passes here is at
       cruise on the way somewhere else, which is why the total is so flat.</li>
+    </ul>
+  </section>`;
+}
+
+/* ── /week: React + Framer Motion ──────────────────────────────────────
+   Loaded once, first time the reader opens /week. Kept small on purpose:
+   nothing here that could as easily be a CSS transition, and no third
+   library on top. If any part of the import chain fails, the fallback is
+   the same page in the same layout, without the motion. */
+
+/* esm.sh serves every package as its own bundle, and by default each pulls
+   its own React. That produces the classic "two Reacts" state where hooks
+   throw. `?deps=react@18` and `?deps=react-dom@18` tell it to import our
+   copies instead, so hooks, refs and the reconciler all see the same React. */
+const CDN = {
+  react:   'https://esm.sh/react@18',
+  reactDom:'https://esm.sh/react-dom@18/client?deps=react@18',
+  fm:      'https://esm.sh/framer-motion@11?deps=react@18,react-dom@18',
+  htm:     'https://esm.sh/htm@3',
+};
+
+let weekPkg = null, weekRoot = null, weekFallbackTimer = null;
+
+async function loadWeekPkg() {
+  if (weekPkg) return weekPkg;
+  const [R, RD, FM, htmMod] = await Promise.all([
+    import(CDN.react), import(CDN.reactDom), import(CDN.fm), import(CDN.htm),
+  ]);
+  const html = htmMod.default.bind(R.createElement);
+  weekPkg = { R, RD, FM, html };
+  return weekPkg;
+}
+
+/** Reveal the fallback if React hasn't landed after 800 ms. It stays visible
+ *  behind the (still empty) mount, then gets covered once React renders. */
+function armWeekFallback() {
+  clearTimeout(weekFallbackTimer);
+  weekFallbackTimer = setTimeout(() => {
+    const fb = el('week-fallback');
+    if (fb) fb.hidden = false;
+  }, 800);
+}
+
+async function mountWeek() {
+  const mount = el('week-mount');
+  if (!mount || !S.week) return;
+  armWeekFallback();
+  try {
+    const { R, RD, FM, html } = await loadWeekPkg();
+    // Reader may have navigated away during the CDN fetch.
+    if (!el('week-mount')) return;
+    clearTimeout(weekFallbackTimer);
+    const fb = el('week-fallback'); if (fb) fb.hidden = true;
+    if (!weekRoot || weekRoot._el !== mount) {
+      if (weekRoot) { try { weekRoot.unmount(); } catch {} }
+      weekRoot = RD.createRoot(mount);
+      weekRoot._el = mount;
+    }
+    weekRoot.render(R.createElement(WeekApp({ R, FM, html }), { data: S.week, base: BASE }));
+  } catch (e) {
+    console.warn('Framer Motion could not load, showing static week:', e);
+    clearTimeout(weekFallbackTimer);
+    const fb = el('week-fallback');
+    if (fb) { fb.hidden = false;
+      fb.insertAdjacentHTML('afterbegin',
+        `<div class="notice warn" style="margin-bottom:20px">
+           <b>Motion is offline.</b> Framer Motion could not load from its CDN, so
+           this page is showing the plain fallback. The figures are identical.
+         </div>`); }
+  }
+}
+
+function unmountWeek() {
+  clearTimeout(weekFallbackTimer);
+  if (weekRoot) { try { weekRoot.unmount(); } catch {} weekRoot = null; }
+}
+
+/** The WeekApp component tree. Built as a closure over the imported React /
+ *  Framer Motion / htm so I can call it without the wider module needing to
+ *  reference them (they may never have loaded). */
+function WeekApp({ R, FM, html }) {
+  const { motion, useSpring, useTransform, useInView, useReducedMotion,
+          MotionConfig, LayoutGroup, AnimatePresence } = FM;
+  const { useEffect, useRef, useState } = R;
+
+  /* AnimatedNumber: a value counted up with a spring, not a linear tween.
+     Framer's springs use stiffness/damping in real physical units, so tuning
+     these once produces something that reads the same on every page. */
+  function CountUp({ to, format }) {
+    const spring = useSpring(0, { stiffness: 90, damping: 20, mass: 1 });
+    const display = useTransform(spring, v => format(Math.round(v)));
+    useEffect(() => { spring.set(to); }, [to]);
+    return html`<${motion.span}>${display}</>`;
+  }
+
+  const F = new Intl.NumberFormat('en-US');
+  const fmt = v => F.format(v);
+  const pct = v => (v > 0 ? '+' : '') + v + '%';
+
+  const containerV = {
+    hidden: {},
+    show:   { transition: { staggerChildren: 0.06, delayChildren: 0.05 } },
+  };
+  const cellV = {
+    hidden: { opacity: 0, y: 14 },
+    show:   { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 220, damping: 22 } },
+  };
+  const barV = {
+    hidden: { opacity: 0, x: -4 },
+    show:   i => ({ opacity: 1, x: 0,
+                    transition: { type: 'spring', stiffness: 180, damping: 22,
+                                  delay: i * 0.045 } }),
+  };
+  const barFillV = i => ({
+    hidden: { scaleX: 0 },
+    show:   { scaleX: 1,
+              transition: { type: 'spring', stiffness: 110, damping: 18,
+                            delay: 0.15 + i * 0.045 } },
+  });
+
+  function Stat({ v, l, s, format }) {
+    return html`<${motion.div} class="ro" variants=${cellV}>
+      <div class="ro-v ${(typeof v === 'string' && /[A-Za-z]{2}/.test(v.replace(/<[^>]*>/g,''))) ? 'txt' : ''}">
+        ${typeof v === 'number' ? html`<${CountUp} to=${v} format=${format || fmt} />` : v}
+      </div>
+      <div class="ro-l">${l}</div>
+      ${s ? html`<div class="ro-s">${s}</div>` : null}
+    </>`;
+  }
+
+  function Readouts({ w }) {
+    const t = w.totals;
+    return html`<${motion.div} class="readout" variants=${containerV}
+       initial="hidden" animate="show">
+      <${Stat} v=${Math.round(t.weekday_per_day)} l="Flights on an average weekday" />
+      <${Stat} v=${Math.round(t.weekend_per_day)} l="Flights on an average weekend day" />
+      <${Stat} v=${pct(t.lift_pct)} l="Difference between them" s="almost nothing" />
+      <${Stat} v=${w.coverage.share + '%'} l="Operators we can classify"
+               s=${fmt(w.coverage.no_callsign) + ' sent no callsign'} />
+    </>`;
+  }
+
+  function DivergingBar({ k, i, span }) {
+    const pos = k.lift_pct >= 0;
+    const thin = k.confidence === 'early';
+    const width = Math.abs(k.lift_pct) / span * 50;
+    return html`<${motion.a} class=${'dbar' + (thin ? ' thin' : '')}
+        href=${`#/kind/${k.key}`}
+        layout
+        custom=${i}
+        variants=${barV}
+        whileHover=${{ x: 4, transition: { type: 'spring', stiffness: 400, damping: 25 } }}
+        whileTap=${{ scale: 0.985 }}>
+      <div class="dbar-k">${k.label}<span>${fmt(k.flights)} flights${thin ? ' · small sample' : ''}</span></div>
+      <div class="dbar-t">
+        <${motion.i} class=${pos ? 'pos' : 'neg'}
+          style=${{ width: width.toFixed(1) + '%', originX: pos ? 0 : 1 }}
+          variants=${barFillV(i)} />
+      </div>
+      <div class=${'dbar-v ' + (pos ? 'pos' : 'neg')}>
+        ${k.lift_pct > 0 ? '+' : ''}${k.lift_pct}%
+      </div>
+    </>`;
+  }
+
+  function DivergingChart({ kinds }) {
+    const ref = useRef(null);
+    const inView = useInView(ref, { once: true, margin: '-8% 0px' });
+    const span = kinds.reduce((m, k) => Math.max(m, Math.abs(k.lift_pct)), 10);
+    return html`<${motion.div} ref=${ref} class="dbars"
+        variants=${containerV}
+        initial="hidden"
+        animate=${inView ? 'show' : 'hidden'}>
+      <${LayoutGroup}>
+        ${kinds.map((k, i) => html`<${DivergingBar} key=${k.key} k=${k} i=${i} span=${span} />`)}
+      </>
+    </>`;
+  }
+
+  function Spark({ values, dows }) {
+    const max = values.reduce((m, v) => Math.max(m, v), 1);
+    const peak = Math.max(...values);
+    return html`<div class="spark">
+      ${values.map((v, i) => {
+        const cls = (dows[i] === 'Sat' || dows[i] === 'Sun' ? 'we ' : '')
+                  + (v === peak ? 'hi' : '');
+        // Height carries the value; scaleY carries the entrance. The bar's
+        // real height is what a screen reader gets; the spring is only paint.
+        return html`<${motion.i} class=${cls}
+          style=${{ height: (v / max * 100).toFixed(1) + '%' }}
+          initial=${{ scaleY: 0 }}
+          whileInView=${{ scaleY: 1 }}
+          viewport=${{ once: true, margin: '-10% 0px' }}
+          transition=${{ type: 'spring', stiffness: 140, damping: 20, delay: i * 0.04 }}
+          title=${`${dows[i]} — ${fmt(v)}`} />`;
+      })}
+    </div>
+    <div class="wk-dow">${dows.map(d => html`<span>${d[0]}</span>`)}</div>`;
+  }
+
+  function KindGrid({ w, ordered, byDow }) {
+    return html`<${motion.div} class="wk-grid" variants=${containerV}
+        initial="hidden" whileInView="show"
+        viewport=${{ once: true, margin: '-8% 0px' }}>
+      ${w.kinds.filter(k => k.flights >= 20).map(k => html`
+        <${motion.div} key=${k.key} variants=${cellV}
+          whileHover=${{ y: -2, transition: { type: 'spring', stiffness: 400, damping: 22 } }}>
+          <div class="rhythm-t">${k.label} · ${fmt(k.flights)} flights</div>
+          <${Spark} values=${ordered.map(d => byDow[d].kinds[k.key] || 0)} dows=${ordered} />
+          ${k.reads ? html`<p class="kind-note">${k.reads}</p>` : null}
+        </>
+      `)}
+    </>`;
+  }
+
+  function HourBars({ data, val }) {
+    const max = data.reduce((m, d) => Math.max(m, d[val]), 1);
+    const peak = data.reduce((a, b) => (b[val] > a[val] ? b : a));
+    return html`<div class="chart hchart">
+      ${data.map((d, i) => html`<${motion.div} class=${'cbar ' + (d === peak ? 'hi' : '')}
+        title=${`${d.hour} — ${fmt(d[val])}`}>
+        <${motion.i}
+          style=${{ height: (d[val] / max * 100).toFixed(1) + '%' }}
+          initial=${{ scaleY: 0 }}
+          whileInView=${{ scaleY: 1 }}
+          viewport=${{ once: true, margin: '-8% 0px' }}
+          transition=${{ type: 'spring', stiffness: 120, damping: 18, delay: i * 0.014 }} />
+      </>`)}
+    </div>
+    <div class="caxis">
+      ${data.map((d, i) => html`<span title=${d.hour}>${i % 3 === 0 ? d.hour : ''}</span>`)}
+    </div>`;
+  }
+
+  return function App({ data: w, base }) {
+    const reduce = useReducedMotion();
+    const t = w.totals;
+    const un = w.kinds.find(k => k.key === 'unclassified');
+    const kinds = w.kinds
+      .filter(k => k.key !== 'unclassified' && k.lift_pct != null)
+      .sort((a, b) => b.lift_pct - a.lift_pct);
+    const byDow = Object.fromEntries(w.days.map(d => [d.dow, d]));
+    const ordered = DOWS.filter(d => byDow[d]);
+    const hourly = w.hourly.map(h => ({ hour: String(h.hour).padStart(2, '0'),
+                                        weekday: h.weekday, weekend: h.weekend }));
+
+    // The evidence table and static caveats stay vanilla — no motion needed
+    // and they use table() and download() from the outer module. React just
+    // hydrates them into a plain HTML slot via dangerouslySetInnerHTML.
+    const tail = staticWeekTail(w, base);
+
+    // Reduced motion turns every spring into an instant snap, but the layout,
+    // hover targets and structure are identical. Framer honours the user's OS
+    // setting through the MotionConfig — nothing here needs to check by hand.
+    return html`<${MotionConfig} reducedMotion="user">
+      <${motion.header} class="page-head"
+        initial=${{ opacity: 0, y: 8 }}
+        animate=${{ opacity: 1, y: 0 }}
+        transition=${{ type: 'spring', stiffness: 180, damping: 22 }}>
+        <div class="crumbs"><a href="#/">Signals</a> <em>/</em> Week</div>
+        <h1>One week, and what it <span class="q">actually shows</span></h1>
+        <p class="lede">${niceDate(w.from)} to ${niceDate(w.to)} — seven consecutive
+          complete days, one of every weekday. Enough to describe the shape of a week.
+          Not enough, yet, to say whether that shape is changing.</p>
+      </>
+
+      <section class="wk"><${Readouts} w=${w} /></section>
+
+      <section class="wk">
+        <div class="sec-head">
+          <div><div class="eyebrow">The finding</div>
+            <h2>The working week changes what flies, not how much</h2></div>
+          <p class="sec-note">How much more each kind of flying happens on a
+            weekday than at the weekend.</p>
+        </div>
+        <div class="dbar-ends">
+          <span></span>
+          <b><span>← weekend business</span><span>working week →</span></b>
+          <span></span>
+        </div>
+        <${DivergingChart} kinds=${kinds} />
+        <p class="sec-note" style=${{ marginTop: 16, maxWidth: 'var(--measure)' }}>
+          Freight and holidays run in opposite directions, at almost the same size.
+          In a single count of "flights overhead" they cancel, and the week looks flat
+          — which is exactly what the ${pct(t.lift_pct)} above is. Hatched bars rest on
+          fewer than 200 flights: read their direction, not their size. State flying is
+          in the chart for completeness and is not economic demand.
+          ${un ? ` A further ${fmt(un.flights)} flights are from operators we cannot
+            classify and are left out of this chart rather than quietly assigned
+            somewhere.` : null}
+        </p>
+      </section>
+
+      <section class="wk">
+        <div class="sec-head">
+          <div><div class="eyebrow">Day by day</div>
+            <h2>How each kind moves through the week</h2></div>
+          <p class="sec-note">Weekends shaded. Tallest day in accent.</p>
+        </div>
+        <${KindGrid} w=${w} ordered=${ordered} byDow=${byDow} />
+      </section>
+
+      <section class="wk">
+        <div class="sec-head">
+          <div><div class="eyebrow">Rhythm</div>
+            <h2>A weekday and a weekend day, hour by hour</h2></div>
+          <p class="sec-note">Average flights per hour, UTC.</p>
+        </div>
+        <div class="wk-grid">
+          <div>
+            <div class="rhythm-t">Weekday average</div>
+            <${HourBars} data=${hourly} val="weekday" />
+          </div>
+          <div>
+            <div class="rhythm-t">Weekend average</div>
+            <${HourBars} data=${hourly} val="weekend" />
+          </div>
+        </div>
+      </section>
+
+      <div dangerouslySetInnerHTML=${{ __html: tail }} />
+    </>`;
+  };
+}
+
+/** The evidence table + caveats — vanilla HTML, so they keep participating in
+ *  the site's sort/filter/CSV wiring rather than being re-implemented in the
+ *  React island. Injected via dangerouslySetInnerHTML from WeekApp. */
+function staticWeekTail(w, base) {
+  return `
+  <section>
+    <div class="sec-head"><div><div class="eyebrow">Evidence</div>
+      <h2>The week, by day</h2></div>
+      <a class="btn" href="#/ask?sql=${encodeURIComponent(
+        `SELECT dow, carrier_kind, COUNT(*) AS flights\nFROM flights\nWHERE day BETWEEN '${w.from}' AND '${w.to}'\nGROUP BY 1, 2\nORDER BY 1, 3 DESC;`)}">Open in Ask →</a></div>
+    ${table(w.days.map(d => ({ ...d, ...d.kinds })), [
+      { k: 'day', h: 'Day', render: r => `<span class="mono">${esc(r.day)}</span>
+          <span class="dim">${esc(r.dow)}</span>` },
+      { k: 'flights', h: 'Flights', num: true, bar: true, render: r => n(r.flights) },
+      { k: 'network', h: 'Network', num: true, render: r => n(r.network || 0) },
+      { k: 'lowcost', h: 'Low-cost', num: true, render: r => n(r.lowcost || 0) },
+      { k: 'leisure', h: 'Charter', num: true, render: r => n(r.leisure || 0) },
+      { k: 'cargo', h: 'Cargo', num: true, render: r => n(r.cargo || 0) },
+      { k: 'widebody', h: 'Wide-body', num: true, render: r => n(r.widebody) },
+    ], { id: 'wk-d', max: 7, csvName: 'ovrhead-week' })}
+  </section>
+
+  <section class="prose">
+    <h3>What this can and cannot carry</h3>
+    <ul>
+      <li><b>It is composition, not trend.</b> Every figure here is a direct count
+      within one week. Nothing on this page compares one week to another, because
+      there is only one.</li>
+      <li><b>The kinds are a judgement.</b> Which carriers count as low-cost rather
+      than network is editorial, published in
+      <a href="${esc(base)}carriers.json" class="code">carriers.json</a>, and
+      arguable. Hybrids are filed under the model they mostly fly.</li>
+      <li><b>${w.coverage.share}% of flights are classified.</b> The rest are operators
+      not in the table, or the ${n(w.coverage.no_callsign)} flights that transmitted no
+      callsign at all. They are excluded, never distributed.</li>
+      <li><b>An overflight is not a destination.</b> Most of what passes here is at
+      cruise on the way somewhere else, which is why the total is so flat.</li>
+      <li><b>Motion by Framer Motion.</b> React and Framer Motion are lazy-loaded from
+      esm.sh the first time you open this page; the fallback below is the same figures
+      without the motion.</li>
     </ul>
   </section>`;
 }
@@ -3327,6 +3719,8 @@ function route() {
   const view = el('view');
   if (globeStop) globeStop();   // stop the previous page's animation loop
   if (covStop) covStop();
+  // React root is only mounted for /week. Leaving the page tears it down.
+  if (p[0] !== 'week') unmountWeek();
   // Sort preference is worth carrying between pages; a filter and an expanded
   // row count are about the page you were on, so they reset with it.
   Object.values(tblState).forEach(s => { s.filter = ''; s.max = null; });
@@ -3364,6 +3758,7 @@ function route() {
     if (p[0] === 'ask')    wireAsk();
     if (p[0] === 'globe')  initGlobe();
     if (p[0] === 'method') initCoverage();
+    if (p[0] === 'week')   mountWeek();
     if (el('lazy')) fillLazy();
 
     const target = r.sig && el(r.sig);

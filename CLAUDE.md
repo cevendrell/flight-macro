@@ -71,6 +71,32 @@ Rules for editing it:
 Both the pipeline and the browser read this same file, so a figure on the front
 page and a query in Ask cannot disagree.
 
+### The /week page is a React + Framer Motion island
+Everything else on the site is vanilla ES modules. `/week` is the exception: it
+mounts a React app with Framer Motion for the entrance choreography, the number
+counters, and the diverging-bar chart. Both are lazy-loaded from esm.sh the
+first time /week is opened — no build step, no NPM.
+
+Rules that keep this from breaking:
+- `esm.sh` serves each package with its own React bundle unless you tell it
+  otherwise. Every non-react URL in `CDN` has `?deps=react@18` (react-dom also
+  needs `?deps=react-dom@18`). Without those, hooks throw "Cannot read
+  properties of null (reading 'useState')" — the classic two-Reacts error.
+- The mount slot is `<div id="week-mount">`; the fallback is `<div
+  id="week-fallback">` right beside it, painted with `viewWeekStatic(w)` and
+  revealed if React hasn't landed after 800 ms.
+- `unmountWeek()` runs from `route()` whenever the reader leaves /week, so no
+  React root outlives its DOM. The vanilla view then owns the container.
+- The evidence table and caveats at the foot of /week stay vanilla — they use
+  the site's own `table()` (sort/filter/CSV), and are injected into the React
+  tree via `dangerouslySetInnerHTML` rather than reimplemented.
+- Framer's `MotionConfig reducedMotion="user"` honours the OS setting. Do not
+  add per-component reduced-motion checks; let the config handle it.
+
+Any other page can stay vanilla. React should only enter where the motion
+carries meaning — a comparison being animated, a number being computed, an
+order being read. Sprinkling motion.div in place of div is churn.
+
 ### Two traps worth knowing
 **No ICU in duckdb-wasm**, so `strftime()` cannot bind against a
 `TIMESTAMP WITH TIME ZONE`. `seen_at` is therefore built with
