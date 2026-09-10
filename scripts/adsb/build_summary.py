@@ -25,6 +25,7 @@ import json
 import math
 import os
 import random
+import re
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -138,9 +139,21 @@ def main() -> int:
     # `dow` and `daytype` exist because one full week is the first thing this
     # record can honestly describe. A Tuesday and a Sunday are not two samples
     # of the same thing, and averaging them hides the only structure there is.
+    # Route-derived columns, mirrored exactly in the browser's `flights` view
+    # so a signal's SQL runs the same here and there. Guarded: a flights file
+    # built before routes existed has no origin column and must still build.
+    fcols = {r[0] for r in con.execute("DESCRIBE f").fetchall()}
+    route_derived = ("""
+               (f.origin IS NOT NULL
+                AND NOT (f.origin LIKE 'EK%' OR f.destination LIKE 'EK%'))  AS is_overflight,
+               CASE WHEN f.origin IS NOT NULL AND f.destination IS NOT NULL
+                    THEN LEAST(f.origin, f.destination) || '-' || GREATEST(f.origin, f.destination)
+               END                                                          AS pair,"""
+        if "origin" in fcols else """
+               NULL AS is_overflight, NULL AS pair,""")
     con.execute(f"""
         CREATE VIEW fx AS
-        SELECT f.*,
+        SELECT f.*,{route_derived}
                h.cc                                              AS reg_cc,
                c.op_name                                         AS carrier_name,
                c.kind                                            AS carrier_kind,
@@ -307,10 +320,11 @@ def main() -> int:
     months = build_months(con, daily)
     trend = build_trend(daily)
     sky = build_sky(con)
+    routes = build_routes(con, countries, compare)
 
     signals = detect_signals(
         con, countries_roll, regions, operators, types, daily,
-        span_days, total, compare, totals, baseline_complete, week,
+        span_days, total, compare, totals, baseline_complete, week, routes,
     )
 
     summary = {
@@ -340,6 +354,7 @@ def main() -> int:
         "months": months,
         "trend": trend,
         "sky": sky,
+        "routes": routes,
     }
 
     OUT.write_text(json.dumps(summary, separators=(",", ":")), encoding="utf-8")
@@ -371,6 +386,136 @@ def weekly_compare(daily) -> dict | None:
     return {"kind": "week",
             "prev_from": days[0], "prev_to": days[6],
             "cur_from": days[7], "cur_to": days[13]}
+
+
+def build_routes(con, countries_meta: dict, compare: dict | None) -> dict | None:
+    """
+    Where the flights overhead actually begin and end.
+
+    reconstruct.py joins each callsign to its scheduled route and keeps it only
+    when the aircraft was observed heading toward that destination. Everything
+    here counts those flights: the airports they touch, the city-pairs they
+    join, the countries at each end, and the compass direction of travel for
+    every positioned flight — routed or not. Coverage is reported so the page
+    can say what share of the sky this describes.
+    """
+    cols = {r[0] for r in con.execute("DESCRIBE fx").fetchall()}
+    apf = DATA / "enrichment" / "airports.parquet"
+    if "origin" not in cols or not apf.exists():
+        return None
+    con.execute(f"""
+        CREATE OR REPLACE VIEW ap AS
+        SELECT ident, name, municipality AS city, iso_country AS cc,
+               latitude_deg AS lat, longitude_deg AS lng
+        FROM read_parquet('{apf}')""")
+
+    total = con.execute("SELECT COUNT(*) FROM fx").fetchone()[0]
+    cov = dict(con.execute(
+        "SELECT COALESCE(route_check, 'none'), COUNT(*) FROM fx GROUP BY 1").fetchall())
+    routed = con.execute("SELECT COUNT(*) FROM fx WHERE origin IS NOT NULL").fetchone()[0]
+    touch_dk = con.execute("""
+        SELECT COUNT(*) FROM fx
+        WHERE origin IS NOT NULL AND (origin LIKE 'EK%' OR destination LIKE 'EK%')
+    """).fetchone()[0]
+
+    in_cur = (f"day BETWEEN '{compare['cur_from']}' AND '{compare['cur_to']}'"
+              if compare else "FALSE")
+    in_prev = (f"day BETWEEN '{compare['prev_from']}' AND '{compare['prev_to']}'"
+               if compare else "FALSE")
+
+    def change(cur, prev):
+        ch = pct_change(cur, prev) if compare else None
+        return round(ch, 1) if ch is not None else None
+
+    # Airports, by flights touching them. A Copenhagen–Aalborg flight counts
+    # once for each end, so these are touches, not a partition of the record.
+    airports, index = [], {}
+    for k, n, dep, arr, cur, prev, name, city, cc, lat, lng in con.execute(f"""
+        WITH t AS (
+            SELECT origin AS k, 1 AS dep, 0 AS arr, day FROM fx WHERE origin IS NOT NULL
+            UNION ALL
+            SELECT destination, 0, 1, day FROM fx WHERE destination IS NOT NULL)
+        SELECT t.k, COUNT(*), SUM(dep), SUM(arr),
+               SUM(CASE WHEN {in_cur} THEN 1 ELSE 0 END),
+               SUM(CASE WHEN {in_prev} THEN 1 ELSE 0 END),
+               a.name, a.city, a.cc, a.lat, a.lng
+        FROM t LEFT JOIN ap a ON a.ident = t.k
+        GROUP BY ALL ORDER BY 2 DESC""").fetchall():
+        # OurAirports municipalities carry qualifiers — "Oslo (Gardermoen)",
+        # "Paris (Roissy-en-France, Val-d'Oise)". The airport name already
+        # says which airport; the city should just be the city.
+        city = re.split(r"[,(]", city or "", 1)[0].strip()
+        index[k] = [name or k, city, cc or ""]
+        airports.append({
+            "key": k, "name": name or k, "city": city, "cc": cc or "",
+            "lat": lat, "lng": lng, "flights": n, "dep": dep, "arr": arr,
+            "cur": cur, "prev": prev, "change_pct": change(cur, prev),
+            "share": round(n / routed * 100, 1) if routed else 0,
+            "local": bool(k.startswith("EK")),
+        })
+    coords = {a["key"]: (a["lat"], a["lng"]) for a in airports if a["lat"] is not None}
+
+    def km(a, b):
+        if a not in coords or b not in coords:
+            return None
+        (la1, lo1), (la2, lo2) = coords[a], coords[b]
+        f1, f2 = math.radians(la1), math.radians(la2)
+        dl = math.radians(lo2 - lo1)
+        return round(2 * 6371 * math.asin(math.sqrt(
+            math.sin((f2 - f1) / 2) ** 2 + math.cos(f1) * math.cos(f2) * math.sin(dl / 2) ** 2)))
+
+    # City-pairs are unordered — Copenhagen–Oslo is one corridor — with each
+    # direction kept so the page can show the balance.
+    pairs = []
+    for a, b, n, ab, cur, prev in con.execute(f"""
+        SELECT LEAST(origin, destination), GREATEST(origin, destination), COUNT(*),
+               SUM(CASE WHEN origin = LEAST(origin, destination) THEN 1 ELSE 0 END),
+               SUM(CASE WHEN {in_cur} THEN 1 ELSE 0 END),
+               SUM(CASE WHEN {in_prev} THEN 1 ELSE 0 END)
+        FROM fx WHERE origin IS NOT NULL AND destination IS NOT NULL AND origin <> destination
+        GROUP BY 1, 2 ORDER BY 3 DESC LIMIT 120""").fetchall():
+        pairs.append({
+            "key": f"{a}-{b}", "a": a, "b": b, "flights": n, "ab": ab, "ba": n - ab,
+            "cur": cur, "prev": prev, "change_pct": change(cur, prev),
+            "km": km(a, b),
+            "a_name": index.get(a, [a])[0], "b_name": index.get(b, [b])[0],
+            "a_city": index.get(a, [a, ""])[1], "b_city": index.get(b, [b, ""])[1],
+            "local": a.startswith("EK") or b.startswith("EK"),
+        })
+
+    # Countries at either end of a route — where the flying is actually
+    # between, as opposed to where the aircraft is registered.
+    countries = []
+    for cc, n, dep, arr in con.execute("""
+        WITH t AS (
+            SELECT origin AS k, 1 AS dep, 0 AS arr FROM fx WHERE origin IS NOT NULL
+            UNION ALL
+            SELECT destination, 0, 1 FROM fx WHERE destination IS NOT NULL)
+        SELECT a.cc, COUNT(*), SUM(dep), SUM(arr)
+        FROM t JOIN ap a ON a.ident = t.k WHERE a.cc IS NOT NULL
+        GROUP BY 1 ORDER BY 2 DESC""").fetchall():
+        countries.append({"key": cc, "name": countries_meta.get(cc, {}).get("name", cc),
+                          "flights": n, "dep": dep, "arr": arr})
+
+    order = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
+    dirs = dict(con.execute(
+        "SELECT direction, COUNT(*) FROM fx WHERE direction IS NOT NULL GROUP BY 1").fetchall())
+    directions = [{"k": d, "v": int(dirs.get(d, 0))} for d in order]
+
+    return {
+        "coverage": {
+            "verified": cov.get("verified", 0), "unverified": cov.get("unverified", 0),
+            "conflict": cov.get("conflict", 0), "none": cov.get("none", 0),
+            "routed": routed, "routed_share": round(routed / total * 100, 1) if total else 0,
+            "airports": len(airports), "pairs": len(pairs),
+        },
+        "local": {"touch_dk": touch_dk, "overflight": routed - touch_dk},
+        "directions": directions,
+        "airports": airports[:80],
+        "pairs": pairs,
+        "countries": countries,
+        "index": index,
+    }
 
 
 def build_sky(con, origin=(56.16, 10.20), sample=1200, sectors=72) -> dict | None:
@@ -651,7 +796,7 @@ def build_week_for(con, days: list[str], kind_meta) -> dict:
 # ── signal detection ─────────────────────────────────────────────────────────
 def detect_signals(con, countries, regions, operators, types, daily,
                    span_days, total, compare, totals,
-                   baseline_complete, week=None) -> list[dict]:
+                   baseline_complete, week=None, routes=None) -> list[dict]:
     """
     Turn the rollups into a ranked list of claims.
 
@@ -679,6 +824,11 @@ def detect_signals(con, countries, regions, operators, types, daily,
         # An analyst wants the first kind first, and should not have to work
         # out which is which from the wording.
         kw.setdefault("category", "profile")
+        # `lead` puts a signal first within its category regardless of the
+        # size of its figure: a share and a distance cannot be ranked against
+        # each other by magnitude, and the route facts come before the rest.
+        kw.setdefault("lead", False)
+        kw["_i"] = len(sig)
         sig.append(kw)
 
     full_days = [d for d in daily if not d["partial"]]
@@ -842,27 +992,122 @@ def detect_signals(con, countries, regions, operators, types, daily,
                  "FROM flights GROUP BY 1 ORDER BY 2 DESC;"),
         )
 
-    # 2) Corridor composition — the structural fact that makes this antenna
-    #    interesting. Aarhus sits under long-haul routings, so a meaningful
-    #    share of what passes overhead is not going anywhere near Denmark.
-    non_nordic = [c for c in countries if c.get("region") != "Nordics"]
-    nn = sum(c["flights"] for c in non_nordic)
-    if total:
+    # 2) Where the flights are actually between. These replace the old
+    #    registration-based corridor claim: a route says where a flight began
+    #    and where it is going, which registration never could.
+    if routes and routes["coverage"]["routed"]:
+        rc, loc = routes["coverage"], routes["local"]
+        over = loc["overflight"] / rc["routed"] * 100
+
         add(
-            kind="composition", scope="all",
-            title="Most aircraft overhead are not Nordic-registered",
-            metric=f"{nn / total * 100:.0f}%", metric_label="of observed flights",
-            comparison=f"{nn:,} of {total:,} flights",
-            where=", ".join(c["name"] for c in non_nordic[:4]) or None,
-            interpretation="Aarhus sits beneath routings between Northern Europe and "
-                           "the rest of the world. A large non-Nordic share is evidence "
-                           "the antenna is seeing corridor traffic, not just local movements.",
-            caveat="Registration country is where an aircraft is registered — not "
-                   "where the flight began or where it is going.",
+            kind="corridor", scope="all", lead=True,
+            series=series("is_overflight"),
+            title=f"{over:.0f}% of the flights overhead neither start nor end in Denmark",
+            metric=f"{over:.0f}%", metric_label="of routed flights are overflights",
+            comparison=f"{loc['overflight']:,} pass through · {loc['touch_dk']:,} touch a Danish airport",
+            where=None,
+            interpretation="Aarhus sits under the routings between Scandinavia and the "
+                           "Continent, and between Northern Europe and the rest of the "
+                           "world. Most of what the antenna hears is that corridor, not "
+                           "Danish demand — which is what makes the count usable as a "
+                           "signal about the wider network rather than one region.",
+            caveat=f"Only the {rc['routed_share']:.0f}% of flights with a verified or "
+                   "unverified route are counted here. Flights with no callsign, or "
+                   "a callsign not in the route tables, are not — and they are not "
+                   "assumed to be either kind.",
             confidence="observed",
-            sql=("SELECT reg_country, COUNT(*) AS flights\n"
-                 "FROM flights GROUP BY 1 ORDER BY 2 DESC;"),
+            sql=("SELECT is_overflight, COUNT(*) AS flights\n"
+                 "FROM flights WHERE origin IS NOT NULL GROUP BY 1;"),
         )
+
+        top = routes["pairs"][0] if routes["pairs"] else None
+        if top:
+            add(
+                kind="corridor", scope="pair", entity=top["key"], lead=True,
+                series=series(f"pair = '{top['key']}'"),
+                title=f"Busiest city-pair overhead: {top['a_city'] or top['a']} – "
+                      f"{top['b_city'] or top['b']}",
+                metric=f"{top['flights']:,}", metric_label="flights on this pair",
+                comparison=f"{top['ab']:,} {top['a']}→{top['b']} · {top['ba']:,} the other way",
+                where=f"{top['km']:,} km" if top["km"] else None,
+                interpretation="The busiest corridor is the one the record can measure "
+                               "most precisely. Week on week, this is the pair to watch "
+                               "for schedule changes first.",
+                caveat="A pair counts both directions. The balance between them is "
+                       "schedule shape, not demand asymmetry — a rotation is a rotation.",
+                confidence="observed",
+                sql=(f"SELECT origin, destination, COUNT(*) AS flights\n"
+                     f"FROM flights WHERE pair = '{top['key']}'\n"
+                     "GROUP BY 1, 2;"),
+            )
+
+        far = sorted([p for p in routes["pairs"] if p["km"]], key=lambda p: -p["km"])[:3]
+        far_keys = ", ".join(f"'{p['key']}'" for p in far)
+        if far and far[0]["km"] >= 3000:
+            add(
+                kind="corridor", scope="all", lead=True,
+                series=series(f"pair IN ({far_keys})"),
+                title="Intercontinental routes crossing overhead",
+                metric=f"{far[0]['km']:,}", metric_label="km, the longest route seen",
+                comparison=" · ".join(f"{p['a_city'] or p['a']}–{p['b_city'] or p['b']}"
+                                      for p in far),
+                where=None,
+                interpretation="Long-haul flights pass over Denmark on the great circles "
+                               "between Central Europe and North America or Asia. Their "
+                               "presence is a reading on those corridors, not on Denmark.",
+                caveat="Distance is the great-circle length of the scheduled route, not "
+                       "the path flown.",
+                confidence="observed",
+                sql=(f"SELECT pair, origin_name, destination_name, COUNT(*) AS flights\n"
+                     f"FROM flights WHERE pair IN ({far_keys})\n"
+                     "GROUP BY 1, 2, 3 ORDER BY 4 DESC;"),
+            )
+
+        d = {x["k"]: x["v"] for x in routes["directions"]}
+        axis = d.get("NE", 0) + d.get("SW", 0)
+        allp = sum(d.values()) or 1
+        add(
+            kind="corridor", scope="all", lead=True,
+            series=routes["directions"],
+            title="Traffic overhead runs north-east to south-west",
+            metric=f"{axis / allp * 100:.0f}%", metric_label="of flights on the NE–SW axis",
+            comparison=f"{d.get('NE', 0):,} heading NE · {d.get('SW', 0):,} heading SW",
+            where=None,
+            interpretation="That axis is Scandinavia to the Continent. Direction is "
+                           "measured from the aircraft's own track, so it holds for "
+                           "every positioned flight — including the ones with no route.",
+            caveat="Eight compass sectors, from first to last position in range. A "
+                   "flight seen only briefly can land in the wrong sector.",
+            confidence="observed",
+            sql=("SELECT direction, COUNT(*) AS flights\n"
+                 "FROM flights WHERE direction IS NOT NULL GROUP BY 1 ORDER BY 2 DESC;"),
+        )
+
+        # Pair movers, week on week — the route-level counterpart of the
+        # country shifts, and the reading an analyst actually wants.
+        movers = [p for p in routes["pairs"]
+                  if p["change_pct"] is not None and p["prev"] >= 20 and p["cur"] >= 20]
+        movers.sort(key=lambda p: -abs(p["change_pct"]))
+        for p in movers[:3]:
+            up = p["change_pct"] > 0
+            add(
+                kind="shift", scope="pair", entity=p["key"], category="reading",
+                series=series(f"pair = '{p['key']}'"),
+                title=f"{p['a_city'] or p['a']} – {p['b_city'] or p['b']} "
+                      f"{'up' if up else 'down'} {abs(p['change_pct']):.0f}% week on week",
+                metric=f"{p['change_pct']:+.0f}%", metric_label="vs the previous week",
+                comparison=f"{p['cur']} flights vs {p['prev']} the week before",
+                where=f"{p['km']:,} km" if p["km"] else None,
+                interpretation="A city-pair moving week on week is the most direct thing "
+                               "this antenna can say about a schedule: capacity was added "
+                               "or withdrawn between two named places.",
+                caveat="Two weeks is the shortest honest baseline. A single rotation "
+                       "added or dropped is a large percentage on a thin pair.",
+                confidence=confidence(p["flights"], span_days, p["change_pct"]),
+                sql=(f"SELECT day, COUNT(*) AS flights\n"
+                     f"FROM flights WHERE pair = '{p['key']}'\n"
+                     "GROUP BY 1 ORDER BY 1;"),
+            )
 
     # 3) Largest movers, country level. Requires presence in both windows.
     # Thirty flights a week on each side is the floor: below it a 20% move is
@@ -1009,8 +1254,11 @@ def detect_signals(con, countries, regions, operators, types, daily,
             return 0.0
 
     sig.sort(key=lambda s: (s["category"] != "reading",
+                            not s["lead"],
                             order.get(s["confidence"], 9),
-                            -magnitude(s)))
+                            -magnitude(s) if s["category"] == "reading" else s["_i"]))
+    for s in sig:
+        s.pop("_i", None)
     for i, s in enumerate(sig):
         s["id"] = f"sig-{i+1}"
     return sig

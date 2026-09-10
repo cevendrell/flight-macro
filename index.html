@@ -1333,10 +1333,29 @@ async function getDeep() {
       `('${p}',${q(v.name)},${q(v.kind)})`).join(',');
     if (carRows) await conn.query(`INSERT INTO carrier VALUES ${carRows}`);
 
+    // Every airport any route touches, so origin and destination codes can be
+    // shown as places. Baked into the summary by build_summary.py.
+    await conn.query(`CREATE TABLE airport(icao VARCHAR, name VARCHAR, city VARCHAR, cc VARCHAR)`);
+    const apRows = Object.entries(S.routes?.index || {}).map(([k, [name, city, cc]]) =>
+      `('${k}',${q(name)},${q(city)},${q(cc)})`).join(',');
+    if (apRows) await conn.query(`INSERT INTO airport VALUES ${apRows}`);
+
     await conn.query(`CREATE VIEW _raw AS SELECT * FROM read_parquet([${names}], union_by_name=true)`);
     await conn.query(`
       CREATE VIEW flights AS
       SELECT r.*,
+             -- Where the flight is between. origin/destination arrive from the
+             -- pipeline already checked against the observed heading; these
+             -- only add names, the unordered pair, and the local/overflight
+             -- split — the same definitions build_summary.py uses.
+             ao.name AS origin_name,      ao.city AS origin_city,      ao.cc AS origin_cc,
+             ad.name AS destination_name, ad.city AS destination_city, ad.cc AS destination_cc,
+             CASE WHEN r.origin IS NOT NULL AND r.destination IS NOT NULL
+                  THEN LEAST(r.origin, r.destination) || '-' || GREATEST(r.origin, r.destination)
+             END AS pair,
+             (r.origin IS NOT NULL AND NOT (r.origin LIKE 'EK%' OR r.destination LIKE 'EK%'))
+                                          AS is_overflight,
+             (r.route_check = 'verified') AS route_verified,
              c.cc         AS reg_country,
              ct.name      AS reg_country_name,
              ct.region    AS reg_region,
@@ -1367,7 +1386,9 @@ async function getDeep() {
             AND c.width = (SELECT MIN(b2.width) FROM country_block b2
                            WHERE r.hex >= b2.lo AND r.hex <= b2.hi)
       LEFT JOIN country ct ON ct.cc = c.cc
-      LEFT JOIN carrier car ON car.prefix = r.airline_prefix`);
+      LEFT JOIN carrier car ON car.prefix = r.airline_prefix
+      LEFT JOIN airport ao ON ao.icao = r.origin
+      LEFT JOIN airport ad ON ad.icao = r.destination`);
     engineSay('Ready.', 1);
     deep = { db, conn };
     return deep;
@@ -1645,10 +1666,19 @@ function viewSignals(openId) {
       <header class="page-head">
         <div class="crumbs"><em>Observatory</em></div>
         <h1>Read the world from the sky above <span class="q">Aarhus</span>.</h1>
-        <p class="lede">One antenna records every aircraft that passes overhead. These are the
-          signals we can honestly draw from it — evidence and limits attached.</p>
+        <p class="lede">One antenna records every aircraft that passes overhead${S.routes
+          ? ', and matches each to where it began and where it is going, checked against the direction it was travelling'
+          : ''}. These are the signals we can honestly draw from it — evidence and limits attached.</p>
       </header>
-      ${readout([
+      ${readout(S.routes ? [
+        { v: fig(t.flights), l: 'Flights recorded', s: `over ${w.days_observed} days` },
+        { v: `${S.routes.coverage.routed_share.toFixed(0)}%`, l: 'With a known route',
+          s: `${n(S.routes.coverage.verified)} verified by heading` },
+        { v: fig(S.routes.coverage.airports), l: 'Airports',
+          s: `${n(S.routes.countries.length)} countries` },
+        { v: fig(S.routes.coverage.pairs), l: 'City-pairs',
+          s: `${(S.routes.local.overflight / S.routes.coverage.routed * 100).toFixed(0)}% overflights` },
+      ] : [
         { v: fig(t.flights),   l: 'Flights recorded', s: `over ${w.days_observed} days` },
         { v: fig(t.aircraft),  l: 'Distinct aircraft', s: `${n(t.operators)} operators` },
         { v: fig(t.countries), l: 'Registration countries' },
@@ -1686,7 +1716,7 @@ function viewSignals(openId) {
         <h2>Profile</h2></div>
       <p class="sec-note">Counts and shares, directly observed. The day-by-day record
         is in <a href="#/month" style="color:var(--accent)">the longer view</a>; every
-        country, airline and type is in
+        airport, city-pair, country, airline and type is in
         <a href="#/explore" style="color:var(--accent)">Explore</a>.</p>
     </div>
     <div class="signals">${profile}</div>
@@ -1695,6 +1725,28 @@ function viewSignals(openId) {
 `;
 }
 
+const AIRPORT_COLS = [
+  { k: 'city', h: 'Airport', render: r =>
+      `<a href="#/airport/${esc(r.key)}">${esc(r.city || r.name)}</a> <span class="code">${esc(r.key)}</span>` },
+  { k: 'name', h: 'Name', render: r => `<span class="dim">${esc(r.name)}</span>` },
+  { k: 'cc', h: 'Country', render: r => esc(TAX?.countries?.[r.cc]?.name || r.cc || '—') },
+  { k: 'flights', h: 'Flights', num: true, bar: true, render: r => n(r.flights) },
+  { k: 'dep', h: 'From here', num: true, render: r => n(r.dep) },
+  { k: 'arr', h: 'To here', num: true, render: r => n(r.arr) },
+  { k: 'change_pct', h: 'Δ week', num: true, render: r => changeCell(r.change_pct) },
+];
+const PAIR_COLS = [
+  { k: 'a_city', h: 'City-pair', render: r =>
+      `<a href="#/pair/${esc(r.key)}">${esc(r.a_city || r.a)} – ${esc(r.b_city || r.b)}</a>
+       <span class="code">${esc(r.a)}–${esc(r.b)}</span>` },
+  { k: 'flights', h: 'Flights', num: true, bar: true, render: r => n(r.flights) },
+  { k: 'ab', h: 'Outbound', num: true, render: r =>
+      `${n(r.ab)} <span class="faint">${esc(r.a)}→${esc(r.b)}</span>` },
+  { k: 'ba', h: 'Return', num: true, render: r =>
+      `${n(r.ba)} <span class="faint">${esc(r.b)}→${esc(r.a)}</span>` },
+  { k: 'km', h: 'km', num: true, render: r => r.km ? n(r.km) : '—' },
+  { k: 'change_pct', h: 'Δ week', num: true, render: r => changeCell(r.change_pct) },
+];
 const COUNTRY_COLS = [
   { k: 'name', h: 'Country', render: r =>
       `<a href="#/place/${esc(r.key)}">${esc(r.name)}</a>` },
@@ -1720,13 +1772,39 @@ function viewExplore() {
   return `
   <header class="page-head">
     <div class="crumbs"><a href="#/">Signals</a> <em>/</em> Explore</div>
-    <h1>Where the traffic is registered</h1>
-    <p class="lede">Every aircraft broadcasts an address allocated to a state, so we can tell
-      where 99% of them are registered — though not where they took off or where they're
-      headed. Start anywhere and drill down.</p>
+    <h1>Where the flights are <span class="q">between</span></h1>
+    <p class="lede">${S.routes
+      ? `${S.routes.coverage.routed_share.toFixed(0)}% of flights overhead are matched to the
+         airports they fly between, each checked against the direction the aircraft was
+         actually travelling. The rest of the record — who flies, what, and where it is
+         registered — is below.`
+      : `Every aircraft broadcasts an address allocated to a state, so we can tell where
+         99% of them are registered. Start anywhere and drill down.`}</p>
   </header>
 
+  ${S.routes ? `
   <section>
+    <div class="sec-head"><div><div class="eyebrow">Airports</div>
+      <h2>Where the flights begin and end</h2></div>
+      <p class="sec-note">A flight counts once for each end. Copenhagen–Aalborg is one
+        flight and two touches.</p></div>
+    ${table(S.routes.airports, AIRPORT_COLS, { id: 'exp-a', max: 30,
+      sortKey: 'flights', sortDir: -1, filter: 'Filter airports…', csvName: 'ovrhead-airports' })}
+  </section>
+
+  <section>
+    <div class="sec-head"><div><div class="eyebrow">City-pairs</div>
+      <h2>The corridors overhead</h2></div>
+      <p class="sec-note">Both directions of a pair, with the balance between them.</p></div>
+    ${table(S.routes.pairs, PAIR_COLS, { id: 'exp-p', max: 30,
+      sortKey: 'flights', sortDir: -1, filter: 'Filter city-pairs…', csvName: 'ovrhead-pairs' })}
+  </section>` : ''}
+
+  <section>
+    <div class="sec-head"><div><div class="eyebrow">Registered in</div>
+      <h2>Where the aircraft come from</h2></div>
+      <p class="sec-note">Registration says where an aircraft lives, not where it is going.
+        A lens on the fleet, not on the route.</p></div>
     <div class="hier">
       ${col('Continent', cont, r => `#/continent/${encodeURIComponent(r.key)}`)}
       ${col('Economic region', reg.slice(0, 14), r => `#/region/${encodeURIComponent(r.key)}`)}
@@ -1901,14 +1979,36 @@ function initSky(id, { margin = 12 } = {}) {
   skyStops.push(() => ro.disconnect());
 }
 
+/** The globe's points: airports when routes exist, registration countries
+ *  otherwise. Same shape either way — key, name, flights, lat, lng — so the
+ *  drawing code does not care which it was given. */
+function globePoints() {
+  if (S.routes?.airports?.length) {
+    return S.routes.airports.filter(a => a.lat != null).map(a =>
+      ({ key: a.key, name: a.city || a.name, sub: TAX?.countries?.[a.cc]?.name || a.cc,
+         flights: a.flights, lat: a.lat, lng: a.lng, href: `#/airport/${a.key}` }));
+  }
+  return S.countries.map(c => {
+    const m = TAX.countries[c.key];
+    return m && m.lat != null
+      ? { key: c.key, name: c.name, sub: c.region || '', flights: c.flights,
+          lat: m.lat, lng: m.lng, href: `#/place/${c.key}` } : null;
+  }).filter(Boolean);
+}
+
 function viewGlobe() {
-  const top = S.countries.filter(c => c.lat != null || TAX.countries[c.key]).slice(0, 40);
+  const top = globePoints();
+  const routed = !!S.routes?.airports?.length;
   return `
   <header class="page-head">
     <div class="crumbs"><a href="#/">Signals</a> <em>/</em> Globe</div>
-    <h1>Where the aircraft <span class="q">come from</span></h1>
-    <p class="lede">Every country whose aircraft have passed over Aarhus, sized by how many.
-      Drag to spin.</p>
+    <h1>${routed ? 'Where the flights are <span class="q">between</span>'
+                 : 'Where the aircraft <span class="q">come from</span>'}</h1>
+    <p class="lede">${routed
+      ? `Every airport the flights overhead begin or end at, and the corridors between
+         them drawn as the great circles the aircraft actually follow. Drag to spin.`
+      : `Every country whose aircraft have passed over Aarhus, sized by how many.
+         Drag to spin.`}</p>
   </header>
 
   <div id="globe-layout">
@@ -1919,25 +2019,25 @@ function viewGlobe() {
       </div>
       <div class="globe-legend">
         <span><i class="home"></i>Aarhus — the antenna</span>
-        <span><i></i>Registration country, sized by flights</span>
+        <span><i></i>${routed ? 'Airport, sized by flights' : 'Registration country, sized by flights'}</span>
+        ${routed ? '<span><i class="env" style="background:var(--accent)"></i>City-pair, weighted by flights</span>' : ''}
       </div>
     </div>
     <div>
       <div class="sec-head" style="margin-bottom:12px">
-        <div><div class="eyebrow">Ranked</div><h2>Top origins</h2></div>
+        <div><div class="eyebrow">Ranked</div><h2>${routed ? 'Busiest airports' : 'Top origins'}</h2></div>
       </div>
       <div class="gl-list">
         ${top.slice(0, 20).map((c, i) => `
-          <a class="gl-item" href="#/place/${esc(c.key)}" data-cc="${esc(c.key)}">
+          <a class="gl-item" href="${esc(c.href)}" data-cc="${esc(c.key)}">
             <span class="rank">${String(i + 1).padStart(2, '0')}</span>
             <span><span class="nm">${esc(c.name)}</span>
-              <span class="sub">${esc(c.region || '')}${
-                c.widebody ? ` · ${Math.round(c.widebody / c.flights * 100)}% wide-body` : ''}</span></span>
+              <span class="sub">${esc(c.sub || '')}</span></span>
             <span class="n">${n(c.flights)}</span>
           </a>`).join('')}
       </div>
       ${top.length > 20 ? `<a class="btn" style="margin-top:14px" href="#/explore">All ${
-        top.length} countries, with airlines and types, in Explore →</a>` : ''}
+        top.length} ${routed ? 'airports, with every city-pair,' : 'countries, with airlines and types,'} in Explore →</a>` : ''}
     </div>
   </div>`;
 }
@@ -1956,14 +2056,18 @@ async function initGlobe() {
   // navigated on during it. Starting the draw loop now would leak it.
   if (gen !== nav || !cv.isConnected) return;
 
-  const pts = S.countries.map(c => {
-    const m = TAX.countries[c.key];
-    return m && m.lat != null
-      ? { ...c, lat: m.lat, lng: m.lng } : null;
-  }).filter(Boolean);
+  const pts = globePoints();
   const HOME = { lat: S.origin?.lat ?? 56.16, lng: S.origin?.lng ?? 10.20 };
   const maxF = Math.max(...pts.map(p => p.flights), 1);
   const LABELLED = pts.slice(0, 8);
+  // Corridors: with routes, the busiest city-pairs between two plotted
+  // airports; without, each country's arc back to the antenna.
+  const byKey = new Map(pts.map(p => [p.key, p]));
+  const ARCS = S.routes?.pairs?.length
+    ? S.routes.pairs.filter(p => byKey.has(p.a) && byKey.has(p.b)).slice(0, 40)
+        .map(p => ({ A: byKey.get(p.a), B: byKey.get(p.b), keys: [p.a, p.b], flights: p.flights }))
+    : pts.slice(0, 22).map(p => ({ A: p, B: HOME, keys: [p.key], flights: p.flights }));
+  const maxA = Math.max(...ARCS.map(a => a.flights), 1);
 
   // rotP is the latitude at the centre of the disc. Aarhus sits at 56°N, so
   // tilting to ~38° puts the antenna and its corridors in the upper half
@@ -2104,20 +2208,20 @@ async function initGlobe() {
     }
     ctx.restore();
 
-    // Corridor arcs, faintest first so the busiest sit on top
-    const arcs = pts.slice(0, 22);
+    // Corridor arcs, faintest first so the busiest sit on top. Hovering an
+    // airport lights every corridor that touches it.
     const grown = Math.max(1, Math.round(48 * easeOut(intro)));
-    for (const p of arcs) {
-      const isHot = hot === p.key;
+    for (const arc of [...ARCS].reverse()) {
+      const isHot = hot && arc.keys.includes(hot);
       ctx.beginPath(); let started = false;
-      for (const s of arcPoints(p, HOME).slice(0, grown + 1)) {
+      for (const s of arcPoints(arc.A, arc.B).slice(0, grown + 1)) {
         const q = project(s.lat, s.lng);
         if (!q) { started = false; continue; }
         started ? ctx.lineTo(q.x, q.y) : (ctx.moveTo(q.x, q.y), started = true);
       }
       ctx.strokeStyle = tok('--accent');
-      ctx.globalAlpha = isHot ? .95 : .13 + .3 * (p.flights / maxF);
-      ctx.lineWidth = isHot ? 2 : 1;
+      ctx.globalAlpha = isHot ? .95 : (hot ? .06 : .12 + .4 * (arc.flights / maxA));
+      ctx.lineWidth = isHot ? 2 : .6 + 1.4 * (arc.flights / maxA);
       ctx.stroke();
     }
     ctx.globalAlpha = 1;
@@ -2157,7 +2261,7 @@ async function initGlobe() {
   for (const p of LABELLED) {
     const a = document.createElement('a');
     a.className = 'gl-label';
-    a.href = `#/place/${p.key}`;
+    a.href = p.href || `#/place/${p.key}`;
     a.innerHTML = `${esc(p.name)} <b>${n(p.flights)}</b>`;
     a.addEventListener('pointerenter', () => { hot = p.key; syncList(); });
     a.addEventListener('pointerleave', () => { hot = null; syncList(); });
@@ -2425,6 +2529,60 @@ function viewOperator(code) {
   });
 }
 
+/* ── Route entities: an airport, and a city-pair ─────────────────────── */
+function viewAirport(icao) {
+  const R = S.routes;
+  const ix = R?.index?.[icao];
+  const a = R?.airports.find(x => x.key === icao)
+        || (ix && { key: icao, name: ix[0], city: ix[1], cc: ix[2], flights: 0, dep: 0, arr: 0 });
+  if (!a) return notFound(`No flights on record to or from ${esc(icao)}.`);
+  const cname = TAX?.countries?.[a.cc]?.name || a.cc;
+  const pairs = (R.pairs || []).filter(p => p.a === icao || p.b === icao);
+  return entityShell({
+    crumbs: `<a href="#/explore">Explore</a> <em>/</em> Airports <em>/</em> ${esc(icao)}`,
+    title: `${esc(a.city || a.name)} <span class="q">${esc(icao)}</span>`,
+    lede: `${esc(a.name)}, ${esc(cname)}. Flights recorded over Aarhus that began or ended here${
+      a.local ? '' : ' — none of them landed in Denmark on the way'}.`,
+    stats: readout([
+      { v: fig(a.flights), l: 'Flights', s: a.share != null ? `${a.share}% of routed traffic` : null },
+      { v: fig(a.dep), l: 'Departing from here' },
+      { v: fig(a.arr), l: 'Arriving here' },
+      { v: a.change_pct == null ? '—' : pct(a.change_pct), l: 'Change, week on week',
+        s: a.change_pct == null ? 'from 14 complete days' : null },
+    ]),
+    body: (pairs.length ? `<section>
+      <div class="sec-head"><div><div class="eyebrow">Connections</div>
+        <h2>City-pairs through ${esc(a.city || icao)}</h2></div></div>
+      ${table(pairs, PAIR_COLS, { id: 'ap-p', max: 15, sortKey: 'flights', sortDir: -1, csv: false })}
+    </section>` : '') + evidence('airport', icao, `Every flight to or from ${esc(icao)}`,
+      `SELECT callsign, origin, destination, ac_desc, operator, seen_at\nFROM flights\nWHERE origin = '${icao}' OR destination = '${icao}'\nORDER BY first_seen DESC;`,
+      `ovrhead-flights-${icao}`),
+  });
+}
+
+function viewPair(key) {
+  const p = S.routes?.pairs.find(x => x.key === key);
+  if (!p) return notFound(`No flights on record for the city-pair ${esc(key)}.`);
+  const nameOf = k => `${esc(S.routes.index[k]?.[1] || k)} <span class="code">${esc(k)}</span>`;
+  return entityShell({
+    crumbs: `<a href="#/explore">Explore</a> <em>/</em> City-pairs <em>/</em> ${esc(key)}`,
+    title: `${esc(p.a_city || p.a)} <span class="q">–</span> ${esc(p.b_city || p.b)}`,
+    lede: `<a href="#/airport/${esc(p.a)}">${nameOf(p.a)}</a> and
+           <a href="#/airport/${esc(p.b)}">${nameOf(p.b)}</a>${p.km ? `, ${n(p.km)} km apart` : ''}.
+           Both directions, as recorded passing over Aarhus.`,
+    stats: readout([
+      { v: fig(p.flights), l: 'Flights on this pair' },
+      { v: fig(p.ab), l: `${p.a} → ${p.b}` },
+      { v: fig(p.ba), l: `${p.b} → ${p.a}` },
+      { v: p.change_pct == null ? '—' : pct(p.change_pct), l: 'Change, week on week',
+        s: p.change_pct == null ? 'from 14 complete days' : null },
+    ]),
+    body: evidence('pair', key, `Every flight between ${esc(p.a)} and ${esc(p.b)}`,
+      `SELECT callsign, origin, destination, ac_desc, operator, seen_at\nFROM flights\nWHERE pair = '${key}'\nORDER BY first_seen DESC;`,
+      `ovrhead-flights-${key}`),
+  });
+}
+
 function viewType(code) {
   const t = S.types.find(x => x.key === code);
   if (!t) return notFound(`No flights recorded for aircraft type ${esc(code)}.`);
@@ -2460,7 +2618,9 @@ async function fillLazy() {
   const where = { place: `reg_country = ${q(arg)}`,
                   operator: `airline_prefix = ${q(arg)}`,
                   kind: `carrier_kind = ${q(arg)}`,
-                  type: `ac_type = ${q(arg)}` }[kind];
+                  type: `ac_type = ${q(arg)}`,
+                  airport: `(origin = ${q(arg)} OR destination = ${q(arg)})`,
+                  pair: `pair = ${q(arg)}` }[kind];
   if (shape) engineNote(shape);
   try {
     await getDeep();
@@ -2469,6 +2629,7 @@ async function fillLazy() {
     const [flights, byDay, byHour] = await Promise.all([
       query(`SELECT callsign, ac_type, ac_desc, reg, reg_country_name, operator,
                     carrier_kind, airline_prefix, seen_at,
+                    origin, destination, origin_city, destination_city, route_verified,
                     ROUND(duration_sec/60.0) AS mins
              FROM flights WHERE ${where} ORDER BY first_seen DESC LIMIT 300`),
       query(`SELECT strftime(seen_at, '%Y-%m-%d') AS day, COUNT(*) AS flights
@@ -2513,6 +2674,12 @@ const FLIGHT_COLS = [
       ? `<a class="code" href="https://www.flightradar24.com/data/flights/${esc(r.callsign)}"
            target="_blank" rel="noopener">${esc(r.callsign)}</a>`
       : `<span class="unknown">No callsign transmitted</span>` },
+  { k: 'origin', h: 'Route', render: r => r.origin
+      ? `<a href="#/airport/${esc(r.origin)}">${esc(r.origin_city || r.origin)}</a>
+         <span class="faint">→</span>
+         <a href="#/airport/${esc(r.destination)}">${esc(r.destination_city || r.destination)}</a>${
+           r.route_verified ? '' : ' <span class="faint" title="Route from the callsign table; the aircraft did not move far enough in range to confirm its heading">?</span>'}`
+      : `<span class="unknown">${r.callsign ? 'No route on file' : 'No callsign'}</span>` },
   { k: 'ac_desc', h: 'Aircraft', render: r => r.ac_desc
       ? `${esc(r.ac_desc)} <a href="#/type/${esc(r.ac_type)}" class="code">${esc(r.ac_type)}</a>`
       : `<span class="unknown">Unidentified airframe</span>` },
@@ -2545,7 +2712,16 @@ const MEASURES = {
   operators:{ sql: 'COUNT(DISTINCT airline_prefix)',                    label: 'How many airlines' },
 };
 const DIMS = {
-  country:   { sql: 'reg_country_name',                label: 'country',            head: 'Country' },
+  origin:    { sql: "COALESCE(origin_city, origin)",   label: 'origin airport',     head: 'From' },
+  dest:      { sql: "COALESCE(destination_city, destination)", label: 'destination airport', head: 'To' },
+  pair:      { sql: 'pair',                            label: 'city-pair',          head: 'Pair' },
+  ocountry:  { sql: 'origin_cc',                       label: 'origin country',     head: 'From' },
+  dcountry:  { sql: 'destination_cc',                  label: 'destination country', head: 'To' },
+  direction: { sql: 'direction',                       label: 'direction of travel', head: 'Heading',
+               order: "ORDER BY list_position(['N','NE','E','SE','S','SW','W','NW'], direction)" },
+  local:     { sql: "CASE WHEN origin IS NULL THEN 'no route on file' WHEN is_overflight THEN 'overflight' ELSE 'touches Denmark' END",
+               label: 'overflight or local',   head: 'Kind of flight' },
+  country:   { sql: 'reg_country_name',                label: 'registration country', head: 'Registered in' },
   region:    { sql: 'reg_region',                      label: 'economic region',    head: 'Region' },
   continent: { sql: 'reg_continent',                   label: 'continent',          head: 'Continent' },
   operator:  { sql: 'operator',                        label: 'airline',            head: 'Airline' },
@@ -2564,6 +2740,9 @@ const DIMS = {
 };
 const FILTERS = {
   '':           { sql: '',                            label: 'all aircraft' },
+  routed:       { sql: 'origin IS NOT NULL',          label: 'only flights with a known route' },
+  overflight:   { sql: 'is_overflight',               label: 'only overflights (neither end in Denmark)' },
+  local:        { sql: "origin IS NOT NULL AND NOT is_overflight", label: 'only flights touching Denmark' },
   widebody:     { sql: "body='widebody'",             label: 'only wide-bodies' },
   cargo:        { sql: "carrier_kind='cargo'",        label: 'only freight' },
   leisure:      { sql: "carrier_kind='leisure'",      label: 'only holiday charters' },
@@ -2584,6 +2763,11 @@ const WINDOWS = {
 /* Examples are builder states, not raw SQL, so clicking one shows the reader
    exactly which controls produce that answer. */
 const PRESETS = [
+  ['Where are the flights overhead between?',      { m:'flights',  d:'pair',      f:'',        w:'' }],
+  ['Which airports do they fly to?',               { m:'flights',  d:'dest',      f:'',        w:'' }],
+  ['How much just passes over Denmark?',           { m:'flights',  d:'local',     f:'',        w:'' }],
+  ['Which way is the traffic heading?',            { m:'flights',  d:'direction', f:'',        w:'' }],
+  ['Where do the wide-bodies overhead come from?', { m:'flights',  d:'origin',    f:'widebody',w:'' }],
   ['What kind of flying is this?',                 { m:'flights',  d:'kind',      f:'',        w:'' }],
   ['Does freight keep office hours?',              { m:'flights',  d:'dow',       f:'cargo',   w:'' }],
   ['When do the holiday charters go?',             { m:'flights',  d:'dow',       f:'leisure', w:'' }],
@@ -2794,6 +2978,16 @@ const COLUMN_REF = [
   ['reg_continent',      'text',      'derived', 'Continent of registration.'],
   ['body',               'text',      'derived', "'widebody' or 'narrowbody', inferred from the type code."],
   ['is_cargo',           'boolean',   'derived', "True when carrier_kind is 'cargo'. Attributed by operator, never by airframe."],
+  ['origin, destination', 'text',     'raw',     'ICAO codes of the scheduled route for this callsign, kept only when the observed heading agrees (or could not be judged). NULL otherwise.'],
+  ['route_check',        'text',      'raw',     "'verified' (heading agrees with the route), 'unverified' (aircraft moved under 15 km in range), or 'conflict' (heading disagrees — origin/destination cleared)."],
+  ['route_conflict',     'text',      'raw',     'The route the table gave when it was rejected, so the rejection can be audited.'],
+  ['heading',            'double',    'raw',     'Observed track in degrees, first position to last.'],
+  ['moved_km',           'double',    'raw',     'Ground distance between first and last position in range.'],
+  ['direction',          'text',      'raw',     'heading as an eight-point compass sector.'],
+  ['origin_name, origin_city, origin_cc', 'text', 'derived', 'The origin airport as a place. Likewise destination_*.'],
+  ['pair',               'text',      'derived', 'Unordered city-pair, e.g. EKCH-ENGM. Both directions share it.'],
+  ['is_overflight',      'boolean',   'derived', 'True when the route neither starts nor ends at a Danish (EK…) airport.'],
+  ['route_verified',     'boolean',   'derived', "True when route_check is 'verified'."],
 ];
 
 /* The files and the column reference used to be a page of their own. They are
@@ -2905,10 +3099,35 @@ function viewMethod() {
     <p>This is where an aircraft is <em>registered</em> — not where it departed or is headed.
     A Ryanair jet is Irish-registered wherever it is flying.</p>
 
+    <h3>How we know the route</h3>
+    <p>An airline flies the same flight number on the same route day after day, and the
+    callsign an aircraft broadcasts is its airline code plus that number — Ryanair uses
+    fixed operational codes like <span class="code">RYR9SE</span> instead of the commercial
+    number, but they are just as stable per rotation. The open
+    <a href="https://github.com/vradarserver/standing-data" rel="noopener">VRS standing-data</a>
+    tables record, for each callsign, the airports thousands of receivers have seen it
+    depart and land at. Every flight's callsign is looked up there.</p>
+    <p>A match is only believed when it agrees with what the antenna saw. We know the
+    direction each aircraft was travelling from its first and last position in range, and
+    we compare that with the bearing from the aircraft's own position to the route's
+    destination. Within 45°, the route is <b>verified</b>. If the aircraft moved less than
+    15 km in range there is no heading to judge by, and the route is kept as
+    <b>unverified</b>. If the heading disagrees — a callsign reassigned to another route,
+    a charter code reused, the wrong leg of a multi-stop rotation — the route is a
+    <b>conflict</b>: it is cleared, and nothing on the site counts it.
+    ${S.routes ? `Right now that is <b>${n(S.routes.coverage.verified)}</b> verified,
+    <b>${n(S.routes.coverage.unverified)}</b> unverified and
+    <b>${n(S.routes.coverage.conflict)}</b> rejected, out of ${n(S.totals.flights)} flights;
+    <b>${n(S.routes.coverage.none)}</b> have no callsign or no table entry and are left
+    without a route rather than given a guess.` : ''}</p>
+
     <h3>What we don't claim</h3>
     <ul>
-      <li><b>Routes.</b> We only know the nearest airport to where an aircraft entered and
-      left range. At 38,000 feet that describes our antenna, not the flight.</li>
+      <li><b>The path flown.</b> A route is where a flight was scheduled between, checked
+      against its heading — not the track it took to get there, and not whether it was on
+      time. The nearest-airport columns describe where our range edge is, not the flight.</li>
+      <li><b>Routes for the unrouted.</b> Roughly a fifth of flights carry no callsign or a
+      callsign no table knows. They stay unrouted. They are not assumed to be like the rest.</li>
       <li><b>Cargo per aircraft.</b> Freighters and passenger jets share type codes, so we
       mark cargo only where the <em>operator</em> is an all-cargo carrier.</li>
       <li><b>Economic conclusions.</b> Aircraft counts are an input to those questions, not
@@ -3763,6 +3982,12 @@ function buildIndex() {
                                      n: o.flights, s: ((o.name || '') + ' ' + o.key).toLowerCase() }));
   S.types.forEach(t => ix.push({ t: t.desc || t.key, k: 'Aircraft', h: `#/type/${t.key}`,
                                  n: t.flights, s: ((t.desc || '') + ' ' + t.key).toLowerCase() }));
+  (S.routes?.airports || []).forEach(a => ix.push({
+    t: a.city || a.name, k: 'Airport', h: `#/airport/${a.key}`, n: a.flights,
+    s: (a.city + ' ' + a.name + ' ' + a.key + ' ' + (TAX?.countries?.[a.cc]?.name || '')).toLowerCase() }));
+  (S.routes?.pairs || []).forEach(p => ix.push({
+    t: `${p.a_city || p.a} – ${p.b_city || p.b}`, k: 'City-pair', h: `#/pair/${p.key}`, n: p.flights,
+    s: (p.a_city + ' ' + p.b_city + ' ' + p.a + ' ' + p.b).toLowerCase() }));
   (S.week?.kinds || []).forEach(k => {
     if (k.key === 'unclassified') return;
     ix.push({ t: k.label, k: 'Kind of flying', h: `#/kind/${k.key}`, n: k.flights,
@@ -3917,6 +4142,11 @@ function resolve(p) {
                                           title: S.operators.find(x => x.key === p[1])
                                                  ? (S.operators.find(x => x.key === p[1]).name || p[1])
                                                  : 'Not found' };
+  if (p[0] === 'airport')        return { html: viewAirport(p[1]),
+                                          title: S.routes?.index?.[p[1]]?.[1] || p[1] || 'Not found' };
+  if (p[0] === 'pair')           return { html: viewPair(p[1]),
+                                          title: (() => { const x = S.routes?.pairs?.find(y => y.key === p[1]);
+                                                          return x ? `${x.a_city || x.a} – ${x.b_city || x.b}` : 'Not found'; })() };
   if (p[0] === 'type')           return { html: viewType(p[1]),
                                           title: S.types.find(x => x.key === p[1])
                                                  ? (S.types.find(x => x.key === p[1]).desc || p[1])
@@ -3982,7 +4212,9 @@ function route() {
     // /s/… is a permalinked signal, so it belongs to Signals; /data is a legacy
     // link into Method; /month is the Week tab's other period.
     const head = p[0] === 's' ? '' : p[0] === 'data' ? 'method'
-               : p[0] === 'month' ? 'week' : (p[0] || '');
+               : p[0] === 'month' ? 'week'
+               : ['airport', 'pair', 'place', 'region', 'continent', 'operator', 'type', 'kind'].includes(p[0]) ? 'explore'
+               : (p[0] || '');
     const base = '/' + head;
     document.querySelectorAll('#nav a').forEach(a =>
       a.classList.toggle('on', a.dataset.r === base));

@@ -30,6 +30,9 @@ Log '=== daily ingest starting ==='
 
 try {
     Run 'git-pull'    'git'   @('pull', '--rebase', '--autostash', 'origin', 'main')
+    # Routes before reconstruct: reconstruct joins every flight's callsign to
+    # its scheduled route and checks it against the observed heading.
+    Run 'routes'      $Python @((Join-Path $RepoRoot 'scripts\adsb\routes.py'))
     Run 'reconstruct' $Python @((Join-Path $RepoRoot 'scripts\adsb\reconstruct.py'))
     Run 'sync'        $Python @((Join-Path $RepoRoot 'scripts\adsb\sync_to_repo.py'))
     # Taxonomy is static reference data; the summary is the site's fast layer

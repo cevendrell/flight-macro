@@ -166,10 +166,20 @@ Fonts. Two radii only: `--r-control: 7px`, `--r-card: 11px`.
 ## Data pipeline
 - **Source**: a Raspberry Pi running readsb/tar1090 on the LAN, polled every
   15 s by `scripts/adsb/poller.py` into `snapshots/*.parquet`.
-- **Nightly**: `reconstruct.py` sessionises snapshots into `flights/*.parquet`
-  (30-minute gap starts a new flight) → `enrich.py` adds registration, type and
-  operator → `build_summary.py` writes `summary.json` and detects signals →
-  `sync_to_repo.py` commits → GitHub Pages redeploys.
+- **Nightly**: `routes.py` fetches the VRS standing-data callsign→route tables
+  for the airline prefixes in the record (cached a week in the warehouse) and
+  writes `enrichment/routes.parquet` for the callsigns heard → `reconstruct.py`
+  sessionises snapshots into `flights/*.parquet` (30-minute gap starts a new
+  flight), joins each callsign's route and keeps it only when the aircraft's
+  observed heading agrees with the bearing to the destination (`route_check`:
+  verified / unverified / conflict; a conflict clears origin/destination and
+  keeps the rejected route in `route_conflict`) → `build_summary.py` writes
+  `summary.json` — including the `routes` block the site is built around —
+  and detects signals → `sync_to_repo.py` commits → GitHub Pages redeploys.
+- **Routes are the primary lens; registration is the secondary one.** Origin
+  and destination say where a flight is between. Registration country says
+  where the airframe lives. Signals, Explore, the Globe and the entity pages
+  lead with routes and keep registration as an add-on, in that order.
 - **No approval layer** — generated readings ship straight to the site, which is
   why the confidence field and the caveat field are not optional.
 - **Never hand-merge the derived JSON.** `summary.json`, `taxonomy.json`,

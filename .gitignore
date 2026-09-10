@@ -15,3 +15,7 @@ scripts/.cache/
 *.parquet
 !data/*.json
 !data/adsb/**/*.parquet
+
+# Local cache of upstream route tables (routes.py). Lives in the warehouse on
+# the collector; only ends up here when the repo is used as the warehouse.
+data/adsb/routes-cache/

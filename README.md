@@ -126,7 +126,9 @@ the Parquet fetches need an origin.
 
 ```bash
 pip install -r scripts/requirements.txt
-python scripts/adsb/reconstruct.py     # snapshots → flight sessions
+python scripts/adsb/routes.py          # callsign → scheduled route, from VRS standing-data
+python scripts/adsb/reconstruct.py     # snapshots → flight sessions, each route checked
+                                       #   against the observed heading
 python scripts/adsb/enrich.py          # registration / type / operator tables
 python scripts/adsb/carriers.py        # carriers.json — operator + kind of flying
 python scripts/adsb/build_summary.py   # summary.json + signal detection

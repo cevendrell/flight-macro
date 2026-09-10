@@ -30,9 +30,8 @@ from pathlib import Path
 
 try:
     import duckdb
-    import pyarrow.parquet as pq
 except ImportError:
-    print("pip install duckdb pyarrow", file=sys.stderr)
+    print("pip install duckdb", file=sys.stderr)
     sys.exit(1)
 
 WAREHOUSE = Path(os.environ.get("OVRHEAD_WAREHOUSE", str(Path.home() / "data" / "ovrhead-warehouse")))
@@ -80,6 +79,9 @@ def build_flights(con, day_filter: str | None) -> int:
         con.execute(f"CREATE OR REPLACE VIEW aircraft_db AS SELECT * FROM read_parquet('{ENR / 'aircraft_db.parquet'}')")
     if have_airlines:
         con.execute(f"CREATE OR REPLACE VIEW airlines AS SELECT * FROM read_parquet('{ENR / 'airlines.parquet'}')")
+    have_routes = (ENR / "routes.parquet").exists() and have_airports
+    if have_routes:
+        con.execute(f"CREATE OR REPLACE VIEW routes AS SELECT * FROM read_parquet('{ENR / 'routes.parquet'}')")
 
     day_where = ""
     if day_filter:
@@ -139,7 +141,69 @@ def build_flights(con, day_filter: str | None) -> int:
         HAVING n_obs >= 2
     """)
 
-    # 3) attach airports + aircraft + airline
+    # 3a) direction of travel, and the scheduled route checked against it.
+    #
+    # The heading is the great-circle bearing from where we first heard the
+    # aircraft to where we last did. The route comes from the callsign table
+    # (routes.py). A route is only believed when the aircraft was observed
+    # heading toward its destination: the bearing from the aircraft's own
+    # first position to the destination airport, within 45° of the observed
+    # heading. Not from the origin — a San Francisco→Copenhagen flight leaves
+    # heading north-east and passes Aarhus heading south-east, and only the
+    # second is what the antenna can see. A route that fails the check is
+    # kept in route_conflict for the record and cleared from origin and
+    # destination, so nothing downstream counts it.
+    def bearing(lat1, lon1, lat2, lon2):
+        return f"""fmod(degrees(atan2(
+            sin(radians({lon2} - {lon1})) * cos(radians({lat2})),
+            cos(radians({lat1})) * sin(radians({lat2}))
+              - sin(radians({lat1})) * cos(radians({lat2})) * cos(radians({lon2} - {lon1}))
+        )) + 360, 360)"""
+    routes_join = "LEFT JOIN routes r ON r.callsign = f.callsign" if have_routes else ""
+    route_cols = ("r.origin, r.destination, r.legs, r.airports, "
+                  "ad.latitude_deg AS dlat, ad.longitude_deg AS dlon"
+                  if have_routes else
+                  "NULL AS origin, NULL AS destination, NULL AS legs, NULL AS airports, "
+                  "NULL AS dlat, NULL AS dlon")
+    dest_join = "LEFT JOIN airports ad ON ad.ident = r.destination" if have_routes else ""
+    con.execute(f"""
+        CREATE OR REPLACE TEMP VIEW routed AS
+        WITH g AS (
+            SELECT f.hex, f.session_idx, f.first_lat, f.first_lon, f.last_lat, f.last_lon,
+                   {route_cols}
+            FROM flights_agg f
+            {routes_join}
+            {dest_join}
+        ), b AS (
+            SELECT *,
+                CASE WHEN first_lat IS NOT NULL AND last_lat IS NOT NULL THEN
+                    2 * 6371 * asin(sqrt(
+                        pow(sin(radians(last_lat - first_lat) / 2), 2)
+                        + cos(radians(first_lat)) * cos(radians(last_lat))
+                          * pow(sin(radians(last_lon - first_lon) / 2), 2)))
+                END AS moved_km,
+                CASE WHEN first_lat IS NOT NULL AND last_lat IS NOT NULL THEN
+                    {bearing('first_lat', 'first_lon', 'last_lat', 'last_lon')}
+                END AS heading,
+                CASE WHEN first_lat IS NOT NULL AND dlat IS NOT NULL THEN
+                    {bearing('first_lat', 'first_lon', 'dlat', 'dlon')}
+                END AS expected
+            FROM g
+        )
+        SELECT hex, session_idx, origin, destination, legs, airports,
+               round(moved_km, 1) AS moved_km, round(heading) AS heading,
+               CASE WHEN heading IS NULL THEN NULL ELSE
+                   (['N','NE','E','SE','S','SW','W','NW'])
+                       [CAST(floor(fmod(heading + 22.5, 360) / 45) AS INTEGER) + 1]
+               END AS direction,
+               CASE WHEN origin IS NULL THEN NULL
+                    WHEN moved_km IS NULL OR moved_km < 15 OR expected IS NULL THEN 'unverified'
+                    WHEN abs(fmod(expected - heading + 540, 360) - 180) <= 45 THEN 'verified'
+                    ELSE 'conflict' END AS route_check
+        FROM b
+    """)
+
+    # 3b) attach airports + aircraft + airline + the checked route
     q = f"""
         SELECT
             f.hex, f.callsign,
@@ -150,10 +214,17 @@ def build_flights(con, day_filter: str | None) -> int:
             {airport_last}  AS near_last_airport,
             f.airline_prefix
             {ac_select}
-            {airline_select}
+            {airline_select},
+            rt.moved_km, rt.heading, rt.direction,
+            CASE WHEN rt.route_check = 'conflict' THEN NULL ELSE rt.origin END      AS origin,
+            CASE WHEN rt.route_check = 'conflict' THEN NULL ELSE rt.destination END AS destination,
+            CASE WHEN rt.route_check = 'conflict' THEN NULL ELSE rt.legs END        AS route_legs,
+            rt.route_check,
+            CASE WHEN rt.route_check = 'conflict' THEN rt.airports END              AS route_conflict
         FROM flights_agg f
         {ac_join}
         {airline_join}
+        LEFT JOIN routed rt ON rt.hex = f.hex AND rt.session_idx = f.session_idx
     """
     con.execute(f"CREATE OR REPLACE TEMP VIEW flights AS {q}")
     n = con.execute("SELECT COUNT(*) FROM flights").fetchone()[0]
