@@ -386,6 +386,27 @@ td a:hover { color:var(--accent); border-bottom-color:var(--accent); }
 .globe-legend i.home { background:var(--fall); }
 .globe-legend i.dot  { width:5px; height:5px; }
 .globe-legend i.env  { width:16px; height:2px; border-radius:0; background:var(--ink); }
+.globe-legend i.coast { width:16px; height:1px; border-radius:0; background:var(--rule-2); }
+
+/* ── Period navigation (week / month, and stepping back through weeks) ─── */
+.wknav { display:flex; align-items:center; justify-content:space-between;
+         gap:16px; flex-wrap:wrap; padding:22px 0 0; }
+.wknav-tabs { display:flex; gap:2px; }
+.wknav-tabs a { font-size:.78rem; font-weight:600; text-decoration:none;
+                color:var(--mute); padding:6px 13px; border-radius:var(--r-control); }
+.wknav-tabs a:hover { color:var(--ink); background:var(--surface); }
+.wknav-tabs a.on { color:var(--cta-fg); background:var(--cta-bg); }
+.wknav-move { display:flex; align-items:center; gap:6px; }
+.wknav-b { font-size:.76rem; text-decoration:none; color:var(--ink-2);
+           padding:6px 11px; border:1px solid var(--rule-2);
+           border-radius:var(--r-control); white-space:nowrap; }
+.wknav-b:hover { color:var(--accent); border-color:var(--accent); }
+.wknav-b.off { color:var(--faint); border-style:dashed; cursor:not-allowed; }
+.wknav-at { font-family:var(--mono); font-size:.72rem; color:var(--ink-2);
+            padding:0 10px; text-align:center; line-height:1.3; }
+.wknav-at b { display:block; font-weight:500; font-size:.63rem; color:var(--mute);
+              text-transform:uppercase; letter-spacing:.09em; }
+@media (max-width:560px){ .wknav-move{ width:100%; justify-content:space-between } }
 
 /* ── Coverage ──────────────────────────────────────────────────────────── */
 #cov-stage { position:relative; aspect-ratio:1/1; width:100%;
@@ -584,18 +605,20 @@ textarea.sql-box:focus { border-color:var(--accent); }
 .skip:focus { left:var(--pad); top:9px; }
 
 /* ── Theme switch ──────────────────────────────────────────────────────── */
-/* Three states, not two: a reader who has never chosen should keep following
-   their system, and that has to be visible as its own setting. */
-#theme { display:flex; gap:1px; padding:2px; flex-shrink:0;
+/* One button. It shows the theme you would get by pressing it, which is the
+   only thing a reader actually wants from this control. Until it is pressed
+   the page still follows the system; the first press is what opts out. */
+#theme { display:grid; place-items:center; flex-shrink:0; cursor:pointer;
+         width:30px; height:30px; padding:0; line-height:0;
+         background:none; color:var(--on-navy-2);
          border:1px solid rgba(130,165,214,.28); border-radius:var(--r-control); }
-#theme button { background:none; border:none; cursor:pointer; line-height:0;
-                padding:5px 7px; border-radius:5px; color:var(--on-navy-2); }
-#theme button:hover { color:var(--on-navy); background:rgba(238,241,248,.10); }
-#theme button[aria-pressed="true"] { color:var(--navy); background:var(--on-navy); }
-:root[data-theme="dark"] #theme button[aria-pressed="true"],
-:root:not([data-theme="light"]) #theme button[aria-pressed="true"] { color:#05164d; }
-#theme svg { width:14px; height:14px; display:block; fill:none;
+#theme:hover { color:var(--on-navy); background:rgba(238,241,248,.10);
+               border-color:var(--on-navy-2); }
+#theme svg { width:14px; height:14px; display:none; fill:none; grid-area:1/1;
              stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+/* `data-now` is the theme currently showing, so we offer the other one. */
+#theme[data-now="light"] .i-moon { display:block; }
+#theme[data-now="dark"]  .i-sun  { display:block; }
 /* Rides up beside the wordmark on a phone rather than claiming a row. */
 @media (max-width:760px){ #theme{ order:1; margin-left:auto } }
 
@@ -826,7 +849,7 @@ html.theme-vt::view-transition-new(root) { z-index:2; }
                                        color var(--t-fast) linear,
                                        padding-left var(--t-fast) var(--ease-out); }
 .gl-item:hover, .hrow:hover { padding-left:11px; }
-.freshness, #theme button, .gl-label { transition: color var(--t-fast) linear,
+.freshness, #theme, .gl-label { transition: color var(--t-fast) linear,
                                                    border-color var(--t-fast) linear,
                                                    background var(--t-fast) linear; }
 tbody tr { transition: background var(--t-fast) linear; }
@@ -868,7 +891,6 @@ th.sortable .dir { display:inline-block; transition: transform var(--t-base) var
         <a href="#/globe"   data-r="/globe"  >Globe</a>
         <a href="#/explore" data-r="/explore">Explore</a>
         <a href="#/ask"     data-r="/ask"    >Ask</a>
-        <a href="#/data"    data-r="/data"   >Data</a>
         <a href="#/method"  data-r="/method" >Method</a>
       </nav>
       <div id="search-wrap">
@@ -879,18 +901,11 @@ th.sortable .dir { display:inline-block; transition: transform var(--t-base) var
         <span class="kbd" aria-hidden="true">/</span>
         <div id="results" role="listbox" aria-label="Search results"></div>
       </div>
-      <a class="freshness" href="#/data" id="stamp" title="When the record was last updated"></a>
-      <div id="theme" role="group" aria-label="Colour theme">
-        <button data-theme-set="light" title="Light" aria-label="Light theme">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.4v2.2M12 19.4v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.4 12h2.2M19.4 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/></svg>
-        </button>
-        <button data-theme-set="system" title="Match my system" aria-label="Match system theme">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.6" y="4.2" width="18.8" height="12.6" rx="1.8"/><path d="M8.4 20.2h7.2"/></svg>
-        </button>
-        <button data-theme-set="dark" title="Dark" aria-label="Dark theme">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.4 13.8A8.4 8.4 0 1 1 10.2 3.6a6.6 6.6 0 0 0 10.2 10.2z"/></svg>
-        </button>
-      </div>
+      <a class="freshness" href="#/method/files" id="stamp" title="When the record was last updated"></a>
+      <button id="theme" type="button" title="Switch theme">
+        <svg class="i-sun"  viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.4v2.2M12 19.4v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.4 12h2.2M19.4 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/></svg>
+        <svg class="i-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.4 13.8A8.4 8.4 0 1 1 10.2 3.6a6.6 6.6 0 0 0 10.2 10.2z"/></svg>
+      </button>
     </div>
     <div id="scrollbar" aria-hidden="true"></div>
   </header>
@@ -900,7 +915,6 @@ th.sortable .dir { display:inline-block; transition: transform var(--t-base) var
       <span>OvrHead — one antenna over Aarhus, Denmark.</span>
       <a href="#/about">About</a>
       <a href="#/method">Method</a>
-      <a href="#/data">Data</a>
       <a href="https://github.com/cevendrell/flight-macro" rel="noopener">Source</a>
       <span class="sep" id="foot-stamp"></span>
     </footer>
@@ -1534,7 +1548,8 @@ const countryName = cc => TAX?.countries?.[cc]?.name || cc;
 /* ── Signals view ────────────────────────────────────────────────────── */
 function viewSignals(openId) {
   const t = S.totals, w = S.window;
-  const stale = (Date.now() - new Date(S.generated_at)) / 3.6e6;
+  // Staleness is handled once, in staleNotice(), which measures it from the
+  // last observation rather than from when the summary happened to be built.
 
   const sigs = S.signals.map((s, i) => {
     const dir = /^\+/.test(s.metric) ? 'up' : /^[-−]/.test(s.metric) ? 'down' : '';
@@ -1575,10 +1590,6 @@ function viewSignals(openId) {
       signals we can honestly draw from it — evidence and limits attached.</p>
   </header>
 
-  ${stale > 30 ? `<div class="notice warn" style="margin-bottom:34px">
-    <b>The record is behind.</b> Last updated ${stale.toFixed(0)} hours ago — the receiver
-    or the nightly ingest may have stopped.</div>` : ''}
-
   <section>
     ${readout([
       { v: fig(t.flights),   l: 'Flights recorded', s: `over ${w.days_observed} days` },
@@ -1615,8 +1626,13 @@ function viewSignals(openId) {
   <section>
     <div class="sec-head">
       <div><div class="eyebrow">Coverage</div><h2>Daily record</h2></div>
-      <p class="sec-note">Hatched bars are partial days, excluded from comparisons.</p>
+      <a class="btn" href="#/month">The longer view →</a>
     </div>
+    <p class="sec-note" style="margin:-6px 0 14px;max-width:var(--measure)">
+      Hatched bars are partial days, excluded from comparisons. Most of the
+      movement here is day-of-week, not change —
+      <a href="#/month" style="color:var(--accent)">the longer view</a> takes
+      that out.</p>
     ${chart(S.daily, { key: 'day', val: 'flights', partial: 'partial' })}
   </section>
 
@@ -1799,9 +1815,13 @@ async function initGlobe() {
   function resize() {
     const dpr = Math.min(devicePixelRatio || 1, 2);
     const w = cv.clientWidth, h = cv.clientHeight;
+    // A canvas that is still laid out at zero — first paint, or the page hidden
+    // behind a view transition — would give a negative radius, and ctx.arc
+    // throws on that. Keep the last good geometry until there is a real box.
+    if (w < 2 || h < 2) return;
     cv.width = w * dpr; cv.height = h * dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    R = Math.min(w, h) / 2 - 34; cx = w / 2; cy = h / 2;
+    R = Math.max(10, Math.min(w, h) / 2 - 34); cx = w / 2; cy = h / 2;
   }
 
   /** Orthographic projection. Returns null when the point faces away. */
@@ -1815,6 +1835,21 @@ async function initGlobe() {
       y: cy - R * (Math.cos(p0) * Math.sin(p) - Math.sin(p0) * Math.cos(p) * Math.cos(l)),
       z: cosc,
     };
+  }
+
+  /** As `project`, but never null: points on the far side are pushed out to the
+   *  limb along their own bearing, so a polygon crossing the horizon closes
+   *  around the rim instead of across the middle of the disc. */
+  function projectLimb(lat, lng) {
+    const l = (lng + rotL) * Math.PI / 180, p = lat * Math.PI / 180;
+    const p0 = rotP * Math.PI / 180;
+    const cosc = Math.sin(p0) * Math.sin(p) + Math.cos(p0) * Math.cos(p) * Math.cos(l);
+    const dx = Math.cos(p) * Math.sin(l);
+    const dy = -(Math.cos(p0) * Math.sin(p) - Math.sin(p0) * Math.cos(p) * Math.cos(l));
+    if (cosc >= 0) return { x: cx + R * dx, y: cy + R * dy };
+    // Behind: same direction, pinned just past the edge. The clip trims it.
+    const m = Math.hypot(dx, dy) || 1e-6;
+    return { x: cx + R * 1.06 * dx / m, y: cy + R * 1.06 * dy / m };
   }
 
   /** Spherical interpolation, so an arc follows the great circle. */
@@ -1871,18 +1906,34 @@ async function initGlobe() {
       ctx.stroke();
     }
 
-    // Land
+    /* Land.
+       A ring that straddles the horizon used to be drawn by skipping the points
+       facing away and closing what was left, which joins the last visible point
+       straight back to the first — a chord clean across the disc. On anything
+       the size of Eurasia that is a wedge, and it swings around as the globe
+       turns. Instead every point is projected: the ones behind the horizon are
+       pushed out onto the limb, so the polygon stays continuous and closes
+       along the rim where the land actually disappears. Clipping to the disc
+       then hides the overshoot. */
+    ctx.save();
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.clip();
     ctx.fillStyle = tok('--sunken'); ctx.strokeStyle = tok('--rule-2'); ctx.lineWidth = .7;
     for (const ring of LAND) {
-      ctx.beginPath(); let started = false, any = false;
-      for (const [lng, lat] of ring) {
-        const q = project(lat, lng);
-        if (!q) { started = false; continue; }
-        any = true;
-        started ? ctx.lineTo(q.x, q.y) : (ctx.moveTo(q.x, q.y), started = true);
+      // Skip rings with nothing on this face at all — most of the world, most
+      // of the time, and it keeps the per-frame cost down.
+      let visible = false;
+      for (const [lng, lat] of ring) { if (project(lat, lng)) { visible = true; break; } }
+      if (!visible) continue;
+
+      ctx.beginPath();
+      for (let i = 0; i < ring.length; i++) {
+        const [lng, lat] = ring[i];
+        const q = projectLimb(lat, lng);
+        i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y);
       }
-      if (any) { ctx.closePath(); ctx.fill(); ctx.stroke(); }
+      ctx.closePath(); ctx.fill(); ctx.stroke();
     }
+    ctx.restore();
 
     // Corridor arcs, faintest first so the busiest sit on top
     const arcs = pts.slice(0, 22);
@@ -1947,13 +1998,31 @@ async function initGlobe() {
      pixels of each other. Place labels greedily by traffic and drop any that
      would collide with one already placed, so the busiest always wins and the
      overlay never turns into a pile. */
+  /* Label boxes are measured once and cached. Reading offsetWidth inside the
+     animation loop forces a synchronous layout on every frame, and since the
+     next statement writes style.left straight back, that is a read/write
+     thrash sixty times a second — which is what made dragging the globe feel
+     like it was catching. Sizes only change when the text or the font does,
+     so re-measure on resize instead. */
+  const labelBox = new Map();
+  function measureLabels() {
+    for (const p of LABELLED) {
+      const a = labelEls.get(p.key);
+      const prev = a.style.display;
+      a.style.display = '';                       // measure even while hidden
+      labelBox.set(p.key, { w: a.offsetWidth || 76, h: a.offsetHeight || 22 });
+      a.style.display = prev;
+    }
+  }
+
   function positionLabels() {
     const placed = [];
     for (const p of LABELLED) {
       const a = labelEls.get(p.key), q = project(p.lat, p.lng);
       if (!q || q.z < 0.18) { a.style.display = 'none'; continue; }
 
-      const w = a.offsetWidth || 76, h = a.offsetHeight || 22;
+      const box0 = labelBox.get(p.key) || { w: 76, h: 22 };
+      const w = box0.w, h = box0.h;
       const x = q.x, y = q.y - 15 - 9 * Math.sqrt(p.flights / maxF);
       const box = { l: x - w / 2, r: x + w / 2, t: y - h / 2, b: y + h / 2 };
       const clash = hot !== p.key && placed.some(o =>
@@ -2014,9 +2083,12 @@ async function initGlobe() {
     draw();
     raf = requestAnimationFrame(frame);
   }
-  const ro = new ResizeObserver(() => { resize(); draw(); });
+  const ro = new ResizeObserver(() => { resize(); measureLabels(); draw(); });
   ro.observe(cv);
-  resize(); frame();
+  resize(); measureLabels(); frame();
+  // Webfonts land after first paint and change every label's width, so the
+  // collision test would otherwise spend the session working from wrong boxes.
+  if (document.fonts?.ready) document.fonts.ready.then(measureLabels).catch(() => {});
 
   globeStop = () => { cancelAnimationFrame(raf); ro.disconnect(); globeStop = null; };
 }
@@ -2388,7 +2460,7 @@ function viewAsk() {
         <button class="btn primary" id="run">Run this query</button>
         <button class="btn" id="copy-sql">Copy SQL</button>
         <button class="btn" id="link-sql">Copy link to this query</button>
-        <a class="btn" href="#/data">Column reference →</a>
+        <a class="btn" href="#/method/columns">Column reference →</a>
       </div>
     </details>
   </section>`;
@@ -2553,7 +2625,11 @@ const COLUMN_REF = [
   ['is_cargo',           'boolean',   'derived', "True when carrier_kind is 'cargo'. Attributed by operator, never by airframe."],
 ];
 
-function viewData() {
+/* The files and the column reference used to be a page of their own. They are
+   the same argument the Method page is making — here is exactly what we did, go
+   and check — so they now sit at the end of it rather than behind a tab a
+   reader had to be suspicious enough to click in the first place. */
+function sectionFiles() {
   const man = S._manifest || {};
   const groups = [
     ['Flights', 'One row per aircraft visit. This is the table the site queries.', man.flights],
@@ -2564,30 +2640,15 @@ function viewData() {
   const newest = (man.flights || []).slice(-1)[0]?.name || 'flights_2026-08.parquet';
 
   return `
-  <header class="page-head">
-    <div class="crumbs"><a href="#/">Signals</a> <em>/</em> Data</div>
-    <h1>We don't ask you to trust us</h1>
-    <p class="lede">Every number here comes from these files — plain Parquet, served as
-      static assets, ${bytes(total)} in total. Take them.</p>
-  </header>
-
-  <section>
-    <div class="sec-head"><div><div class="eyebrow">Pipeline</div><h2>How an observation becomes a row</h2></div></div>
-    <div class="prose">
-      <p>A Raspberry Pi with a software-defined radio listens on 1090 MHz, the frequency
-      aircraft transponders broadcast on. Every 15 seconds a poller on a laptop takes a
-      snapshot of everything currently visible and appends it to a Parquet file. Each night,
-      those snapshots are stitched into flight sessions — one row per aircraft visit — enriched
-      with registration and type, and pushed to this repository. Nothing else touches the data.</p>
+  <section id="files">
+    <div class="sec-head">
+      <div><div class="eyebrow">The files</div><h2>Don't trust us — take them</h2></div>
+      <p class="sec-note">Every number on this site comes from these. Plain Parquet,
+        served as static assets, ${bytes(total)} in total.</p>
     </div>
-    <div class="sql-box" style="margin-top:14px;white-space:pre-wrap">1090 MHz antenna  →  readsb / tar1090  →  poller.py (15 s)
+    <div class="sql-box" style="margin-bottom:20px;white-space:pre-wrap">1090 MHz antenna  →  readsb / tar1090  →  poller.py (15 s)
   →  snapshots/*.parquet  →  reconstruct.py  →  flights/*.parquet
   →  build_summary.py  →  summary.json  →  this page</div>
-  </section>
-
-  <section>
-    <div class="sec-head"><div><div class="eyebrow">Download</div><h2>The files</h2></div>
-      <p class="sec-note">Parquet opens directly in DuckDB, pandas, Polars and R.</p></div>
     ${groups.map(([name, note, list]) => `
       <h3 style="margin:22px 0 4px">${esc(name)}</h3>
       <p class="sec-note" style="margin-bottom:8px">${esc(note)}</p>
@@ -2604,9 +2665,18 @@ function viewData() {
         <span class="meta">ICAO address blocks → country → region</span></div>
       <div class="dl-row"><a href="${esc(BASE)}carriers.json" class="code">carriers.json</a>
         <span class="meta">callsign prefix → operator &amp; kind of flying</span></div>
+      <div class="dl-row"><a href="${esc(BASE)}coast.json" class="code">coast.json</a>
+        <span class="meta">regional coastline drawn under the coverage figure</span></div>
       <div class="dl-row"><a href="${esc(BASE)}manifest.json" class="code">manifest.json</a>
         <span class="meta">the file list this page is built from</span></div>
     </div>
+    <div class="sql-box" style="margin-top:20px">-- In DuckDB, against the live files. No download step needed.
+INSTALL httpfs; LOAD httpfs;
+
+SELECT ac_type, ac_desc, COUNT(*) AS flights
+FROM read_parquet('${BASE}flights/${esc(newest)}')
+GROUP BY 1, 2
+ORDER BY 3 DESC;</div>
   </section>
 
   <section id="columns">
@@ -2626,17 +2696,6 @@ function viewData() {
       Each one is defined in the view this page builds, which you can read in
       <a href="https://github.com/cevendrell/flight-macro/blob/main/index.html"
          rel="noopener" style="color:var(--accent)">index.html</a>.</p>
-  </section>
-
-  <section>
-    <div class="sec-head"><div><div class="eyebrow">Try it</div><h2>Query these files yourself</h2></div></div>
-    <div class="sql-box">-- In DuckDB, against the live files. No download step needed.
-INSTALL httpfs; LOAD httpfs;
-
-SELECT ac_type, ac_desc, COUNT(*) AS flights
-FROM read_parquet('${BASE}flights/${esc(newest)}')
-GROUP BY 1, 2
-ORDER BY 3 DESC;</div>
   </section>`;
 }
 
@@ -2721,12 +2780,17 @@ function viewMethod() {
       <span><i class="home"></i>The receiver</span>
       <span><i class="dot"></i>First contact with an aircraft</span>
       <span><i class="env"></i>Reception envelope — 95th percentile range per bearing</span>
+      <span><i class="coast"></i>Coastline</span>
     </div>
     <p class="sec-note" id="cov-note" style="margin:16px auto 0;max-width:var(--measure)">
       The shape is set by terrain, antenna siting and how high the aircraft was flying,
       not by where the traffic is. A direction that reaches less far here is a direction
-      we are deaf in — not a quiet one.</p>
-  </section>`;
+      we are deaf in — not a quiet one. Coastline is drawn to the same scale from
+      Natural Earth's 50m land layer, thinned to 3 km — close enough to place the
+      envelope against real geography, not to navigate by.</p>
+  </section>
+
+  ${sectionFiles()}`;
 }
 
 /* ── Coverage plot ───────────────────────────────────────────────────────
@@ -2736,6 +2800,10 @@ function viewMethod() {
    The site's own coastline file is far too coarse at this scale to draw under
    it, and a wrong coastline would be worse than none. */
 let covStop = null;
+/* null = not fetched yet, false = tried and failed, object = the coastline.
+   Fetched lazily with the figure rather than at boot: most readers never scroll
+   to it, and it is 12 KB they would otherwise pay for on every page. */
+let COAST = null;
 
 function initCoverage() {
   // The plot needs the full flight record, and the Method page is mostly prose.
@@ -2781,16 +2849,33 @@ async function drawCoverage() {
   const HOME = { lat: S.origin?.lat ?? 56.16, lng: S.origin?.lng ?? 10.20 };
   const rad = d => d * Math.PI / 180;
   const φ0 = rad(HOME.lat);
+
+  /** Ground distance in km and true bearing in radians, receiver to a point.
+   *  Both the contacts and the coastline go through this, which is what keeps
+   *  them in the same frame. */
+  const geo = (lat, lng) => {
+    const φ = rad(Number(lat)), Δλ = rad(Number(lng) - HOME.lng);
+    const cosd = Math.sin(φ0) * Math.sin(φ) + Math.cos(φ0) * Math.cos(φ) * Math.cos(Δλ);
+    return {
+      km: Math.acos(Math.max(-1, Math.min(1, cosd))) * 6371,
+      brg: Math.atan2(Math.sin(Δλ) * Math.cos(φ),
+                      Math.cos(φ0) * Math.sin(φ) - Math.sin(φ0) * Math.cos(φ) * Math.cos(Δλ)),
+    };
+  };
+
   const pts = [];
   for (const r of rows) {
-    const φ = rad(Number(r.lat)), Δλ = rad(Number(r.lon) - HOME.lng);
-    const cosd = Math.sin(φ0) * Math.sin(φ) + Math.cos(φ0) * Math.cos(φ) * Math.cos(Δλ);
-    const km = Math.acos(Math.max(-1, Math.min(1, cosd))) * 6371;
-    const brg = Math.atan2(Math.sin(Δλ) * Math.cos(φ),
-                           Math.cos(φ0) * Math.sin(φ) - Math.sin(φ0) * Math.cos(φ) * Math.cos(Δλ));
-    if (Number.isFinite(km)) pts.push({ km, brg });
+    const g = geo(r.lat, r.lon);
+    if (Number.isFinite(g.km)) pts.push(g);
   }
   if (!pts.length) { stats.innerHTML = ''; return; }
+
+  // Coastline is optional scenery: if it will not load the figure is still
+  // correct, just harder to place, so a failure here must not stop the draw.
+  if (COAST === null) {
+    try { COAST = await grab('coast.json', false); } catch { COAST = false; }
+    if (gen !== nav || !cv.isConnected) return;
+  }
 
   const sorted = [...pts].map(p => p.km).sort((a, b) => a - b);
   const at = f => sorted[Math.min(sorted.length - 1, Math.floor(f * sorted.length))];
@@ -2843,7 +2928,10 @@ async function drawCoverage() {
     }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
-    R = Math.min(w, h) / 2 - 26; cx = w / 2; cy = h / 2;
+    // The ResizeObserver fires while the page is still being laid out, and at a
+    // canvas narrower than the 26 px margin this radius goes negative — which
+    // ctx.arc throws on rather than ignoring, killing the rest of the frame.
+    R = Math.max(10, Math.min(w, h) / 2 - 26); cx = w / 2; cy = h / 2;
     const xy = (km, brg) => [cx + R * (km / scale) * Math.sin(brg),
                              cy - R * (km / scale) * Math.cos(brg)];
 
@@ -2870,6 +2958,30 @@ async function drawCoverage() {
     for (const [b, t] of [[0, 'N'], [90, 'E'], [180, 'S'], [270, 'W']]) {
       const [x, y] = xy(scale * 1.09, rad(b));
       ctx.fillText(t, x, y);
+    }
+
+    /* Coastline, under everything else.
+       Projected the same way the contacts are — great-circle distance and true
+       bearing from the receiver — so the land and the envelope are in the same
+       frame and a reader can see that the long reach north-west is the North
+       Sea and the short reach south is not. Drawn faint: it is there to orient
+       the figure, not to compete with it. */
+    if (COAST) {
+      ctx.strokeStyle = tok('--rule-2');
+      ctx.lineWidth = 1; ctx.globalAlpha = .85;
+      ctx.beginPath();
+      for (const line of COAST.lines) {
+        let started = false;
+        for (const [lng, lat] of line) {
+          const g = geo(lat, lng);
+          // Beyond the frame the polyline stops; it picks up again if it
+          // comes back inside, rather than being chorded across the plot.
+          if (g.km > scale * 1.02) { started = false; continue; }
+          const [x, y] = xy(g.km, g.brg);
+          started ? ctx.lineTo(x, y) : (ctx.moveTo(x, y), started = true);
+        }
+      }
+      ctx.stroke(); ctx.globalAlpha = 1;
     }
 
     // Contacts and envelope appear behind a sweep, the way the receiver found
@@ -2968,8 +3080,41 @@ function spark(values, dows) {
    the same content in the same layout, without the motion.
 
    Cache tips this at ~120 KB gzip on first hit, zero on subsequent visits. */
-function viewWeek() {
-  const w = S.week;
+/* Which week the page is showing. The router sets it; the React island and the
+   static fallback both read it, so they can never disagree about the subject. */
+let weekSel = null;
+
+const WEEKS = () => S.weeks || (S.week ? [S.week] : []);
+function pickWeek(from) {
+  const all = WEEKS();
+  return all.find(w => w.from === from) || all[0] || null;
+}
+
+/** Previous / next across the stepped weeks, plus the period switch. */
+function periodNav(w) {
+  const all = WEEKS();
+  const older = w.prev_from, newer = w.next_from;
+  const btn = (from, label, dir) => from
+    ? `<a class="wknav-b" href="#/week/${from}">${dir === 'prev' ? '←' : ''} ${label} ${dir === 'next' ? '→' : ''}</a>`
+    : `<span class="wknav-b off" aria-disabled="true">${dir === 'prev' ? '←' : ''} ${label} ${dir === 'next' ? '→' : ''}</span>`;
+  return `
+  <div class="wknav">
+    <div class="wknav-tabs">
+      <a class="on" href="#/week">Week</a>
+      <a href="#/month">Month</a>
+    </div>
+    <div class="wknav-move">
+      ${btn(older, 'Earlier', 'prev')}
+      <span class="wknav-at">${niceDate(w.from)} – ${niceDate(w.to)}${
+        all.length > 1 ? `<b>${w.index === 0 ? 'Latest' : `${w.index} week${w.index > 1 ? 's' : ''} back`}</b>` : ''}</span>
+      ${btn(newer, 'Later', 'next')}
+    </div>
+  </div>`;
+}
+
+function viewWeek(from) {
+  const w = pickWeek(from);
+  weekSel = w;
   if (!w) {
     const have = S.window.complete_days;
     return `<header class="page-head">
@@ -2984,7 +3129,10 @@ function viewWeek() {
   // never arrives. We copy the whole static view into #week-fallback so it
   // sits behind the React tree — React's root.render replaces its content
   // entirely once it mounts, so the fallback never double-renders.
-  return `<div id="week-mount" class="wk-root"></div>
+  // The period nav sits outside the React mount so it survives the island
+  // failing to load, and so navigating weeks never depends on the CDN.
+  return `${periodNav(w)}
+    <div id="week-mount" class="wk-root"></div>
     <div id="week-fallback" hidden>${viewWeekStatic(w)}</div>`;
 }
 
@@ -3017,9 +3165,26 @@ function viewWeekStatic(w) {
     <div class="crumbs"><a href="#/">Signals</a> <em>/</em> Week</div>
     <h1>One week, and what it <span class="q">actually shows</span></h1>
     <p class="lede">${niceDate(w.from)} to ${niceDate(w.to)} — seven consecutive complete
-      days, one of every weekday. Enough to describe the shape of a week. Not enough,
-      yet, to say whether that shape is changing.</p>
+      days, one of every weekday. Enough to describe the shape of a week.
+      ${w.wow
+        ? `The week before it is on record too, so this one can be measured against it.`
+        : `Not enough, yet, to say whether that shape is changing.`}</p>
   </header>
+
+  ${w.wow ? `
+  <section class="wk">
+    <div class="sec-head"><div><div class="eyebrow">Against the week before</div>
+      <h2>Week over week</h2></div>
+      <p class="sec-note">${niceDate(w.wow.prev_from)} – ${niceDate(w.wow.prev_to)},
+        the seven days immediately before this one. No days are shared between them.</p></div>
+    ${readout([
+      { v: fig(w.totals.flights), l: 'Flights this week' },
+      { v: fig(w.wow.prev_flights), l: 'The week before' },
+      { v: w.wow.change_pct == null ? '—'
+           : `${w.wow.change_pct > 0 ? '+' : ''}${w.wow.change_pct}%`,
+        l: 'Change', s: 'one week against one week' },
+    ])}
+  </section>` : ''}
 
   <section class="wk">
     ${readout([
@@ -3146,6 +3311,131 @@ async function loadWeekPkg() {
   return weekPkg;
 }
 
+/* ── Monthly ─────────────────────────────────────────────────────────────
+   A month is thirty-odd days, so this page will be empty for a while yet. It
+   says how far off it is rather than drawing a bar out of a fortnight and
+   letting the shape imply a month happened. In the meantime the honest longer
+   view is the daily series with the weekly cycle taken out of it, which is
+   what a forecast would have to work from anyway — so that is what it shows. */
+function viewMonth() {
+  const M = S.months || { complete: [], progress: [] };
+  const T = S.trend || { days: [], dow: [], ready: false };
+  const done = M.complete;
+
+  const monthName = ym => new Date(ym + '-01T00:00:00Z')
+    .toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+
+  const waiting = M.progress.length ? M.progress[0] : null;
+
+  return `
+  <header class="page-head">
+    <div class="crumbs"><a href="#/">Signals</a> <em>/</em> Month</div>
+    <h1>The longer view</h1>
+    <p class="lede">${done.length
+      ? `${done.length} complete calendar month${done.length > 1 ? 's' : ''} on record.`
+      : `No complete calendar month yet — the record starts mid-month, and a
+         partial month set beside a full one is a comparison of how long the
+         receiver was switched on.`}</p>
+  </header>
+
+  <div class="wknav">
+    <div class="wknav-tabs">
+      <a href="#/week">Week</a>
+      <a class="on" href="#/month">Month</a>
+    </div>
+  </div>
+
+  ${done.length ? `
+  <section class="wk">
+    <div class="sec-head"><div><div class="eyebrow">By month</div>
+      <h2>Complete calendar months</h2></div></div>
+    ${table(done.map(m => ({ ...m, label: monthName(m.month) })), [
+      { k: 'label', h: 'Month' },
+      { k: 'flights', h: 'Flights', num: true },
+      { k: 'per_day', h: 'Per day', num: true },
+      { k: 'aircraft', h: 'Aircraft', num: true },
+      { k: 'widebody', h: 'Wide-body', num: true },
+      { k: 'change_pct', h: 'vs prev', num: true,
+        render: r => r.change_pct == null ? '<span class="dim">—</span>'
+          : `<span class="${r.change_pct >= 0 ? 'up' : 'down'}">${
+              r.change_pct > 0 ? '+' : ''}${r.change_pct}%</span>` },
+    ], { id: 'months', csv: false })}
+  </section>` : `
+  <section class="wk">
+    <div class="notice">
+      <b>${waiting ? `${monthName(waiting.month)} is ${waiting.complete_days} of ${waiting.needs} days in.`
+                   : 'Not enough days yet.'}</b>
+      A calendar month appears here once every one of its days is complete.
+      ${M.progress.length > 1 ? `${monthName(M.progress[1].month)} has
+        ${M.progress[1].complete_days} complete days and can no longer be finished —
+        the receiver was not running for the rest of it.` : ''}
+    </div>
+  </section>`}
+
+  <section class="wk">
+    <div class="sec-head">
+      <div><div class="eyebrow">Every complete day</div>
+        <h2>The record so far</h2></div>
+      <p class="sec-note">${n(T.complete_days)} complete days.
+        ${T.mean_per_day ? `Averaging ${n(Math.round(T.mean_per_day))} flights a day.` : ''}</p>
+    </div>
+    ${chart(T.days.map(d => ({ day: d.day, v: d.flights })),
+            { key: 'day', val: 'v', labelEvery: T.days.length > 14 ? 3 : 1 })}
+  </section>
+
+  <section class="wk">
+    <div class="sec-head">
+      <div><div class="eyebrow">Seasonality</div>
+        <h2>What each weekday normally does</h2></div>
+      <p class="sec-note">100 is an average day. Traffic overhead is driven by
+        day-of-week before anything else, so this is the pattern any real change
+        has to be visible <em>through</em>.</p>
+    </div>
+    ${table(T.dow, [
+      { k: 'dow', h: 'Day' },
+      { k: 'mean', h: 'Mean flights', num: true },
+      { k: 'index', h: 'Index', num: true,
+        render: r => `<b class="${r.index >= 100 ? 'up' : 'down'}">${r.index}</b>` },
+      { k: 'n', h: 'Observations', num: true,
+        render: r => r.n >= 2 ? n(r.n)
+          : `<span class="dim">${n(r.n)}</span>` },
+    ], { id: 'dow', csv: false })}
+    ${T.ready ? '' : `<p class="sec-note" style="margin-top:14px;max-width:var(--measure)">
+      Some weekdays have been seen only once. A single observation is not a
+      baseline — it is one number being compared with itself — so the index
+      above describes the record, not a norm. It becomes a norm at two
+      observations of every weekday, which is fourteen complete days.</p>`}
+  </section>
+
+  ${T.days.some(d => d.vs_dow_pct != null) ? `
+  <section class="wk">
+    <div class="sec-head">
+      <div><div class="eyebrow">Deseasonalised</div>
+        <h2>Each day against its own weekday</h2></div>
+      <p class="sec-note">The part a forecast would actually have to explain:
+        how far a day sat from what that weekday had done before it.</p>
+    </div>
+    ${table(T.days.filter(d => d.vs_dow_pct != null).slice().reverse(), [
+      { k: 'day', h: 'Day' },
+      { k: 'dow', h: '' },
+      { k: 'flights', h: 'Flights', num: true },
+      { k: 'dow_baseline', h: 'That weekday, before', num: true },
+      { k: 'vs_dow_pct', h: 'Deviation', num: true,
+        render: r => `<span class="${r.vs_dow_pct >= 0 ? 'up' : 'down'}">${
+          r.vs_dow_pct > 0 ? '+' : ''}${r.vs_dow_pct}%</span>` },
+      { k: 'dow_n', h: 'Prior obs.', num: true,
+        render: r => r.dow_n >= 2 ? n(r.dow_n) : `<span class="dim">${n(r.dow_n)}</span>` },
+    ], { id: 'deseason', csv: false })}
+  </section>` : ''}
+
+  <section>
+    <div class="sec-head"><div><div class="eyebrow">Evidence</div>
+      <h2>Take it further</h2></div>
+      <a class="btn" href="#/ask?sql=${encodeURIComponent(
+        `SELECT day, dow, COUNT(*) AS flights\nFROM flights\nGROUP BY 1, 2\nORDER BY 1;`)}">Open in Ask →</a></div>
+  </section>`;
+}
+
 /** Reveal the fallback if React hasn't landed after 800 ms. It stays visible
  *  behind the (still empty) mount, then gets covered once React renders. */
 function armWeekFallback() {
@@ -3158,7 +3448,7 @@ function armWeekFallback() {
 
 async function mountWeek() {
   const mount = el('week-mount');
-  if (!mount || !S.week) return;
+  if (!mount || !weekSel) return;
   armWeekFallback();
   try {
     const { R, RD, FM, html } = await loadWeekPkg();
@@ -3171,7 +3461,7 @@ async function mountWeek() {
       weekRoot = RD.createRoot(mount);
       weekRoot._el = mount;
     }
-    weekRoot.render(R.createElement(WeekApp({ R, FM, html }), { data: S.week, base: BASE }));
+    weekRoot.render(R.createElement(WeekApp({ R, FM, html }), { data: weekSel, base: BASE }));
   } catch (e) {
     console.warn('Framer Motion could not load, showing static week:', e);
     clearTimeout(weekFallbackTimer);
@@ -3376,10 +3666,34 @@ function WeekApp({ R, FM, html }) {
         <h1>One week, and what it <span class="q">actually shows</span></h1>
         <p class="lede">${niceDate(w.from)} to ${niceDate(w.to)} — seven consecutive
           complete days, one of every weekday. Enough to describe the shape of a week.
-          Not enough, yet, to say whether that shape is changing.</p>
+          ${w.wow
+            ? ' The week before it is on record too, so this one can be measured against it.'
+            : ' Not enough, yet, to say whether that shape is changing.'}</p>
       </>
 
       <section class="wk"><${Readouts} w=${w} /></section>
+
+      ${w.wow ? html`<section class="wk">
+        <div class="sec-head">
+          <div><div class="eyebrow">Against the week before</div>
+            <h2>Week over week</h2></div>
+          <p class="sec-note">${niceDate(w.wow.prev_from)} – ${niceDate(w.wow.prev_to)},
+            the seven days immediately before this one. No days are shared between
+            them, so this is one week measured against another rather than against
+            itself.</p>
+        </div>
+        <div class="readout">
+          <div class="ro"><div class="ro-v">${n(w.totals.flights)}</div>
+            <div class="ro-l">Flights this week</div></div>
+          <div class="ro"><div class="ro-v">${n(w.wow.prev_flights)}</div>
+            <div class="ro-l">The week before</div></div>
+          <div class="ro"><div class="ro-v ${w.wow.change_pct >= 0 ? 'up' : 'down'}">${
+              w.wow.change_pct == null ? '—'
+                : `${w.wow.change_pct > 0 ? '+' : ''}${w.wow.change_pct}%`}</div>
+            <div class="ro-l">Change</div>
+            <div class="ro-s">one week against one week</div></div>
+        </div>
+      </section>` : null}
 
       <section class="wk">
         <div class="sec-head">
@@ -3544,7 +3858,7 @@ function viewAbout() {
     <div class="sec-head"><div><div class="eyebrow">Next</div><h2>Where to go from here</h2></div></div>
     <div class="chips">
       <a class="chip" href="#/method">What the record can and cannot show →</a>
-      <a class="chip" href="#/data">Take the files →</a>
+      <a class="chip" href="#/method/files">Take the files →</a>
       <a class="chip" href="#/ask">Ask it something →</a>
     </div>
   </section>`;
@@ -3637,25 +3951,33 @@ function wireSearch(ix) {
    of one, so it gets its own button and its own stored value. */
 function wireTheme() {
   const host = el('theme');
-  const read = () => { try { return localStorage.getItem('ovrhead.theme') || 'system'; }
-                       catch { return 'system'; } };
-  const paint = mode => {
-    if (mode === 'system') delete document.documentElement.dataset.theme;
-    else document.documentElement.dataset.theme = mode;
-    host.querySelectorAll('button').forEach(b =>
-      b.setAttribute('aria-pressed', String(b.dataset.themeSet === mode)));
+  const sys = matchMedia('(prefers-color-scheme: dark)');
+  const read = () => { try { return localStorage.getItem('ovrhead.theme'); }
+                       catch { return null; } };
+
+  /* What the reader is actually looking at: their stored choice if they have
+     made one, otherwise whatever the system is doing. */
+  const resolved = () => read() || (sys.matches ? 'dark' : 'light');
+
+  const paint = () => {
+    const stored = read();
+    if (stored) document.documentElement.dataset.theme = stored;
+    else delete document.documentElement.dataset.theme;
+    const now = resolved();
+    host.dataset.now = now;
+    const next = now === 'dark' ? 'light' : 'dark';
+    host.setAttribute('aria-label', `Switch to ${next} theme`);
+    host.title = `Switch to ${next} theme`;
   };
-  host.addEventListener('click', e => {
-    const b = e.target.closest('button');
-    if (!b) return;
-    const mode = b.dataset.themeSet;
-    try { mode === 'system' ? localStorage.removeItem('ovrhead.theme')
-                            : localStorage.setItem('ovrhead.theme', mode); } catch {}
+
+  host.addEventListener('click', () => {
+    const next = resolved() === 'dark' ? 'light' : 'dark';
+    try { localStorage.setItem('ovrhead.theme', next); } catch {}
 
     // The new theme wipes out from the button that was pressed, so the change
     // reads as something the reader did rather than something that happened.
-    const r = b.getBoundingClientRect();
-    const t = withTransition('theme-vt', () => paint(mode));
+    const r = host.getBoundingClientRect();
+    const t = withTransition('theme-vt', paint);
     if (!t) return;
     t.ready.then(() => {
       const x = r.left + r.width / 2, y = r.top + r.height / 2;
@@ -3666,7 +3988,10 @@ function wireTheme() {
           pseudoElement: '::view-transition-new(root)' });
     }, () => {});   // skipped transition: the theme still changed, just plainly
   });
-  paint(read());
+
+  // Still following the system? Then follow it when it changes.
+  sys.addEventListener('change', () => { if (!read()) paint(); });
+  paint();
 }
 
 /* ── Router ────────────────────────────────────────────────────────────
@@ -3683,10 +4008,14 @@ function resolve(p) {
   if (p[0] === 'globe')          return { html: viewGlobe(),    title: 'Globe' };
   if (p[0] === 'explore')        return { html: viewExplore(),  title: 'Explore' };
   if (p[0] === 'ask')            return { html: viewAsk(),      title: 'Ask the data' };
-  if (p[0] === 'data')           return { html: viewData(),     title: 'Data' };
-  if (p[0] === 'method')         return { html: viewMethod(),   title: 'Method' };
+  // The Data page folded into Method. Old links still land somewhere useful.
+  if (p[0] === 'data')           return { html: viewMethod(),   title: 'Method',
+                                          sig: 'files' };
+  if (p[0] === 'method')         return { html: viewMethod(),   title: 'Method',
+                                          sig: ['files', 'columns'].includes(p[1]) ? p[1] : null };
   if (p[0] === 'about')          return { html: viewAbout(),    title: 'About' };
-  if (p[0] === 'week')           return { html: viewWeek(),     title: 'The week' };
+  if (p[0] === 'week')           return { html: viewWeek(p[1]),  title: 'The week' };
+  if (p[0] === 'month')          return { html: viewMonth(),     title: 'The longer view' };
   if (p[0] === 'kind')           return { html: viewKind(p[1]),
                                           title: CAR?.kinds?.[p[1]]?.label || 'Not found' };
   if (p[0] === 'place')          return { html: viewPlace(p[1]),
@@ -3706,6 +4035,21 @@ function resolve(p) {
                                                  ? (S.types.find(x => x.key === p[1]).desc || p[1])
                                                  : 'Not found' };
   return { html: notFound('That page does not exist.'), title: 'Not found' };
+}
+
+/** Warn when the record has stopped advancing. Returns '' while it is current. */
+function staleNotice() {
+  if (!S?.window?.last_ts) return '';
+  const hours = (Date.now() - S.window.last_ts * 1000) / 3.6e6;
+  if (hours <= 30) return '';
+  // Same rounding the topbar stamp uses, so the two never disagree by a day.
+  const d = Math.round(hours / 24);
+  const how = hours >= 48 ? `${d} day${d > 1 ? 's' : ''}` : `${Math.round(hours)} hours`;
+  return `<div class="notice warn" style="margin:22px 0 0">
+    <b>The record stops ${how} ago.</b> Collection has not run since
+    ${new Date(S.window.last_ts * 1000).toISOString().slice(0, 10)}, so nothing
+    below reflects the last ${how}. The figures are unchanged and still true of
+    the period they cover — they are just not current.</div>`;
 }
 
 function route() {
@@ -3739,10 +4083,20 @@ function route() {
   // Anything measured after this — the fold test in animateIn, the pill's new
   // rect — would be measuring the old page if it ran outside.
   withTransition('route-vt', () => {
-    view.innerHTML = r.html;
+    // A record that has stopped advancing still renders perfectly well, and
+    // every figure on it is still true — of a week ago. On the pages that are
+    // about change, that distinction is the whole thing, so say it in the page
+    // rather than only in the stamp up in the corner.
+    const stale = staleNotice();
+    view.innerHTML = (stale && ['', 'week', 'month', 's'].includes(p[0] || '')
+                      ? stale : '') + r.html;
     document.title = r.title ? `${r.title} · OvrHead` : 'OvrHead — an observatory over Aarhus';
 
-    const base = '/' + (p[0] === 's' ? '' : p[0] || '');
+    // /s/… is a permalinked signal, so it belongs to Signals; /data is a legacy
+    // link into Method; /month is the Week tab's other period.
+    const head = p[0] === 's' ? '' : p[0] === 'data' ? 'method'
+               : p[0] === 'month' ? 'week' : (p[0] || '');
+    const base = '/' + head;
     document.querySelectorAll('#nav a').forEach(a =>
       a.classList.toggle('on', a.dataset.r === base));
 
@@ -3757,7 +4111,7 @@ function route() {
 
     if (p[0] === 'ask')    wireAsk();
     if (p[0] === 'globe')  initGlobe();
-    if (p[0] === 'method') initCoverage();
+    if (p[0] === 'method' || p[0] === 'data') initCoverage();
     if (p[0] === 'week')   mountWeek();
     if (el('lazy')) fillLazy();
 
@@ -3789,17 +4143,30 @@ const grab = (name, required = true) =>
     S = summary; TAX = tax; S._manifest = manifest;
     CAR = carriers || { kinds: {}, carriers: {} };
 
-    const age = (Date.now() - new Date(S.generated_at)) / 3.6e6;
+    /* Freshness is about the record, not about the build.
+       These two diverge the moment the summary is rebuilt without new flights
+       arriving — a stalled poller, a laptop that slept — and it is exactly then
+       that the difference matters. Reporting build time would have this page
+       saying "updated just now" over a record whose newest flight is days old,
+       which is the one claim a site like this cannot make. So the stamp counts
+       from the last observation, and the tooltip shows both. */
+    const lastSeen = new Date(S.window.last_ts * 1000);
+    const age = (Date.now() - lastSeen) / 3.6e6;
     const ago = age < 1 ? 'just now'
               : age < 48 ? `${age.toFixed(0)}h ago`
               : `${(age / 24).toFixed(0)}d ago`;
+    const iso = t => t.toISOString().replace('T', ' ').slice(0, 16);
     const stampEl = el('stamp');
+    // The pipeline runs nightly, so more than about a day and a bit without a
+    // new flight means a run was missed, not that the sky went quiet.
     stampEl.className = 'freshness' + (age > 30 ? ' stale' : '');
-    stampEl.innerHTML = `<span class="dot"></span>Updated <b>${ago}</b>`;
-    stampEl.title = `Last data update ${S.generated_at.replace('T', ' ')} UTC · `
+    stampEl.innerHTML = `<span class="dot"></span>${
+      age > 30 ? 'Last flight' : 'Updated'} <b>${ago}</b>`;
+    stampEl.title = `Newest flight on record ${iso(lastSeen)} UTC · `
+                  + `summary built ${S.generated_at.replace('T', ' ').slice(0, 16)} UTC · `
                   + `${n(S.totals.flights)} flights over ${S.window.days_observed} days`;
     el('foot-stamp').textContent =
-      `${n(S.totals.flights)} flights · record to ${S.generated_at.slice(0, 10)}`;
+      `${n(S.totals.flights)} flights · record to ${iso(lastSeen).slice(0, 10)}`;
 
     // The skip link is an anchor, not a route, so it moves focus itself rather
     // than letting the hash router try to make a page out of it.

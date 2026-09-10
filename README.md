@@ -132,6 +132,15 @@ python scripts/adsb/carriers.py        # carriers.json — operator + kind of fl
 python scripts/adsb/build_summary.py   # summary.json + signal detection
 ```
 
+The two map files are baked once, not nightly. Rerun them only if the receiver
+moves or the simplification is retuned:
+
+```bash
+python scripts/adsb/build_land.py      # land.json  — world coastline, for the globe
+python scripts/adsb/build_coast.py     # coast.json — regional coastline, drawn under
+                                       #              the coverage figure on Method
+```
+
 See [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) for laptop setup and
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the warehouse design of the
 earlier prototype.

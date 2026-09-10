@@ -25,7 +25,7 @@ import json
 import math
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 try:
@@ -295,7 +295,10 @@ def main() -> int:
         """).fetchall()
     ]
 
-    week = build_week(con, daily, kind_meta)
+    weeks = build_weeks(con, daily, kind_meta)
+    week = weeks[0] if weeks else None
+    months = build_months(con, daily)
+    trend = build_trend(daily)
 
     signals = detect_signals(
         con, countries_roll, regions, operators, types, daily,
@@ -323,12 +326,16 @@ def main() -> int:
         "daily": daily,
         "hourly": hourly,
         "week": week,
+        "weeks": weeks,
+        "months": months,
+        "trend": trend,
     }
 
     OUT.write_text(json.dumps(summary, separators=(",", ":")), encoding="utf-8")
     kb = OUT.stat().st_size / 1024
     print(f"[summary] {total:,} flights · {len(countries_roll)} countries · "
-          f"{len(signals)} signals -> {OUT.name} ({kb:.1f} KB)")
+          f"{len(signals)} signals · {len(weeks)} week(s) · "
+          f"{len(months['complete'])} month(s) -> {OUT.name} ({kb:.1f} KB)")
     return 0
 
 
@@ -336,26 +343,156 @@ def main() -> int:
 DOW_ORDER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
 
-def build_week(con, daily, kind_meta) -> dict | None:
+def build_months(con, daily) -> dict:
     """
-    Seven consecutive complete days, one of each weekday.
+    Calendar months, and an honest account of how far off the first one is.
 
-    This is the first structure the record can honestly carry. A single week
-    cannot show a trend — that needs two — but it can show *shape*, and shape is
-    where the economics live: freight runs on the working week, holidays run on
-    the weekend, and a total that averages the two shows neither.
+    A month is only emitted once every one of its days is present and complete.
+    Until then `progress` carries the count so the page can say what it is
+    waiting for instead of drawing a bar out of a fortnight.
+    """
+    have = {d["day"]: d for d in daily if not d["partial"]}
+    by_month: dict[str, list[str]] = {}
+    for day in have:
+        by_month.setdefault(day[:7], []).append(day)
 
-    Returns None until seven consecutive complete days exist, rather than
-    describing "a week" out of five days and a shrug.
+    def days_in(ym: str) -> int:
+        y, m = int(ym[:4]), int(ym[5:7])
+        nxt = datetime(y + (m == 12), (m % 12) + 1, 1)
+        return (nxt - datetime(y, m, 1)).days
+
+    out, progress = [], []
+    for ym in sorted(by_month, reverse=True):
+        got, need = len(by_month[ym]), days_in(ym)
+        if got < need:
+            progress.append({"month": ym, "complete_days": got, "needs": need})
+            continue
+        lo, hi = f"{ym}-01", f"{ym}-{need:02d}"
+        n, ac, wb, cg = con.execute(f"""
+            SELECT COUNT(*), COUNT(DISTINCT hex),
+                   SUM(CASE WHEN body = 'widebody' THEN 1 ELSE 0 END),
+                   SUM(CASE WHEN is_cargo THEN 1 ELSE 0 END)
+            FROM fx WHERE day BETWEEN '{lo}' AND '{hi}'""").fetchone()
+        out.append({"month": ym, "from": lo, "to": hi, "days": need,
+                    "flights": n, "aircraft": ac, "widebody": wb, "cargo": cg,
+                    "per_day": round(n / need, 1)})
+
+    for i, m in enumerate(out):                       # newest first
+        prev = out[i + 1] if i + 1 < len(out) else None
+        ch = pct_change(m["flights"], prev["flights"]) if prev else None
+        m["change_pct"] = round(ch, 1) if ch is not None else None
+    return {"complete": out, "progress": progress}
+
+
+def build_trend(daily) -> dict:
+    """
+    Strip the week out of the daily series.
+
+    Traffic overhead is dominated by day-of-week: a Thursday and a Sunday are
+    not two draws from the same distribution, so a raw day-on-day change is
+    mostly just which weekday it happened to be. For anything forecast-shaped
+    the useful quantity is a day measured against *its own weekday*, and what
+    is left once that seasonality is removed.
+
+    With a record this short each weekday has very few prior observations, so
+    every figure here carries the count it rests on and the page is expected to
+    say so. Two priors is a comparison; it is not yet a baseline.
+    """
+    full = [d for d in daily if not d["partial"]]
+    if len(full) < 2:
+        return {"days": [], "dow": [], "ready": False, "complete_days": len(full)}
+
+    hist: dict[str, list[int]] = {}
+    days = []
+    for d in full:
+        dow = datetime.fromisoformat(d["day"]).strftime("%a")
+        priors = hist.get(dow, [])
+        base = sum(priors) / len(priors) if priors else None
+        days.append({
+            "day": d["day"], "dow": dow, "flights": d["flights"],
+            "dow_baseline": round(base, 1) if base else None,
+            "dow_n": len(priors),
+            # How far this day sat from what that weekday normally does. The
+            # residual is the part a forecast would actually have to explain.
+            "vs_dow_pct": round((d["flights"] / base - 1) * 100, 1)
+                          if base else None,
+        })
+        hist.setdefault(dow, []).append(d["flights"])
+
+    mean = sum(d["flights"] for d in full) / len(full)
+    dow_profile = [
+        {"dow": k, "n": len(v),
+         "mean": round(sum(v) / len(v), 1),
+         "index": round((sum(v) / len(v)) / mean * 100)}      # 100 = an average day
+        for k, v in sorted(hist.items(), key=lambda kv: DOW_ORDER.index(kv[0]))
+    ]
+    return {
+        "days": days,
+        "dow": dow_profile,
+        "mean_per_day": round(mean, 1),
+        "complete_days": len(full),
+        # Below two observations per weekday the "baseline" is a single number
+        # being compared against itself, which is not a baseline.
+        "ready": all(p["n"] >= 2 for p in dow_profile) and len(dow_profile) == 7,
+    }
+
+
+def build_weeks(con, daily, kind_meta) -> list[dict]:
+    """
+    Every complete week the record holds, newest first.
+
+    The windows are *stepped*, not rolling: seven days, then the seven before
+    that, and so on back from the most recent complete day. A rolling window
+    would give a new "week" every day, but consecutive ones would share six of
+    their seven days — a week-over-week change computed across them is mostly
+    the same flights compared against themselves. Stepping keeps each week an
+    independent sample, which is the only version of the comparison worth
+    publishing.
+
+    Each week also carries `wow`: how its totals moved against the week before,
+    present only when that earlier week is itself complete.
     """
     full = [d["day"] for d in daily if not d["partial"]]
     if len(full) < 7:
-        return None
-    days = full[-7:]
-    start, end = datetime.fromisoformat(days[0]), datetime.fromisoformat(days[-1])
-    if (end - start).days != 6:            # a gap in the middle is not a week
-        return None
+        return []
 
+    have = set(full)
+    newest = datetime.fromisoformat(full[-1])
+
+    windows: list[list[str]] = []
+    step = 0
+    while True:
+        end = newest - timedelta(days=7 * step)
+        days = [(end - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(6, -1, -1)]
+        if not all(d in have for d in days):
+            break                          # ran off the start of the record
+        windows.append(days)
+        step += 1
+
+    weeks = [build_week_for(con, w, kind_meta) for w in windows]
+
+    # Week-over-week, against the immediately preceding stepped week. `weeks` is
+    # newest-first, so a week's predecessor is the next element along.
+    for i, wk in enumerate(weeks):
+        prev = weeks[i + 1] if i + 1 < len(weeks) else None
+        wk["index"] = i
+        wk["prev_from"] = prev["from"] if prev else None
+        wk["next_from"] = weeks[i - 1]["from"] if i > 0 else None
+        if prev:
+            a, b = wk["totals"]["flights"], prev["totals"]["flights"]
+            ch = pct_change(a, b)
+            wk["wow"] = {
+                "prev_flights": b,
+                "change_pct": round(ch, 1) if ch is not None else None,
+                "prev_from": prev["from"], "prev_to": prev["to"],
+            }
+        else:
+            wk["wow"] = None
+    return weeks
+
+
+def build_week_for(con, days: list[str], kind_meta) -> dict:
+    """One week's worth of shape, for an already-validated run of seven days."""
     lo, hi = days[0], days[-1]
     scope = f"day BETWEEN '{lo}' AND '{hi}'"
 
