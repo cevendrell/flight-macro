@@ -745,10 +745,18 @@ th.sortable:focus-visible { outline:2px solid var(--accent); outline-offset:-2px
   html.route-vt::view-transition-new(root) { animation: vt-in var(--t-base) var(--ease-out) both; }
   html.route-vt #topbar { view-transition-name: topbar; }
   html.route-vt #foot   { view-transition-name: foot; }
-  /* Named separately so it is lifted out of the bar's snapshot and the browser
-     interpolates it between its old and new position — the slide comes free. */
-  html.route-vt #nav-pill { view-transition-name: navpill; }
-  ::view-transition-group(navpill) { animation-duration: var(--t-base); }
+  /* The bar and the footer are the same on every page, so they must take no
+     part in the crossfade. A named group still runs the browser's default
+     old→new fade, which blends two opaque snapshots with plus-lighter and
+     brightens the bar mid-transition — read as the nav blinking on every
+     click. Show the new snapshot at once and animate nothing. The pill is
+     captured live inside the bar's snapshot, so its own CSS slide still
+     shows; it no longer needs a group of its own, which was making it fade
+     out at the old link and back in at the new one on top of sliding. */
+  html.route-vt::view-transition-old(topbar),
+  html.route-vt::view-transition-old(foot)   { animation:none; opacity:0; }
+  html.route-vt::view-transition-new(topbar),
+  html.route-vt::view-transition-new(foot)   { animation:none; mix-blend-mode:normal; }
 }
 @keyframes vt-out { to { opacity:0 } }
 @keyframes vt-in  { from { opacity:0; transform:translateY(6px) } }
@@ -1885,22 +1893,12 @@ function initSky(id, { margin = 12 } = {}) {
     ctx.fillStyle = tok('--fall'); ctx.fill();
   }
 
+  // Static. It is a figure of the record, not a radar screen: it draws once,
+  // again on resize, and nothing on it moves.
   const ro = new ResizeObserver(() => draw(1, null));
   ro.observe(cv);
-  if (still() || !('requestAnimationFrame' in window)) {
-    draw(1, null);
-    skyStops.push(() => ro.disconnect());
-    return;
-  }
-  const t0 = performance.now(), span = 1700, period = 11000;
-  let raf = requestAnimationFrame(function frame(now) {
-    const p = Math.min(1, (now - t0) / span);
-    const rev = p * p * (3 - 2 * p);
-    const idle = p < 1 ? null : (((now - t0 - span) / period) % 1) * TAU;
-    draw(rev, idle, now);
-    raf = requestAnimationFrame(frame);
-  });
-  skyStops.push(() => { cancelAnimationFrame(raf); ro.disconnect(); });
+  draw(1, null);
+  skyStops.push(() => ro.disconnect());
 }
 
 function viewGlobe() {
