@@ -952,7 +952,6 @@ th.sortable .dir { display:inline-block; transition: transform var(--t-base) var
     <div id="view"></div>
     <footer id="foot">
       <span>OvrHead — one antenna over Aarhus, Denmark.</span>
-      <a href="#/about">About</a>
       <a href="#/method">Method</a>
       <a href="https://github.com/cevendrell/flight-macro" rel="noopener">Source</a>
       <span class="sep" id="foot-stamp"></span>
@@ -1677,33 +1676,15 @@ function viewSignals(openId) {
     <div class="sec-head">
       <div><div class="eyebrow">What the record shows</div>
         <h2>Profile</h2></div>
-      <p class="sec-note">Counts and shares. Directly observed, no inference.</p>
+      <p class="sec-note">Counts and shares, directly observed. The day-by-day record
+        is in <a href="#/month" style="color:var(--accent)">the longer view</a>; every
+        country, airline and type is in
+        <a href="#/explore" style="color:var(--accent)">Explore</a>.</p>
     </div>
     <div class="signals">${profile}</div>
   </section>
 
-  <section>
-    <div class="sec-head">
-      <div><div class="eyebrow">Coverage</div><h2>Daily record</h2></div>
-      <a class="btn" href="#/month">The longer view →</a>
-    </div>
-    <p class="sec-note" style="margin:-6px 0 14px;max-width:var(--measure)">
-      Hatched bars are partial days, excluded from comparisons. Most of the
-      movement here is day-of-week, not change —
-      <a href="#/month" style="color:var(--accent)">the longer view</a> takes
-      that out.</p>
-    ${chart(S.daily, { key: 'day', val: 'flights', partial: 'partial' })}
-  </section>
-
-  <section>
-    <div class="sec-head">
-      <div><div class="eyebrow">Where the traffic is registered</div>
-        <h2>Top countries</h2></div>
-      <a class="btn" href="#/explore">Explore all →</a>
-    </div>
-    ${table(S.countries.slice(0, 12), COUNTRY_COLS, { id: 'home-c', max: 12,
-       sortKey: 'flights', sortDir: -1, csv: false })}
-  </section>`;
+`;
 }
 
 const COUNTRY_COLS = [
@@ -1795,10 +1776,13 @@ let LAND = null, globeStop = null;
    so it is on screen with the first byte of data; the coastline follows
    from coast.json when it lands. One sweep as the record arrives, then a
    slow idle sweep for as long as the page is open. */
-let heroStop = null;
+/* One drawer serves both the hero and the Method figure, so the two can
+   never disagree about the antenna's reach. Each call returns its own stop;
+   the router runs them all on leaving a page. */
+const skyStops = [];
 
-function initHero() {
-  const cv = el('hero-canvas'), sky = S.sky;
+function initSky(id, { margin = 12 } = {}) {
+  const cv = el(id), sky = S.sky;
   if (!cv || !sky) return;
   const ctx = cv.getContext('2d');
   const css = getComputedStyle(document.documentElement);
@@ -1823,7 +1807,7 @@ function initHero() {
     if (cv.width !== w * dpr || cv.height !== h * dpr) { cv.width = w * dpr; cv.height = h * dpr; }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
-    const R = Math.max(10, Math.min(w, h) / 2 - 12), cx = w / 2, cy = h / 2;
+    const R = Math.max(10, Math.min(w, h) / 2 - margin), cx = w / 2, cy = h / 2;
     const xy = (km, brg) => [cx + R * (km / scale) * Math.sin(brg),
                              cy - R * (km / scale) * Math.cos(brg)];
 
@@ -1906,7 +1890,7 @@ function initHero() {
   ro.observe(cv);
   if (still() || !('requestAnimationFrame' in window)) {
     draw(1, null);
-    heroStop = () => { ro.disconnect(); heroStop = null; };
+    skyStops.push(() => ro.disconnect());
     return;
   }
   const t0 = performance.now(), span = 1700, period = 11000;
@@ -1917,7 +1901,7 @@ function initHero() {
     draw(rev, idle, now);
     raf = requestAnimationFrame(frame);
   });
-  heroStop = () => { cancelAnimationFrame(raf); ro.disconnect(); heroStop = null; };
+  skyStops.push(() => { cancelAnimationFrame(raf); ro.disconnect(); });
 }
 
 function viewGlobe() {
@@ -1946,7 +1930,7 @@ function viewGlobe() {
         <div><div class="eyebrow">Ranked</div><h2>Top origins</h2></div>
       </div>
       <div class="gl-list">
-        ${top.map((c, i) => `
+        ${top.slice(0, 20).map((c, i) => `
           <a class="gl-item" href="#/place/${esc(c.key)}" data-cc="${esc(c.key)}">
             <span class="rank">${String(i + 1).padStart(2, '0')}</span>
             <span><span class="nm">${esc(c.name)}</span>
@@ -2299,6 +2283,10 @@ function viewPlace(cc) {
   const share = (c.flights / S.totals.flights * 100).toFixed(1);
   const wbShare = c.flights ? (c.widebody / c.flights * 100).toFixed(0) : 0;
   const isFar = c.continent && c.continent !== 'Europe';
+  // Rank among its region's countries — the one fact the old sibling table
+  // added that the region page (one crumb away) does not already carry.
+  const sibs = S.countries.filter(x => x.region === c.region);
+  const rank = sibs.findIndex(x => x.key === cc) + 1;
 
   return entityShell({
     crumbs: `<a href="#/explore">Explore</a> <em>/</em>
@@ -2310,7 +2298,8 @@ function viewPlace(cc) {
          cruise altitude on intercontinental routings, passing through this antenna's range.`
       : `Aircraft registered in ${esc(c.name)}, as recorded passing over Aarhus.`,
     stats: readout([
-      { v: fig(c.flights),  l: 'Flights', s: `${share}% of all traffic` },
+      { v: fig(c.flights),  l: 'Flights',
+        s: `${share}% of all traffic${rank && c.region ? ` · #${rank} of ${sibs.length} in ${c.region}` : ''}` },
       { v: fig(c.aircraft), l: 'Distinct aircraft' },
       { v: fig(c.widebody), l: 'Wide-body', s: `${wbShare}% of its traffic` },
       { v: c.change_pct == null ? '—' : pct(c.change_pct), l: 'Change, week on week',
@@ -2318,13 +2307,7 @@ function viewPlace(cc) {
     ]),
     body: evidence('place', cc, `Every ${esc(c.name)} flight on record`,
         `SELECT callsign, ac_type, ac_desc, reg, seen_at, airline\nFROM flights\nWHERE reg_country = '${cc}'\nORDER BY first_seen DESC;`,
-        `ovrhead-flights-${cc}`) + `
-      <section>
-        <div class="sec-head"><div><div class="eyebrow">Context</div>
-          <h2>How ${esc(c.name)} compares in ${esc(c.region)}</h2></div></div>
-        ${table(S.countries.filter(x => x.region === c.region), COUNTRY_COLS,
-          { id: 'pl-c', max: 20, sortKey: 'flights', sortDir: -1, csv: false })}
-      </section>`,
+        `ovrhead-flights-${cc}`),
   });
 }
 
@@ -2898,6 +2881,18 @@ function viewMethod() {
   </header>
 
   <section class="prose">
+    <p>OvrHead is a small observatory in Aarhus, Denmark. It listens to the transponders
+    of passing aircraft, keeps every observation, and publishes the whole record — not a
+    summary of it. Aviation statistics arrive late, aggregated and already interpreted; a
+    receiver on a roof arrives instantly, ungrouped and interpreted by nobody. That is a
+    worse dataset in almost every way except the one that matters here: you can check it.</p>
+    <p>It is not a flight tracker, not a news source, and not a measure of the economy —
+    aircraft counts are an input to that kind of question, never the answer. Built by
+    <a href="https://cevendrell.com" rel="noopener">Carlos Ebrahim Vendrell</a>; the source,
+    the pipeline and the whole record live at
+    <a href="https://github.com/cevendrell/flight-macro" rel="noopener">github.com/cevendrell/flight-macro</a>.
+    No backend, no account, no analytics — nothing you do here is recorded anywhere.</p>
+
     <h3>How it is collected</h3>
     <p>One antenna in Aarhus (56.16°N, 10.20°E) receives ADS-B on 1090 MHz — line-of-sight,
     roughly 250–400 km for aircraft at cruise. We sample every 15 seconds; a gap of more than
@@ -2955,16 +2950,20 @@ function viewMethod() {
       <p class="sec-note">Every first contact plotted by true bearing and ground
         distance from the receiver.</p>
     </div>
+    ${S.sky ? `
     <div id="cov-stats">
-      <div class="engine-rest">
-        <span>Drawn from the full flight record — a few megabytes of query engine,
-          fetched only if you want the figure.</span>
-        <button class="btn primary" id="cov-go">Draw it</button>
-      </div>
+      ${readout([
+        { v: `${fig(S.sky.p50)}<span class="u">km</span>`, txt: false, l: 'Median first-contact range' },
+        { v: `${fig(S.sky.p95)}<span class="u">km</span>`, txt: false, l: '95% of contacts within' },
+        { v: `${fig(S.sky.far)}<span class="u">km</span>`, txt: false, l: 'Furthest contact on record' },
+        { v: fig(S.sky.n), l: 'Positions on record',
+          s: `${(S.sky.n / S.totals.flights * 100).toFixed(0)}% of flights report one` },
+      ])}
     </div>
     <div id="cov-stage">
-      <canvas id="cov-canvas"></canvas>
-    </div>
+      <canvas id="cov-canvas" role="img"
+        aria-label="Every first contact plotted by bearing and distance from the receiver"></canvas>
+    </div>` : `<div class="empty">No positions on record yet.</div>`}
     <div class="globe-legend">
       <span><i class="home"></i>The receiver</span>
       <span><i class="dot"></i>First contact with an aircraft</span>
@@ -2972,6 +2971,10 @@ function viewMethod() {
       <span><i class="coast"></i>Coastline</span>
     </div>
     <p class="sec-note" id="cov-note" style="margin:16px auto 0;max-width:var(--measure)">
+      ${S.sky?.beyond ? `The frame stops at ${S.sky.scale} km, which leaves ${n(S.sky.beyond)}
+        more distant contact${S.sky.beyond === 1 ? '' : 's'} outside it — the furthest at
+        ${n(S.sky.far)} km. ` : ''}The dots are a sample of ${n(S.sky?.pts?.length || 0)}
+      contacts; the envelope is computed from all ${n(S.sky?.n || 0)}.
       The shape is set by terrain, antenna siting and how high the aircraft was flying,
       not by where the traffic is. A direction that reaches less far here is a direction
       we are deaf in — not a quiet one. Coastline is drawn to the same scale from
@@ -4213,7 +4216,8 @@ function resolve(p) {
                                           sig: 'files' };
   if (p[0] === 'method')         return { html: viewMethod(),   title: 'Method',
                                           sig: ['files', 'columns'].includes(p[1]) ? p[1] : null };
-  if (p[0] === 'about')          return { html: viewAbout(),    title: 'About' };
+  // About folded into Method: same argument, one page. Old links still land.
+  if (p[0] === 'about')          return { html: viewMethod(),   title: 'Method' };
   if (p[0] === 'week')           return { html: viewWeek(p[1]),  title: 'The week' };
   if (p[0] === 'month')          return { html: viewMonth(),     title: 'The longer view' };
   if (p[0] === 'kind')           return { html: viewKind(p[1]),
@@ -4262,8 +4266,7 @@ function route() {
   const p = raw.split('/').filter(Boolean);
   const view = el('view');
   if (globeStop) globeStop();   // stop the previous page's animation loop
-  if (heroStop) heroStop();
-  if (covStop) covStop();
+  skyStops.splice(0).forEach(stop => stop());
   // React root is only mounted for /week. Leaving the page tears it down.
   if (p[0] !== 'week') unmountWeek();
   // Sort preference is worth carrying between pages; a filter and an expanded
@@ -4311,9 +4314,9 @@ function route() {
     });
 
     if (p[0] === 'ask')    wireAsk();
-    if (!p[0] || p[0] === 's') initHero();
+    if (!p[0] || p[0] === 's') initSky('hero-canvas');
     if (p[0] === 'globe')  initGlobe();
-    if (p[0] === 'method' || p[0] === 'data') initCoverage();
+    if (['method', 'data', 'about'].includes(p[0])) initSky('cov-canvas', { margin: 26 });
     if (p[0] === 'week')   mountWeek();
     if (el('lazy')) fillLazy();
 

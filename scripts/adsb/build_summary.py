@@ -413,6 +413,7 @@ def build_sky(con, origin=(56.16, 10.20), sample=1200, sectors=72) -> dict | Non
     keep = pts if len(pts) <= sample else random.Random(1090).sample(pts, sample)
     return {
         "n": len(pts), "scale": scale, "p50": round(p50), "p95": round(p95),
+        "far": round(kms[-1]), "beyond": sum(1 for k in kms if k > scale),
         "env": [round(v) if v is not None else None for v in env],
         "pts": [[round(km), round(brg, 3)] for km, brg in keep],
     }
