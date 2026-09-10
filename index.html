@@ -236,6 +236,40 @@ h1 .q { color:var(--accent); }
         margin-top:14px; line-height:1.6; }
 .page-head { padding-bottom:26px; border-bottom:1px solid var(--rule); margin-bottom:28px; }
 
+/* ── Hero: the instrument ─────────────────────────────────────────────────
+   The front door is the receiver's own footprint, live, beside the words.
+   Copy and readouts on the left; on the right the disc sweeps once as the
+   record arrives and then keeps a slow, faint sweep going — an instrument
+   that is on, not a chart that is finished. */
+.hero { display:grid; grid-template-columns:minmax(0,1fr) clamp(280px, 34vw, 440px);
+        gap:clamp(24px, 4vw, 60px); align-items:center;
+        padding:28px 0 36px; border-bottom:1px solid var(--rule); margin-bottom:36px; }
+.hero .page-head { padding:0; border:0; margin:0 0 24px; }
+.hero.solo { grid-template-columns:1fr; }   /* no footprint yet: copy only */
+.hero-sky { position:relative; aspect-ratio:1/1; }
+#hero-canvas { width:100%; height:100%; display:block; }
+.hero-cap { font-family:var(--mono); font-size:.64rem; color:var(--mute); text-align:center;
+            margin-top:10px; letter-spacing:.02em; line-height:1.5; }
+.hero-cap a { color:var(--accent); text-decoration:none; }
+.hero-cap a:hover { text-decoration:underline; }
+@media (max-width:820px){
+  .hero { grid-template-columns:1fr; }
+  .hero-sky { width:100%; max-width:380px; margin:0 auto; }
+}
+
+/* ── Sparkline: the shape beside a reading ──────────────────────────────
+   Bars grow in with the row, staggered left to right, so a series reads as
+   a series arriving rather than a picture appearing. Rows staged below the
+   fold hold at zero until they scroll into view. */
+.sig-spark { align-self:center; }
+.sl { display:flex; gap:2px; align-items:flex-end; height:34px; width:120px; }
+.sl i { flex:1; min-height:1px; background:var(--bar); opacity:.72;
+        border-radius:1px 1px 0 0; transform-origin:bottom;
+        animation: sl-up .5s var(--ease-out) both; animation-delay: calc(var(--i) * 26ms); }
+.sl i.hi { background:var(--accent); opacity:1; }
+.sig.rise:not(.in) .sl i { animation-play-state:paused; }
+@keyframes sl-up { from { transform:scaleY(0) } to { transform:scaleY(1) } }
+
 h2 { font-weight:600; font-size:1.22rem; letter-spacing:-.022em;
      margin:0 0 3px; text-wrap:balance; line-height:1.24; }
 h3 { font-size:.94rem; font-weight:600; margin:0 0 6px; }
@@ -271,7 +305,7 @@ section { margin-bottom:48px; }
 .sig:hover { background:var(--surface); }
 .sig.open { background:var(--surface); border-left-color:var(--accent); }
 .sig-top {
-  display:grid; grid-template-columns:128px minmax(0,1fr) auto; gap:18px;
+  display:grid; grid-template-columns:128px minmax(0,1fr) 120px auto; gap:18px;
   align-items:start; padding:16px 14px; width:100%; background:none; border:none;
   text-align:left; cursor:pointer; color:inherit;
 }
@@ -1579,6 +1613,7 @@ function viewSignals(openId) {
           ${s.comparison ? `<div class="sig-sub">${esc(s.comparison)}</div>` : ''}
           ${s.where ? `<div class="sig-where">${esc(s.where)}</div>` : ''}
         </div>
+        ${s.series?.length ? `<div class="sig-spark">${sparkline(s.series)}</div>` : '<div></div>'}
         <div class="sig-right">${confChip(s.confidence)}<span class="chev" aria-hidden="true">›</span></div>
       </button>
       <div class="sig-body" id="body-${esc(s.id)}"><div class="sig-grid"><div></div>
@@ -1598,21 +1633,28 @@ function viewSignals(openId) {
   const profile  = indexed.filter(([s]) => s.category === 'profile').map(([s, i]) => row(s, i)).join('');
   const cmp = w.compare;
   return `
-  <header class="page-head">
-    <div class="crumbs"><em>Observatory</em></div>
-    <h1>Read the world from the sky above <span class="q">Aarhus</span>.</h1>
-    <p class="lede">One antenna records every aircraft that passes overhead. These are the
-      signals we can honestly draw from it — evidence and limits attached.</p>
-  </header>
-
-  <section>
-    ${readout([
-      { v: fig(t.flights),   l: 'Flights recorded', s: `over ${w.days_observed} days` },
-      { v: fig(t.aircraft),  l: 'Distinct aircraft', s: `${n(t.operators)} operators` },
-      { v: fig(t.countries), l: 'Registration countries' },
-      { v: fig(t.widebody),  l: 'Wide-body movements',
-        s: `${(t.widebody / t.flights * 100).toFixed(0)}% of traffic` },
-    ])}
+  <section class="hero${S.sky ? '' : ' solo'}">
+    <div class="hero-copy">
+      <header class="page-head">
+        <div class="crumbs"><em>Observatory</em></div>
+        <h1>Read the world from the sky above <span class="q">Aarhus</span>.</h1>
+        <p class="lede">One antenna records every aircraft that passes overhead. These are the
+          signals we can honestly draw from it — evidence and limits attached.</p>
+      </header>
+      ${readout([
+        { v: fig(t.flights),   l: 'Flights recorded', s: `over ${w.days_observed} days` },
+        { v: fig(t.aircraft),  l: 'Distinct aircraft', s: `${n(t.operators)} operators` },
+        { v: fig(t.countries), l: 'Registration countries' },
+        { v: fig(t.widebody),  l: 'Wide-body movements',
+          s: `${(t.widebody / t.flights * 100).toFixed(0)}% of traffic` },
+      ])}
+    </div>
+    ${S.sky ? `<div class="hero-sky">
+      <canvas id="hero-canvas" role="img"
+        aria-label="Every first contact on record, plotted by bearing and distance from the receiver"></canvas>
+      <div class="hero-cap">${n(S.sky.n)} first contacts · 95% within ${n(S.sky.p95)} km<br>
+        <a href="#/method">How the antenna hears →</a></div>
+    </div>` : ''}
   </section>
 
   <section>
@@ -1748,6 +1790,136 @@ function viewExplore() {
    about forty lines of trigonometry. */
 let LAND = null, globeStop = null;
 
+/* ── Hero instrument ──────────────────────────────────────────────────────
+   Paints the receiver's footprint from the sample baked into summary.json,
+   so it is on screen with the first byte of data; the coastline follows
+   from coast.json when it lands. One sweep as the record arrives, then a
+   slow idle sweep for as long as the page is open. */
+let heroStop = null;
+
+function initHero() {
+  const cv = el('hero-canvas'), sky = S.sky;
+  if (!cv || !sky) return;
+  const ctx = cv.getContext('2d');
+  const css = getComputedStyle(document.documentElement);
+  const tok = k => css.getPropertyValue(k).trim();
+  const TAU = Math.PI * 2, scale = sky.scale;
+  const HOME = { lat: S.origin?.lat ?? 56.16, lng: S.origin?.lng ?? 10.20 };
+  const rad = d => d * Math.PI / 180, φ0 = rad(HOME.lat);
+  const geo = (lat, lng) => {
+    const φ = rad(lat), Δλ = rad(lng - HOME.lng);
+    const cosd = Math.sin(φ0) * Math.sin(φ) + Math.cos(φ0) * Math.cos(φ) * Math.cos(Δλ);
+    return { km: Math.acos(Math.max(-1, Math.min(1, cosd))) * 6371,
+             brg: Math.atan2(Math.sin(Δλ) * Math.cos(φ),
+                             Math.cos(φ0) * Math.sin(φ) - Math.sin(φ0) * Math.cos(φ) * Math.cos(Δλ)) };
+  };
+  if (COAST === null) grab('coast.json', false).then(c => { COAST = c || false; })
+                                              .catch(() => { COAST = false; });
+
+  function draw(rev, idle, now = 0) {
+    const w = cv.clientWidth, h = cv.clientHeight;
+    if (w < 2 || h < 2) return;
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    if (cv.width !== w * dpr || cv.height !== h * dpr) { cv.width = w * dpr; cv.height = h * dpr; }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    const R = Math.max(10, Math.min(w, h) / 2 - 12), cx = w / 2, cy = h / 2;
+    const xy = (km, brg) => [cx + R * (km / scale) * Math.sin(brg),
+                             cy - R * (km / scale) * Math.cos(brg)];
+
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, TAU);
+    ctx.fillStyle = tok('--surface'); ctx.fill();
+    ctx.strokeStyle = tok('--rule-2'); ctx.lineWidth = 1;
+    for (const f of [.25, .5, .75, 1]) {
+      ctx.beginPath(); ctx.arc(cx, cy, R * f, 0, TAU);
+      ctx.setLineDash(f === 1 ? [] : [2, 4]); ctx.stroke();
+    }
+    ctx.setLineDash([]); ctx.strokeStyle = tok('--rule');
+    for (let b = 0; b < 360; b += 45) {
+      const [x, y] = xy(scale, rad(b));
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(x, y); ctx.stroke();
+    }
+
+    if (COAST) {
+      ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, R, 0, TAU); ctx.clip();
+      ctx.strokeStyle = tok('--rule-2'); ctx.lineWidth = 1; ctx.globalAlpha = .9; ctx.beginPath();
+      for (const line of COAST.lines) {
+        let started = false;
+        for (const [lng, lat] of line) {
+          const g = geo(lat, lng);
+          if (g.km > scale * 1.05) { started = false; continue; }
+          const [x, y] = xy(g.km, g.brg);
+          started ? ctx.lineTo(x, y) : (ctx.moveTo(x, y), started = true);
+        }
+      }
+      ctx.stroke(); ctx.globalAlpha = 1; ctx.restore();
+    }
+
+    // The arriving sweep reveals contacts and envelope one bearing at a time,
+    // the way the receiver found them.
+    const swept = rev * TAU;
+    const reached = brg => rev >= 1 || brg <= swept;
+
+    ctx.fillStyle = tok('--accent'); ctx.globalAlpha = .4;
+    for (const [km, brg] of sky.pts) {
+      if (km > scale || !reached(brg)) continue;
+      const [x, y] = xy(km, brg);
+      ctx.fillRect(x - 1, y - 1, 2, 2);
+    }
+    ctx.globalAlpha = 1;
+
+    const N = sky.env.length;
+    ctx.beginPath(); let started = false;
+    for (let i = 0; i <= N; i++) {
+      const v = sky.env[i % N], a = (i % N) / N * TAU;
+      if (v == null || !reached(a)) { started = false; continue; }
+      const [x, y] = xy(Math.min(v, scale), a);
+      started ? ctx.lineTo(x, y) : (ctx.moveTo(x, y), started = true);
+    }
+    ctx.strokeStyle = tok('--ink'); ctx.lineWidth = 1.5; ctx.stroke();
+
+    const ang = rev < 1 ? swept : idle;
+    if (ang != null) {
+      const trail = rev < 1 ? Math.PI / 3 : Math.PI / 2.2;
+      ctx.beginPath(); ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, R, ang - trail - Math.PI / 2, ang - Math.PI / 2); ctx.closePath();
+      ctx.fillStyle = tok('--accent'); ctx.globalAlpha = rev < 1 ? .09 : .05; ctx.fill();
+      const [ex, ey] = xy(scale, ang);
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(ex, ey);
+      ctx.strokeStyle = tok('--accent'); ctx.lineWidth = 1;
+      ctx.globalAlpha = rev < 1 ? .6 : .32; ctx.stroke(); ctx.globalAlpha = 1;
+    }
+
+    // The receiver breathes: a ring that leaves the dot every 2.4 s and fades
+    // as it goes. It is the one thing on the disc that says "listening".
+    if (now) {
+      const ph = (now / 2400) % 1;
+      ctx.beginPath(); ctx.arc(cx, cy, 4 + 9 * ph, 0, TAU);
+      ctx.strokeStyle = tok('--fall'); ctx.lineWidth = 1.2;
+      ctx.globalAlpha = (1 - ph) * .55; ctx.stroke(); ctx.globalAlpha = 1;
+    }
+    ctx.beginPath(); ctx.arc(cx, cy, 3.5, 0, TAU);
+    ctx.fillStyle = tok('--fall'); ctx.fill();
+  }
+
+  const ro = new ResizeObserver(() => draw(1, null));
+  ro.observe(cv);
+  if (still() || !('requestAnimationFrame' in window)) {
+    draw(1, null);
+    heroStop = () => { ro.disconnect(); heroStop = null; };
+    return;
+  }
+  const t0 = performance.now(), span = 1700, period = 11000;
+  let raf = requestAnimationFrame(function frame(now) {
+    const p = Math.min(1, (now - t0) / span);
+    const rev = p * p * (3 - 2 * p);
+    const idle = p < 1 ? null : (((now - t0 - span) / period) % 1) * TAU;
+    draw(rev, idle, now);
+    raf = requestAnimationFrame(frame);
+  });
+  heroStop = () => { cancelAnimationFrame(raf); ro.disconnect(); heroStop = null; };
+}
+
 function viewGlobe() {
   const top = S.countries.filter(c => c.lat != null || TAX.countries[c.key]).slice(0, 40);
   return `
@@ -1814,6 +1986,10 @@ async function initGlobe() {
   // tilting to ~38° puts the antenna and its corridors in the upper half
   // without pushing the southern hemisphere off the back entirely.
   let rotL = -HOME.lng, rotP = 38, spin = true, hot = null;
+  // Arc draw-in progress: the corridors grow from each country toward the
+  // antenna over the first frames — the direction the aircraft came.
+  let intro = matchMedia('(prefers-reduced-motion: reduce)').matches ? 1 : 0;
+  const easeOut = t => 1 - Math.pow(1 - t, 3);
   let dragging = false, lastX = 0, lastY = 0;
 
   const css = getComputedStyle(document.documentElement);
@@ -1947,10 +2123,11 @@ async function initGlobe() {
 
     // Corridor arcs, faintest first so the busiest sit on top
     const arcs = pts.slice(0, 22);
+    const grown = Math.max(1, Math.round(48 * easeOut(intro)));
     for (const p of arcs) {
       const isHot = hot === p.key;
       ctx.beginPath(); let started = false;
-      for (const s of arcPoints(p, HOME)) {
+      for (const s of arcPoints(p, HOME).slice(0, grown + 1)) {
         const q = project(s.lat, s.lng);
         if (!q) { started = false; continue; }
         started ? ctx.lineTo(q.x, q.y) : (ctx.moveTo(q.x, q.y), started = true);
@@ -2082,8 +2259,10 @@ async function initGlobe() {
   cv.addEventListener('pointercancel', endDrag);
 
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const born = performance.now();
   let raf;
   function frame() {
+    if (intro < 1) intro = reduce ? 1 : Math.min(1, (performance.now() - born) / 1500);
     if (turning) {
       let d = ((targetL - rotL + 540) % 360) - 180;
       rotL += d * 0.12; rotP += (targetP - rotP) * 0.12;
@@ -3063,6 +3242,17 @@ async function drawCoverage() {
 const DOWS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const niceDate = d => new Date(d + 'T00:00:00Z')
   .toLocaleDateString('en-GB', { day: 'numeric', month: 'long', timeZone: 'UTC' });
+
+/** A row-sized series with no axes — the shape of a thing, not its figures.
+ *  Peak in accent; each bar carries its value in the title and the whole
+ *  series is read out for assistive tech. */
+function sparkline(series) {
+  const max = series.reduce((m, d) => Math.max(m, d.v), 1);
+  const peak = Math.max(...series.map(d => d.v));
+  return `<div class="sl" role="img" aria-label="${esc(series.map(d => `${d.k} ${n(d.v)}`).join(', '))}">${
+    series.map((d, i) => `<i class="${d.v === peak ? 'hi' : ''}" style="height:${
+      (d.v / max * 100).toFixed(1)}%;--i:${i}" title="${esc(d.k)} — ${n(d.v)}"></i>`).join('')}</div>`;
+}
 
 /** Seven bars, weekend shaded differently, peak in accent. */
 function spark(values, dows) {
@@ -4072,6 +4262,7 @@ function route() {
   const p = raw.split('/').filter(Boolean);
   const view = el('view');
   if (globeStop) globeStop();   // stop the previous page's animation loop
+  if (heroStop) heroStop();
   if (covStop) covStop();
   // React root is only mounted for /week. Leaving the page tears it down.
   if (p[0] !== 'week') unmountWeek();
@@ -4120,6 +4311,7 @@ function route() {
     });
 
     if (p[0] === 'ask')    wireAsk();
+    if (!p[0] || p[0] === 's') initHero();
     if (p[0] === 'globe')  initGlobe();
     if (p[0] === 'method' || p[0] === 'data') initCoverage();
     if (p[0] === 'week')   mountWeek();

@@ -24,6 +24,7 @@ from __future__ import annotations
 import json
 import math
 import os
+import random
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -305,6 +306,7 @@ def main() -> int:
     week = weeks[0] if weeks else None
     months = build_months(con, daily)
     trend = build_trend(daily)
+    sky = build_sky(con)
 
     signals = detect_signals(
         con, countries_roll, regions, operators, types, daily,
@@ -337,6 +339,7 @@ def main() -> int:
         "weeks": weeks,
         "months": months,
         "trend": trend,
+        "sky": sky,
     }
 
     OUT.write_text(json.dumps(summary, separators=(",", ":")), encoding="utf-8")
@@ -368,6 +371,51 @@ def weekly_compare(daily) -> dict | None:
     return {"kind": "week",
             "prev_from": days[0], "prev_to": days[6],
             "cur_from": days[7], "cur_to": days[13]}
+
+
+def build_sky(con, origin=(56.16, 10.20), sample=1200, sectors=72) -> dict | None:
+    """
+    The receiver's footprint, small enough to ship inside the summary.
+
+    The front page opens on this: every first contact on record by bearing and
+    ground distance, plus the 95th-percentile reach in each 5° sector. Method
+    draws the same figure from the full record through the query engine; here
+    it is a seeded sample of the points and the envelope, a few kilobytes, so
+    the instrument is on screen before anything heavier has loaded.
+    """
+    rows = con.execute(
+        "SELECT first_lat, first_lon FROM fx "
+        "WHERE first_lat IS NOT NULL AND first_lon IS NOT NULL"
+    ).fetchall()
+    if not rows:
+        return None
+    lat0, lng0 = origin
+    f0 = math.radians(lat0)
+    pts = []
+    for lat, lon in rows:
+        f, dl = math.radians(lat), math.radians(lon - lng0)
+        cd = math.sin(f0) * math.sin(f) + math.cos(f0) * math.cos(f) * math.cos(dl)
+        km = math.acos(max(-1.0, min(1.0, cd))) * 6371.0
+        brg = math.atan2(math.sin(dl) * math.cos(f),
+                         math.cos(f0) * math.sin(f) - math.sin(f0) * math.cos(f) * math.cos(dl))
+        pts.append((km, (brg + 2 * math.pi) % (2 * math.pi)))
+
+    kms = sorted(p[0] for p in pts)
+    p50 = kms[len(kms) // 2]
+    p95 = kms[min(len(kms) - 1, int(0.95 * len(kms)))]
+    scale = math.ceil(max(p95 * 1.25, 120) / 50) * 50
+
+    buckets: list[list[float]] = [[] for _ in range(sectors)]
+    for km, brg in pts:
+        buckets[int(brg / (2 * math.pi) * sectors) % sectors].append(km)
+    env = [sorted(b)[int(0.95 * len(b))] if len(b) >= 4 else None for b in buckets]
+
+    keep = pts if len(pts) <= sample else random.Random(1090).sample(pts, sample)
+    return {
+        "n": len(pts), "scale": scale, "p50": round(p50), "p95": round(p95),
+        "env": [round(v) if v is not None else None for v in env],
+        "pts": [[round(km), round(brg, 3)] for km, brg in keep],
+    }
 
 
 def build_months(con, daily) -> dict:
@@ -634,6 +682,23 @@ def detect_signals(con, countries, regions, operators, types, daily,
 
     full_days = [d for d in daily if not d["partial"]]
 
+    days_sql = ", ".join(f"'{d['day']}'" for d in full_days)
+
+    def series(where: str | None = None) -> list[dict]:
+        """One value per complete day, for the sparkline beside a signal.
+        A day with nothing matching reads as zero rather than disappearing,
+        so the shape stays aligned to the calendar."""
+        if not full_days:
+            return []
+        w = f"WHERE day IN ({days_sql})" + (f" AND ({where})" if where else "")
+        got = dict(con.execute(f"SELECT day, COUNT(*) FROM fx {w} GROUP BY 1").fetchall())
+        return [{"k": d["day"][5:], "v": int(got.get(d["day"], 0) or 0)} for d in full_days]
+
+    def week_series(kind: str | None = None) -> list[dict]:
+        """The seven days of the week, in order, for one kind or for all."""
+        return [{"k": d["dow"], "v": d["kinds"].get(kind, 0) if kind else d["flights"]}
+                for d in week["days"]]
+
     # ── What a full week shows ───────────────────────────────────────────
     # These are the first readings on this site that are about the economy
     # rather than about the antenna. They are still composition, not trend:
@@ -648,6 +713,7 @@ def detect_signals(con, countries, regions, operators, types, daily,
         if cargo and charter and wt["lift_pct"] is not None:
             add(
                 kind="composition", scope="all", category="reading",
+                series=week_series(),
                 title="The working week barely changes how much flies — "
                       "it changes what",
                 metric=f"{wt['lift_pct']:+d}%", metric_label="weekday vs weekend traffic",
@@ -676,6 +742,7 @@ def detect_signals(con, countries, regions, operators, types, daily,
             path = " → ".join(f"{d} {by_dow.get(d, 0)}" for d in DOW_ORDER)
             add(
                 kind="corridor", scope="all", category="reading",
+                series=week_series("cargo"),
                 title="Freight keeps office hours",
                 metric=f"{cargo['lift_pct']:+d}%",
                 metric_label="all-cargo flights, weekday vs weekend",
@@ -702,6 +769,7 @@ def detect_signals(con, countries, regions, operators, types, daily,
         if charter and charter["lift_pct"] is not None and charter["lift_pct"] < 0:
             add(
                 kind="composition", scope="all", category="reading",
+                series=week_series("leisure"),
                 title="Holiday flying is a weekend business",
                 metric=f"{charter['lift_pct']:+d}%",
                 metric_label="charter flights, weekday vs weekend",
@@ -731,7 +799,7 @@ def detect_signals(con, countries, regions, operators, types, daily,
         eta = ((datetime.fromisoformat(full_days[-1]["day"]) + timedelta(days=need + 1))
                .strftime("%-d %B") if full_days else "later")
         add(
-            kind="coverage", scope="all",
+            kind="coverage", scope="all", series=series(),
             title=f"Week-over-week comparisons begin around {eta}",
             metric=f"{len(full_days)}", metric_label="of 14 complete days",
             comparison=f"{need} more complete day{'s' if need != 1 else ''} needed",
@@ -757,7 +825,7 @@ def detect_signals(con, countries, regions, operators, types, daily,
         others = [d["flights"] for d in full_days if d["day"] != peak["day"]]
         avg = sum(others) / len(others) if others else 0
         add(
-            kind="record", scope="all",
+            kind="record", scope="all", series=series(),
             title=f"Busiest full day observed: {peak['day']}",
             metric=f"{peak['flights']:,}", metric_label="flights",
             comparison=f"vs {avg:,.0f} average across {len(others)} other "
@@ -807,6 +875,7 @@ def detect_signals(con, countries, regions, operators, types, daily,
         up = c["change_pct"] > 0
         add(
             kind="shift", scope="country", entity=c["key"], category="reading",
+            series=series(f"reg_cc = '{c['key']}'"),
             title=f"{c['name']}-registered traffic {'up' if up else 'down'} "
                   f"{abs(c['change_pct']):.0f}% week on week",
             metric=f"{c['change_pct']:+.0f}%", metric_label="vs the previous week",
@@ -835,6 +904,7 @@ def detect_signals(con, countries, regions, operators, types, daily,
         wb_share = c["widebody"] / c["flights"] * 100 if c["flights"] else 0
         add(
             kind="corridor", scope="country", entity=c["key"],
+            series=series(f"reg_cc = '{c['key']}'"),
             title=f"{c['name']}-registered aircraft crossing overhead",
             metric=f"{c['flights']:,}", metric_label="flights observed",
             comparison=f"{c['aircraft']} distinct aircraft · "
@@ -860,7 +930,7 @@ def detect_signals(con, countries, regions, operators, types, daily,
     wb = totals["widebody"]
     if total and wb:
         add(
-            kind="capacity", scope="all",
+            kind="capacity", scope="all", series=series("body = 'widebody'"),
             title="Wide-body share of traffic",
             metric=f"{wb / total * 100:.0f}%", metric_label="of observed flights",
             comparison=f"{wb:,} wide-body movements",
@@ -883,7 +953,7 @@ def detect_signals(con, countries, regions, operators, types, daily,
     cg = sum(o["flights"] for o in cargo_ops)
     if cg:
         add(
-            kind="cargo", scope="all",
+            kind="cargo", scope="all", series=series("is_cargo"),
             title="All-cargo operator movements",
             metric=f"{cg:,}", metric_label="flights",
             comparison=f"{len(cargo_ops)} operators · {cg / total * 100:.1f}% of traffic",
