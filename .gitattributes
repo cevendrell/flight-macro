@@ -1,0 +1,26 @@
+# Generated data. Every one of these files is derived from the Parquet in
+# data/adsb/ by a script in scripts/adsb/, and both this machine and the
+# collector laptop rewrite them — so they conflict on almost every merge.
+#
+# NEVER resolve a conflict in these by hand or by picking a side. Both sides
+# are stale the moment they disagree, and a hand-written resolution once left
+# summary.json as a 299-byte stub that took the whole site down. Take either
+# side to clear the conflict, then regenerate:
+#
+#     python scripts/adsb/taxonomy.py
+#     python scripts/adsb/build_summary.py
+#
+# Marking them generated keeps them collapsed in diffs and out of language
+# stats, so a real change to the site is not buried under 60 KB of JSON.
+data/adsb/summary.json   linguist-generated=true -diff
+data/adsb/taxonomy.json  linguist-generated=true -diff
+data/adsb/carriers.json  linguist-generated=true -diff
+data/adsb/manifest.json  linguist-generated=true -diff
+
+# Baked map data — rebuilt only when the receiver moves (build_land.py,
+# build_coast.py), but there is no reason to ever read them as a diff.
+data/adsb/land.json      linguist-generated=true -diff
+data/adsb/coast.json     linguist-generated=true -diff
+
+# Parquet is binary; say so explicitly so git never tries a text merge.
+*.parquet binary

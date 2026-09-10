@@ -172,6 +172,14 @@ Fonts. Two radii only: `--r-control: 7px`, `--r-card: 11px`.
   `sync_to_repo.py` commits → GitHub Pages redeploys.
 - **No approval layer** — generated readings ship straight to the site, which is
   why the confidence field and the caveat field are not optional.
+- **Never hand-merge the derived JSON.** `summary.json`, `taxonomy.json`,
+  `carriers.json` and `manifest.json` are written by the scripts and rewritten
+  on both this machine and the collector laptop, so they conflict on nearly
+  every merge — and both sides are stale the moment they disagree. Take either
+  side to clear the conflict, then rerun `taxonomy.py` and `build_summary.py`:
+  the data is the Parquet, and these files are only a projection of it.
+  Resolving one by hand once left `summary.json` a 299-byte stub, and the site
+  failed to boot with `S.countries` undefined.
 
 ## Secrets
 `ANTHROPIC_API_KEY` belongs in GitHub Actions secrets, only if the (currently
