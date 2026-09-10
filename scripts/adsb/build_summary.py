@@ -143,14 +143,26 @@ def main() -> int:
     # so a signal's SQL runs the same here and there. Guarded: a flights file
     # built before routes existed has no origin column and must still build.
     fcols = {r[0] for r in con.execute("DESCRIBE f").fetchall()}
+    apf = DATA / "enrichment" / "airports.parquet"
+    have_routes = "origin" in fcols and apf.exists()
+    if have_routes:
+        con.execute(f"""
+            CREATE OR REPLACE VIEW ap AS
+            SELECT ident, name, municipality AS city, iso_country AS cc,
+                   latitude_deg AS lat, longitude_deg AS lng
+            FROM read_parquet('{apf}')""")
     route_derived = ("""
                (f.origin IS NOT NULL
                 AND NOT (f.origin LIKE 'EK%' OR f.destination LIKE 'EK%'))  AS is_overflight,
                CASE WHEN f.origin IS NOT NULL AND f.destination IS NOT NULL
                     THEN LEAST(f.origin, f.destination) || '-' || GREATEST(f.origin, f.destination)
-               END                                                          AS pair,"""
-        if "origin" in fcols else """
-               NULL AS is_overflight, NULL AS pair,""")
+               END                                                          AS pair,
+               ao.cc                                                        AS origin_cc,
+               ad.cc                                                        AS destination_cc,"""
+        if have_routes else """
+               NULL AS is_overflight, NULL AS pair, NULL AS origin_cc, NULL AS destination_cc,""")
+    route_joins = ("LEFT JOIN ap ao ON ao.ident = f.origin\n"
+                   "        LEFT JOIN ap ad ON ad.ident = f.destination" if have_routes else "")
     con.execute(f"""
         CREATE VIEW fx AS
         SELECT f.*,{route_derived}
@@ -167,6 +179,7 @@ def main() -> int:
         FROM f
         LEFT JOIN hex_cc h ON h.hex = f.hex
         LEFT JOIN carrier c ON c.prefix = f.airline_prefix
+        {route_joins}
     """)
 
     lo, hi, total = con.execute(
@@ -485,17 +498,26 @@ def build_routes(con, countries_meta: dict, compare: dict | None) -> dict | None
 
     # Countries at either end of a route — where the flying is actually
     # between, as opposed to where the aircraft is registered.
+    # A flight touching the same country at both ends (Copenhagen–Aalborg)
+    # counts once for it, so these are flights, not touches.
     countries = []
-    for cc, n, dep, arr in con.execute("""
+    for cc, n, dep, arr, cur, prev in con.execute(f"""
         WITH t AS (
-            SELECT origin AS k, 1 AS dep, 0 AS arr FROM fx WHERE origin IS NOT NULL
+            SELECT origin_cc AS cc, day,
+                   1 AS dep, CASE WHEN destination_cc = origin_cc THEN 1 ELSE 0 END AS arr
+            FROM fx WHERE origin_cc IS NOT NULL
             UNION ALL
-            SELECT destination, 0, 1 FROM fx WHERE destination IS NOT NULL)
-        SELECT a.cc, COUNT(*), SUM(dep), SUM(arr)
-        FROM t JOIN ap a ON a.ident = t.k WHERE a.cc IS NOT NULL
-        GROUP BY 1 ORDER BY 2 DESC""").fetchall():
-        countries.append({"key": cc, "name": countries_meta.get(cc, {}).get("name", cc),
-                          "flights": n, "dep": dep, "arr": arr})
+            SELECT destination_cc, day, 0, 1
+            FROM fx WHERE destination_cc IS NOT NULL AND destination_cc <> origin_cc)
+        SELECT cc, COUNT(*), SUM(dep), SUM(arr),
+               SUM(CASE WHEN {in_cur} THEN 1 ELSE 0 END),
+               SUM(CASE WHEN {in_prev} THEN 1 ELSE 0 END)
+        FROM t GROUP BY 1 ORDER BY 2 DESC""").fetchall():
+        meta = countries_meta.get(cc, {})
+        countries.append({"key": cc, "name": meta.get("name", cc),
+                          "region": meta.get("region"), "continent": meta.get("continent"),
+                          "flights": n, "dep": dep, "arr": arr,
+                          "cur": cur, "prev": prev, "change_pct": change(cur, prev)})
 
     order = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
     dirs = dict(con.execute(
@@ -1110,66 +1132,70 @@ def detect_signals(con, countries, regions, operators, types, daily,
             )
 
     # 3) Largest movers, country level. Requires presence in both windows.
-    # Thirty flights a week on each side is the floor: below it a 20% move is
-    # six aircraft, which is one airline changing a rotation.
+    # 3) Country movers, week on week — by where the flights are between, not
+    #    where the airframe is registered. Thirty flights a week on each side
+    #    is the floor: below it a 20% move is six aircraft, one rotation.
+    rcountries = routes["countries"] if routes else []
     movers = [
-        c for c in countries
+        c for c in rcountries
         if c["change_pct"] is not None and c["prev"] >= 30 and c["cur"] >= 30
     ]
     movers.sort(key=lambda c: -abs(c["change_pct"]))
     for c in movers[:3]:
         up = c["change_pct"] > 0
+        cc = c["key"]
         add(
-            kind="shift", scope="country", entity=c["key"], category="reading",
-            series=series(f"reg_cc = '{c['key']}'"),
-            title=f"{c['name']}-registered traffic {'up' if up else 'down'} "
+            kind="shift", scope="country", entity=cc, category="reading",
+            series=series(f"origin_cc = '{cc}' OR destination_cc = '{cc}'"),
+            title=f"Flights to or from {c['name']} {'up' if up else 'down'} "
                   f"{abs(c['change_pct']):.0f}% week on week",
             metric=f"{c['change_pct']:+.0f}%", metric_label="vs the previous week",
             comparison=f"{c['cur']} flights vs {c['prev']} the week before",
             where=c.get("region"),
             interpretation=(
-                f"A week against a week removes the weekday cycle, so this is closer "
-                f"to a real move in {c['name']}-registered flying — though schedule "
-                "changes, aircraft rotation and weather routing can each produce it."
+                f"A week against a week removes the weekday cycle, so this is close "
+                f"to a real change in the flying between {c['name']} and the places "
+                "the corridor over Aarhus connects it to — though a schedule change "
+                "or a rerouted flow can each produce it."
             ),
             caveat="Two weeks is the shortest baseline that makes this comparison "
                    "honest, not a long one. Watch whether it persists.",
-            confidence=c["confidence"],
-            sql=(f"SELECT strftime(seen_at, '%Y-%m-%d') AS day,\n"
-                 f"       COUNT(*) AS flights\n"
-                 f"FROM flights WHERE reg_country = '{c['key']}'\n"
+            confidence=confidence(c["flights"], span_days, c["change_pct"]),
+            sql=(f"SELECT day, COUNT(*) AS flights\n"
+                 f"FROM flights WHERE origin_cc = '{cc}' OR destination_cc = '{cc}'\n"
                  f"GROUP BY 1 ORDER BY 1;"),
         )
 
-    # 4) Long-haul presence from a distant country — the alternative-data hook.
-    for c in countries:
-        if c.get("continent") in ("Europe", None):
+    # 4) The far end of the long-haul overhead — the alternative-data hook,
+    #    now by destination: flights that begin or end outside Europe.
+    shown = 0
+    for c in rcountries:
+        if c.get("continent") in ("Europe", None) or c["flights"] < 15:
             continue
-        if c["flights"] < 15:
-            continue
-        wb_share = c["widebody"] / c["flights"] * 100 if c["flights"] else 0
+        cc = c["key"]
         add(
-            kind="corridor", scope="country", entity=c["key"],
-            series=series(f"reg_cc = '{c['key']}'"),
-            title=f"{c['name']}-registered aircraft crossing overhead",
-            metric=f"{c['flights']:,}", metric_label="flights observed",
-            comparison=f"{c['aircraft']} distinct aircraft · "
-                       f"{wb_share:.0f}% wide-body",
+            kind="corridor", scope="country", entity=cc,
+            series=series(f"origin_cc = '{cc}' OR destination_cc = '{cc}'"),
+            title=f"Flights to or from {c['name']} crossing overhead",
+            metric=f"{c['flights']:,}", metric_label="flights",
+            comparison=f"{c['arr']:,} bound for {c['name']} · {c['dep']:,} leaving it",
             where=c.get("region"),
             interpretation=(
-                f"{c['name']} has no scheduled service to Aarhus. These are aircraft "
-                "at cruise altitude on intercontinental routings that happen to pass "
-                "through this antenna's range. The count is a proxy for how busy that "
-                "corridor is."
+                f"None of these land in Denmark. They are the Europe–{c['name']} "
+                "great circles that happen to cross this antenna's range, so the "
+                "count is a reading on that corridor — and the split between the two "
+                "directions is the same flow seen from both ends."
             ),
             caveat="Corridor routings shift with winds, airspace closures and slot "
-                   "times. Volume here is not the same as trade or passenger volume.",
+                   "times. Flights are not passengers or freight; a change here is a "
+                   "change in schedule before it is a change in demand.",
             confidence="observed",
-            sql=(f"SELECT callsign, ac_type, reg, seen_at\n"
-                 f"FROM flights WHERE reg_country = '{c['key']}'\n"
-                 f"ORDER BY first_seen DESC;"),
+            sql=(f"SELECT origin_city, destination_city, COUNT(*) AS flights\n"
+                 f"FROM flights WHERE origin_cc = '{cc}' OR destination_cc = '{cc}'\n"
+                 f"GROUP BY 1, 2 ORDER BY 3 DESC;"),
         )
-        if len([s for s in sig if s["kind"] == "corridor"]) >= 2:
+        shown += 1
+        if shown >= 2:
             break
 
     # 5) Wide-body share — a capacity signal distinct from a flight count.
