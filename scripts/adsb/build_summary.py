@@ -42,7 +42,6 @@ DATA = REPO / "data" / "adsb"
 OUT = DATA / "summary.json"
 TAX = DATA / "taxonomy.json"
 
-PERIOD_H = 24  # comparison window, hours
 
 # Wide-body / long-haul airframes. Presence over Aarhus at cruise is the
 # clearest available proxy for intercontinental corridor traffic.
@@ -160,15 +159,35 @@ def main() -> int:
         "SELECT MIN(first_seen), MAX(first_seen), COUNT(*) FROM fx"
     ).fetchone()
     span_days = (hi - lo) / 86400.0 if hi and lo else 0.0
-    cur_lo, prev_lo = hi - PERIOD_H * 3600, hi - 2 * PERIOD_H * 3600
 
-    # A period-over-period change is only meaningful when BOTH windows are
-    # fully covered by the record. Early on, the baseline window reaches back
-    # past the first observation, which makes every comparison look like a
-    # dramatic increase — an artefact of when the receiver was switched on,
-    # not a change in the sky. Detect that and refuse to compute the change
-    # at all rather than publishing a number we would have to caveat away.
-    baseline_complete = prev_lo >= lo
+    # Track how much of each calendar day the receiver was actually up for.
+    # The first and last day of any record are partial, and comparing a partial
+    # day against a full one is the single easiest way to invent a fake trend.
+    daily = []
+    for d, n, a, w, dlo, dhi in con.execute("""
+        SELECT strftime(TO_TIMESTAMP(first_seen), '%Y-%m-%d'), COUNT(*),
+               COUNT(DISTINCT hex), SUM(CASE WHEN body='widebody' THEN 1 ELSE 0 END),
+               MIN(first_seen), MAX(first_seen)
+        FROM fx GROUP BY 1 ORDER BY 1
+    """).fetchall():
+        hours = (dhi - dlo) / 3600.0
+        daily.append({
+            "day": d, "flights": n, "aircraft": a, "widebody": w,
+            "hours_covered": round(hours, 1),
+            "partial": hours < 20.0,
+        })
+
+    # Every "change" figure on the site — per country, region, operator and
+    # type, and the shift signals built from them — compares the latest
+    # complete week against the complete week before it. It used to compare
+    # the last 24 hours with the 24 before, which on this data is mostly a
+    # measure of which weekday each window landed on: a Wednesday against a
+    # Tuesday, on a handful of flights, reported as a 67% move. A week against
+    # a week holds one of every weekday on each side, so what is left is
+    # change. Until two such weeks exist the comparison is withheld entirely,
+    # and the site says on what date it will start.
+    compare = weekly_compare(daily)
+    baseline_complete = compare is not None
 
     def scalar(sql: str):
         return con.execute(sql).fetchone()[0]
@@ -187,13 +206,16 @@ def main() -> int:
 
     # ── entity rollups, each with a current-vs-previous comparison ───────────
     def rollup(dim: str, extra: str = "") -> list[dict]:
+        in_cur = (f"day BETWEEN '{compare['cur_from']}' AND '{compare['cur_to']}'"
+                  if compare else "FALSE")
+        in_prev = (f"day BETWEEN '{compare['prev_from']}' AND '{compare['prev_to']}'"
+                   if compare else "FALSE")
         q = f"""
             SELECT {dim} AS key,
                    COUNT(*)                                                    AS flights,
                    COUNT(DISTINCT hex)                                         AS aircraft,
-                   SUM(CASE WHEN first_seen >= {cur_lo} THEN 1 ELSE 0 END)     AS cur,
-                   SUM(CASE WHEN first_seen >= {prev_lo}
-                             AND first_seen <  {cur_lo} THEN 1 ELSE 0 END)     AS prev,
+                   SUM(CASE WHEN {in_cur}  THEN 1 ELSE 0 END)                  AS cur,
+                   SUM(CASE WHEN {in_prev} THEN 1 ELSE 0 END)                  AS prev,
                    SUM(CASE WHEN body='widebody' THEN 1 ELSE 0 END)            AS widebody,
                    SUM(CASE WHEN is_cargo THEN 1 ELSE 0 END)                   AS cargo,
                    MIN(first_seen)                                             AS first_ts,
@@ -271,22 +293,6 @@ def main() -> int:
         t["desc"] = type_desc.get(t["key"])
         t["widebody_type"] = t["key"].startswith(WIDEBODY_PREFIXES)
 
-    # Track how much of each calendar day the receiver was actually up for.
-    # The first and last day of any record are partial, and comparing a partial
-    # day against a full one is the single easiest way to invent a fake trend.
-    daily = []
-    for d, n, a, w, dlo, dhi in con.execute("""
-        SELECT strftime(TO_TIMESTAMP(first_seen), '%Y-%m-%d'), COUNT(*),
-               COUNT(DISTINCT hex), SUM(CASE WHEN body='widebody' THEN 1 ELSE 0 END),
-               MIN(first_seen), MAX(first_seen)
-        FROM fx GROUP BY 1 ORDER BY 1
-    """).fetchall():
-        hours = (dhi - dlo) / 3600.0
-        daily.append({
-            "day": d, "flights": n, "aircraft": a, "widebody": w,
-            "hours_covered": round(hours, 1),
-            "partial": hours < 20.0,
-        })
     hourly = [
         {"hour": int(h), "flights": n}
         for h, n in con.execute("""
@@ -302,7 +308,7 @@ def main() -> int:
 
     signals = detect_signals(
         con, countries_roll, regions, operators, types, daily,
-        span_days, total, cur_lo, prev_lo, totals, baseline_complete, week,
+        span_days, total, compare, totals, baseline_complete, week,
     )
 
     summary = {
@@ -311,10 +317,12 @@ def main() -> int:
         "window": {
             "first_ts": lo, "last_ts": hi,
             "days_observed": round(span_days, 2),
-            "period_hours": PERIOD_H,
-            "current_from": cur_lo, "previous_from": prev_lo,
             "baseline_complete": baseline_complete,
             "complete_days": sum(1 for d in daily if not d["partial"]),
+            # What every change_pct on the site is measured across. None until
+            # two complete weeks exist; the page uses this to label the column
+            # and to say when comparisons will begin.
+            "compare": compare,
         },
         "totals": totals,
         "signals": signals,
@@ -341,6 +349,25 @@ def main() -> int:
 
 # ── the week ─────────────────────────────────────────────────────────────────
 DOW_ORDER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+
+
+def weekly_compare(daily) -> dict | None:
+    """
+    The two windows every change figure is measured across: the newest seven
+    consecutive complete days, and the seven consecutive complete days before
+    them. Returns None unless both exist in full — a partial baseline is what
+    turns "the receiver was switched on" into a 200% increase.
+    """
+    have = {d["day"] for d in daily if not d["partial"]}
+    if len(have) < 14:
+        return None
+    newest = datetime.fromisoformat(max(have))
+    days = [(newest - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(13, -1, -1)]
+    if not all(d in have for d in days):
+        return None
+    return {"kind": "week",
+            "prev_from": days[0], "prev_to": days[6],
+            "cur_from": days[7], "cur_to": days[13]}
 
 
 def build_months(con, daily) -> dict:
@@ -574,7 +601,7 @@ def build_week_for(con, days: list[str], kind_meta) -> dict:
 
 # ── signal detection ─────────────────────────────────────────────────────────
 def detect_signals(con, countries, regions, operators, types, daily,
-                   span_days, total, cur_lo, prev_lo, totals,
+                   span_days, total, compare, totals,
                    baseline_complete, week=None) -> list[dict]:
     """
     Turn the rollups into a ranked list of claims.
@@ -598,6 +625,11 @@ def detect_signals(con, countries, regions, operators, types, daily,
 
     def add(**kw):
         kw.setdefault("confidence", "observed")
+        # A `reading` has a direction — something moved, or runs one way. A
+        # `profile` describes what the record is: a share, a count, a rarity.
+        # An analyst wants the first kind first, and should not have to work
+        # out which is which from the wording.
+        kw.setdefault("category", "profile")
         sig.append(kw)
 
     full_days = [d for d in daily if not d["partial"]]
@@ -615,7 +647,7 @@ def detect_signals(con, countries, regions, operators, types, daily,
         cargo, charter = kinds.get("cargo"), kinds.get("leisure")
         if cargo and charter and wt["lift_pct"] is not None:
             add(
-                kind="composition", scope="all",
+                kind="composition", scope="all", category="reading",
                 title="The working week barely changes how much flies — "
                       "it changes what",
                 metric=f"{wt['lift_pct']:+d}%", metric_label="weekday vs weekend traffic",
@@ -643,7 +675,7 @@ def detect_signals(con, countries, regions, operators, types, daily,
             by_dow = {d["dow"]: d["kinds"].get("cargo", 0) for d in week["days"]}
             path = " → ".join(f"{d} {by_dow.get(d, 0)}" for d in DOW_ORDER)
             add(
-                kind="corridor", scope="all",
+                kind="corridor", scope="all", category="reading",
                 title="Freight keeps office hours",
                 metric=f"{cargo['lift_pct']:+d}%",
                 metric_label="all-cargo flights, weekday vs weekend",
@@ -669,7 +701,7 @@ def detect_signals(con, countries, regions, operators, types, daily,
 
         if charter and charter["lift_pct"] is not None and charter["lift_pct"] < 0:
             add(
-                kind="composition", scope="all",
+                kind="composition", scope="all", category="reading",
                 title="Holiday flying is a weekend business",
                 metric=f"{charter['lift_pct']:+d}%",
                 metric_label="charter flights, weekday vs weekend",
@@ -695,19 +727,23 @@ def detect_signals(con, countries, regions, operators, types, daily,
     #    periods, that IS the headline — publishing invented trends instead
     #    would be the single fastest way to make this product untrustworthy.
     if not baseline_complete:
+        need = max(0, 14 - len(full_days))
+        eta = ((datetime.fromisoformat(full_days[-1]["day"]) + timedelta(days=need + 1))
+               .strftime("%-d %B") if full_days else "later")
         add(
             kind="coverage", scope="all",
-            title="No trend comparisons yet — the baseline is still being built",
-            metric=f"{len(full_days)}", metric_label="complete days recorded",
-            comparison=f"{span_days:.1f} days of observations so far",
+            title=f"Week-over-week comparisons begin around {eta}",
+            metric=f"{len(full_days)}", metric_label="of 14 complete days",
+            comparison=f"{need} more complete day{'s' if need != 1 else ''} needed",
             where=None,
-            interpretation="Period-over-period comparison needs two full, equal "
-                           "windows. The record does not yet reach back far enough, so "
-                           "every change figure would be measuring when the receiver "
-                           "was switched on rather than anything about air traffic.",
+            interpretation="Every change figure here is one complete week against the "
+                           "complete week before it — one of every weekday on each side, "
+                           "so day-of-week cancels out. That needs fourteen complete days. "
+                           "Until then, no change is reported anywhere on the site, "
+                           "rather than a day-on-day figure that mostly measures which "
+                           "weekday it was.",
             caveat="Composition and counts below are directly observed and stand on "
-                   "their own. Change figures are deliberately withheld until the "
-                   "baseline supports them.",
+                   "their own. Only the comparisons are waiting.",
             confidence="observed",
             sql=("SELECT strftime(seen_at, '%Y-%m-%d') AS day,\n"
                  "       COUNT(*) AS flights,\n"
@@ -760,27 +796,29 @@ def detect_signals(con, countries, regions, operators, types, daily,
         )
 
     # 3) Largest movers, country level. Requires presence in both windows.
+    # Thirty flights a week on each side is the floor: below it a 20% move is
+    # six aircraft, which is one airline changing a rotation.
     movers = [
         c for c in countries
-        if c["change_pct"] is not None and c["prev"] >= 5 and c["cur"] >= 5
+        if c["change_pct"] is not None and c["prev"] >= 30 and c["cur"] >= 30
     ]
     movers.sort(key=lambda c: -abs(c["change_pct"]))
     for c in movers[:3]:
         up = c["change_pct"] > 0
         add(
-            kind="shift", scope="country", entity=c["key"],
+            kind="shift", scope="country", entity=c["key"], category="reading",
             title=f"{c['name']}-registered traffic {'up' if up else 'down'} "
-                  f"{abs(c['change_pct']):.0f}%",
-            metric=f"{c['change_pct']:+.0f}%", metric_label="vs previous 24h",
-            comparison=f"{c['cur']} flights vs {c['prev']}",
+                  f"{abs(c['change_pct']):.0f}% week on week",
+            metric=f"{c['change_pct']:+.0f}%", metric_label="vs the previous week",
+            comparison=f"{c['cur']} flights vs {c['prev']} the week before",
             where=c.get("region"),
             interpretation=(
-                f"Movement in {c['name']}-registered aircraft can reflect schedule "
-                "changes, aircraft rotation, weather routing, or genuine changes in "
-                "activity. At this sample size the first three are more likely."
+                f"A week against a week removes the weekday cycle, so this is closer "
+                f"to a real move in {c['name']}-registered flying — though schedule "
+                "changes, aircraft rotation and weather routing can each produce it."
             ),
-            caveat="A 24-hour comparison on a few days of history is noise-dominated. "
-                   "Treat as something to watch, not a finding.",
+            caveat="Two weeks is the shortest baseline that makes this comparison "
+                   "honest, not a long one. Watch whether it persists.",
             confidence=c["confidence"],
             sql=(f"SELECT strftime(seen_at, '%Y-%m-%d') AS day,\n"
                  f"       COUNT(*) AS flights\n"
@@ -888,8 +926,20 @@ def detect_signals(con, countries, regions, operators, types, daily,
                  "ORDER BY first_seen DESC;"),
         )
 
+    # Readings before profile, then by confidence, then by the size of the
+    # move. The old sort was confidence alone, which put a bare cargo count
+    # marked "moderate" above every actual finding on the page.
     order = {"strong": 0, "moderate": 1, "observed": 2, "early": 3}
-    sig.sort(key=lambda s: order.get(s["confidence"], 9))
+
+    def magnitude(s: dict) -> float:
+        try:
+            return abs(float(str(s.get("metric", "")).rstrip("%").replace(",", "")))
+        except ValueError:
+            return 0.0
+
+    sig.sort(key=lambda s: (s["category"] != "reading",
+                            order.get(s["confidence"], 9),
+                            -magnitude(s)))
     for i, s in enumerate(sig):
         s["id"] = f"sig-{i+1}"
     return sig
