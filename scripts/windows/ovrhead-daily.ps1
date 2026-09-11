@@ -25,14 +25,26 @@ function Run {
     if ($LASTEXITCODE -ne 0) { throw "$Label failed (exit $LASTEXITCODE)" }
 }
 
+# For enrichment steps whose failure must not stop the run. Reconstruct and
+# every downstream script gracefully handle the corresponding parquet being
+# missing or stale, so the site keeps updating even when an upstream table
+# is unreachable. Failures are still logged prominently.
+function TryRun {
+    param([string]$Label, [string]$Exe, [string[]]$Arguments)
+    try { Run $Label $Exe $Arguments }
+    catch { Log ('!! {0} failed but pipeline continues: {1}' -f $Label, $_.Exception.Message) }
+}
+
 Set-Location $RepoRoot
 Log '=== daily ingest starting ==='
 
 try {
     Run 'git-pull'    'git'   @('pull', '--rebase', '--autostash', 'origin', 'main')
-    # Routes before reconstruct: reconstruct joins every flight's callsign to
-    # its scheduled route and checks it against the observed heading.
-    Run 'routes'      $Python @((Join-Path $RepoRoot 'scripts\adsb\routes.py'))
+    # Routes is a nice-to-have enrichment: it fetches the callsign→route tables
+    # from GitHub and writes enrichment/routes.parquet. Reconstruct joins them
+    # when present and runs fine without them, so a network hiccup here must
+    # never stop the record being reconstructed, synced and published.
+    TryRun 'routes'   $Python @((Join-Path $RepoRoot 'scripts\adsb\routes.py'))
     Run 'reconstruct' $Python @((Join-Path $RepoRoot 'scripts\adsb\reconstruct.py'))
     Run 'sync'        $Python @((Join-Path $RepoRoot 'scripts\adsb\sync_to_repo.py'))
     # Taxonomy is static reference data; the summary is the site's fast layer
