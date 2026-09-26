@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-25T03:00:36+00:00",
+  "generated_at": "2026-09-26T03:00:37+00:00",
   "origin": {
     "name": "Aarhus, Denmark",
     "lat": 56.16,
@@ -150,19 +150,24 @@
     {
       "name": "snapshots_2026-09-25.parquet",
       "path": "data/adsb/snapshots/snapshots_2026-09-25.parquet",
-      "bytes": 9196
+      "bytes": 555715
+    },
+    {
+      "name": "snapshots_2026-09-26.parquet",
+      "path": "data/adsb/snapshots/snapshots_2026-09-26.parquet",
+      "bytes": 12683
     }
   ],
   "flights": [
     {
       "name": "flights_2026-08.parquet",
       "path": "data/adsb/flights/flights_2026-08.parquet",
-      "bytes": 210155
+      "bytes": 208931
     },
     {
       "name": "flights_2026-09.parquet",
       "path": "data/adsb/flights/flights_2026-09.parquet",
-      "bytes": 1429662
+      "bytes": 1482570
     }
   ],
   "enrichment": [
@@ -184,7 +189,7 @@
     {
       "name": "routes.parquet",
       "path": "data/adsb/enrichment/routes.parquet",
-      "bytes": 30033
+      "bytes": 30155
     }
   ]
 }
