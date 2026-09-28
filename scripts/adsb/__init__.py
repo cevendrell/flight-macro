@@ -6,7 +6,7 @@ to Parquet, reconstruct flights from snapshot sequences, enrich with
 aircraft/airline/airport tables, and generate weekly signals.
 
 Modules:
-    poller.py       Continuous poller — runs forever, appends snapshots.
+    poller.py       Continuous poller - runs forever, appends snapshots.
     reconstruct.py  Snapshots -> flights (per-hex sessions with gap detection).
     enrich.py       Downloads aircraft DB (tar1090-db) and airport DB (OurAirports).
     signals.py      Flights -> weekly aggregates -> insights.json.

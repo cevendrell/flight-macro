@@ -16,7 +16,7 @@ name and a *kind*. The kinds are what make the macro readings possible at all:
     lowcost  → price-led point-to-point: leisure and visiting-friends-and-family
     leisure  → charter and tour-operator flying: holidays, almost purely
     regional → short feeders, mostly domestic
-    state    → military, government, police, air ambulance — not economic demand
+    state    → military, government, police, air ambulance - not economic demand
 
 It is a judgement, not a measurement, and it is published as a file so the
 judgement can be argued with. Two rules keep it honest:
@@ -42,7 +42,7 @@ REPO = Path(__file__).resolve().parents[2]
 OUT = REPO / "data" / "adsb" / "carriers.json"
 
 KINDS = {
-    "cargo":    {"label": "All-cargo",      "reads": "Freight capacity — the closest thing overhead to a trade figure."},
+    "cargo":    {"label": "All-cargo",      "reads": "Freight capacity - the closest thing overhead to a trade figure."},
     "bizjet":   {"label": "Business jet",   "reads": "Corporate and private travel. The first budget cut in a downturn."},
     "network":  {"label": "Network",        "reads": "Full-service scheduled. Carries business travel and connecting traffic."},
     "lowcost":  {"label": "Low-cost",       "reads": "Price-led point-to-point. Leisure and visiting family."},

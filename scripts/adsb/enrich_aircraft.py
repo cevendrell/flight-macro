@@ -1,9 +1,9 @@
 """
-Aircraft DB refresh — standalone replacement for the aircraft section of
+Aircraft DB refresh - standalone replacement for the aircraft section of
 enrich_new.py, with explicit string-type enforcement.
 
 The tar1090-db JSON values are [reg, type, flags, desc]. Any slot can be
-missing, None, or — in malformed entries — a float (NaN). PyArrow's
+missing, None, or - in malformed entries - a float (NaN). PyArrow's
 from_pylist infers a mixed string/float column as float and then rejects
 the write. This script casts all string fields to str (or None) before
 building the table.

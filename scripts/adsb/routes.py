@@ -7,8 +7,8 @@ number (Ryanair uses fixed operational codes like RYR9SE instead of the
 commercial FR number, but they are just as stable per rotation). The VRS
 standing-data project publishes callsign → airports tables built from
 thousands of receivers seeing where each callsign departs and lands. This
-script fetches the tables for the airline prefixes present in our record —
-about forty, out of some 1,500 files — and writes one small Parquet of the
+script fetches the tables for the airline prefixes present in our record -
+about forty, out of some 1,500 files - and writes one small Parquet of the
 routes for callsigns we have actually seen.
 
 Whether a looked-up route is *true* of a given flight is not decided here.
@@ -178,14 +178,14 @@ def main() -> int:
                     log(f"  {path}: {type(e).__name__}: {e}")
         log(f"{files} tables, {len(routes):,} routes loaded"
             f"{f' ({fetch_errors} errors)' if fetch_errors else ''}; "
-            f"no table for: {', '.join(missing) or '—'}")
+            f"no table for: {', '.join(missing) or '-'}")
 
         # A run that fetched almost nothing was almost certainly rate-limited or
         # offline in the middle. Keeping yesterday's file is better than
         # replacing it with a tiny fragment that quietly strips routes off most
         # flights when reconstruct joins against it.
         if files < max(3, len(prefixes) // 4) and OUT.exists():
-            return _keep_previous(f"only {files} tables succeeded — likely a network problem")
+            return _keep_previous(f"only {files} tables succeeded - likely a network problem")
 
         heard = {cs for (cs,) in con.execute(
             "SELECT DISTINCT UPPER(TRIM(flight)) FROM snap WHERE flight IS NOT NULL").fetchall()}

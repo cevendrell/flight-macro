@@ -2,7 +2,7 @@
 Bake a simplified world coastline into the repo for the globe view.
 
 The previous site pulled three.js, globe.gl, topojson-client and world-atlas
-from a CDN at runtime — roughly 600 KB and four things that can break
+from a CDN at runtime - roughly 600 KB and four things that can break
 independently of us. The globe only needs land outlines, so we fetch them
 once, decode the topology, drop the smallest islands, thin the vertices and
 store the result as a plain array of rings.

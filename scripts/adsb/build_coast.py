@@ -1,7 +1,7 @@
 """
 Bake a high-resolution regional coastline for the coverage plot.
 
-`land.json` is thinned at 0.7° — about 78 km — because it only ever has to
+`land.json` is thinned at 0.7° - about 78 km - because it only ever has to
 survive being drawn as a globe a few hundred pixels wide. The Method page's
 coverage figure is a different problem: it is roughly 400 km from the middle to
 the edge, so that same file would put the Jutland coast tens of kilometres from
@@ -11,7 +11,7 @@ without one.
 
 So we bake a second file: the 50m land layer, clipped to what the receiver can
 actually hear and thinned at a tolerance appropriate to the scale. Clipping is
-what keeps it small — Eurasia is a single enormous ring, and we want a few
+what keeps it small - Eurasia is a single enormous ring, and we want a few
 degrees of it.
 
 Rings are cut into open polylines rather than kept closed. The figure strokes
@@ -38,7 +38,7 @@ HOME_LAT, HOME_LNG = 56.16, 10.20
 RANGE_KM = 480.0            # a little beyond the furthest first contacts
 
 TOLERANCE_KM = 3.0          # vertex thinning, in real distance
-PRECISION = 3               # ~110 m at this latitude — below one screen pixel
+PRECISION = 3               # ~110 m at this latitude - below one screen pixel
 
 
 def bbox() -> tuple[float, float, float, float]:

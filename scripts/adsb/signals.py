@@ -10,7 +10,7 @@ Signal families:
     2. category      freighter share, widebody share (aggregate)
     3. absence       was present in prior week, gone this week (or vice versa)
 
-The map still shows arcs — we use Aarhus as the fixed home point, and each
+The map still shows arcs - we use Aarhus as the fixed home point, and each
 country-mix signal draws an arc from Aarhus to that country's centroid.
 Aggregate signals sit on Aarhus itself.
 
@@ -46,7 +46,7 @@ WAREHOUSE = Path(os.environ.get("OVRHEAD_WAREHOUSE", str(Path.home() / "data" / 
 FLIGHTS   = WAREHOUSE / "adsb" / "flights"
 SNAPS     = WAREHOUSE / "adsb" / "snapshots"
 
-# Home antenna reference point — Aarhus
+# Home antenna reference point - Aarhus
 HOME = {
     "name": "Aarhus",
     "code": "AAR",           # antenna code, not an IATA
@@ -59,7 +59,7 @@ HOME = {
 # Freighter callsign prefixes we recognise as cargo.
 FREIGHTER_PREFIXES = {"FDX","UPS","CLX","GEC","NCA","CKS","BOX","DHK","DHL","SQC","VDA","GTI"}
 
-# Aircraft-type prefixes that count as widebody (rough grouping — good enough)
+# Aircraft-type prefixes that count as widebody (rough grouping - good enough)
 WIDEBODY_TYPE_PREFIXES = {"B74","B77","B78","B7","A33","A34","A35","A38","A30","MD11","IL96"}
 
 
@@ -137,7 +137,7 @@ def signals_country_mix(con, curr_start, curr_end, prior_start, prior_end,
 
 def signals_categories(con, curr_start, curr_end, prior_start, prior_end,
                        min_flights: int) -> list[dict]:
-    """Freighter share and widebody share — aggregates keyed to the antenna."""
+    """Freighter share and widebody share - aggregates keyed to the antenna."""
     prefixes_sql = "(" + ",".join(f"'{p}'" for p in FREIGHTER_PREFIXES) + ")"
     freighter_curr, all_curr = con.execute(f"""
         SELECT
@@ -180,7 +180,7 @@ def signals_categories(con, curr_start, curr_end, prior_start, prior_end,
 
 def signals_absence(con, curr_start, curr_end, prior_start, prior_end,
                     min_flights: int) -> list[dict]:
-    """Countries that appeared in the prior window but not the current — the
+    """Countries that appeared in the prior window but not the current - the
        negative signal (e.g. sanctions still holding)."""
     rows = con.execute(f"""
         WITH curr AS (
@@ -215,7 +215,7 @@ def signals_absence(con, curr_start, curr_end, prior_start, prior_end,
             "theme": "business",
             "headline": f"{cc['name']} operators absent this window",
             "reading":  (f"No aircraft operated by {cc['name']}-registered airlines observed overhead this week, "
-                         f"vs {n_prior} flights the prior week. Absence signals matter — sanctions, "
+                         f"vs {n_prior} flights the prior week. Absence signals matter - sanctions, "
                          f"route cancellations, and carrier collapses all show up this way first."),
             "confidence": "high" if n_prior >= 10 else "medium",
         })
@@ -225,9 +225,9 @@ def signals_absence(con, curr_start, curr_end, prior_start, prior_end,
 # ── Copy templates ──────────────────────────────────────────────────────────
 
 def _guess_theme_for_country(cc: str, n_curr: int, n_prior: int) -> str:
-    # Very rough — refined later by Claude enrichment if we wire it up
+    # Very rough - refined later by Claude enrichment if we wire it up
     if cc in {"CN","HK","JP","KR","SG","AE","QA","SA","IN"}:
-        return "tourism"   # long-haul entries — often east/gulf carriers to Nordic
+        return "tourism"   # long-haul entries - often east/gulf carriers to Nordic
     if cc in {"US","CA","MX","BR"}:
         return "business"
     if cc in {"LU","IS"}:
@@ -248,7 +248,7 @@ def _country_headline(name: str, curr: int, prior: int, delta: float) -> str:
 def _country_reading(name: str, curr: int, prior: int, delta: float) -> str:
     return (f"Aircraft operated by {name}-registered airlines were observed {curr} times over Aarhus this window "
             f"(vs {prior} the prior window; {delta:+.0f}% change). "
-            f"This tracks the presence of that country's carriers on routes passing overhead — a proxy for "
+            f"This tracks the presence of that country's carriers on routes passing overhead - a proxy for "
             f"trade and travel intensity between Northern Europe and {name}.")
 
 
@@ -266,7 +266,7 @@ def main() -> int:
             "meta": {
                 "updated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
                 "period":  "Waiting for first week of data",
-                "source":  "OvrHead ADS-B — Aarhus antenna",
+                "source":  "OvrHead ADS-B - Aarhus antenna",
                 "coverage": "Real-time ADS-B feed from a Raspberry Pi + RTL-SDR in Aarhus",
                 "note": ("No flights table yet. The poller writes snapshots continuously; "
                          "reconstruct.py turns them into flights; this script turns flights into signals. "
@@ -275,7 +275,7 @@ def main() -> int:
             "insights": [],
         }
         OUT_PATH.write_text(json.dumps(payload, indent=2, ensure_ascii=False))
-        print(f"[signals] no flights yet — wrote landing state to {OUT_PATH.relative_to(REPO_ROOT)}")
+        print(f"[signals] no flights yet - wrote landing state to {OUT_PATH.relative_to(REPO_ROOT)}")
         return 0
 
     con = duckdb.connect()
@@ -304,7 +304,7 @@ def main() -> int:
         "meta": {
             "updated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "period": _period_label(args.days),
-            "source": "OvrHead ADS-B — Aarhus antenna",
+            "source": "OvrHead ADS-B - Aarhus antenna",
             "coverage": "Real-time ADS-B feed from a Raspberry Pi + RTL-SDR in Aarhus (~250nm range)",
             "note": ("First-person aviation signals. Every card is a change in what our antenna literally saw overhead "
                      "this week vs last. Scope is narrow (Northern European transit airspace) but the data is unfiltered "
@@ -320,7 +320,7 @@ def main() -> int:
 def _period_label(days: int) -> str:
     end = datetime.now(tz=timezone.utc).date()
     start = end - timedelta(days=days)
-    return f"{start.strftime('%b %d')} – {end.strftime('%b %d, %Y')} vs prior {days}d"
+    return f"{start.strftime('%b %d')} - {end.strftime('%b %d, %Y')} vs prior {days}d"
 
 
 if __name__ == "__main__":

@@ -47,12 +47,12 @@ def http_get(url: str, timeout: int = 60) -> bytes:
 
 
 # ── 1. Aircraft DB (tar1090-db, chunked format) ─────────────────────────────
-# The repo restructured — instead of one aircraft.csv.gz there are now 82
+# The repo restructured - instead of one aircraft.csv.gz there are now 82
 # gzipped-JSON chunk files under db/<hex-prefix>.js. Each file's keys are
 # the *remainder* after the prefix (so "00002" in file "6.js" = hex "600002").
 # Each value: [reg, type_code, flags, description].
 #
-# Not every chunk is a dict — a few are metadata lists (author etc.); those
+# Not every chunk is a dict - a few are metadata lists (author etc.); those
 # get skipped rather than blowing up the whole run.
 
 TAR1090_DB_LIST = "https://api.github.com/repos/wiedehopf/tar1090-db/contents/db"
@@ -86,7 +86,7 @@ def refresh_aircraft() -> None:
                 continue
 
         if not isinstance(payload, dict):
-            # Metadata/index files show up as lists — skip cleanly.
+            # Metadata/index files show up as lists - skip cleanly.
             skipped += 1
             continue
 

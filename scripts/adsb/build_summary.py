@@ -50,14 +50,14 @@ TAX = DATA / "taxonomy.json"
 #
 # "A310", not "A31": a prefix match on A31 also catches the A318 and A319,
 # which are narrow-bodies. It did, for months, and inflated the wide-body
-# count — the site's long-haul proxy — by about a sixth.
+# count - the site's long-haul proxy - by about a sixth.
 WIDEBODY_PREFIXES = (
     "A30", "A310", "A33", "A34", "A35", "A38",
     "B74", "B76", "B77", "B78", "IL9", "MD11", "A124", "C5M",
 )
 
 # Who is flying, and what kind of flying it is. Lives in data/adsb/carriers.json
-# so the site can read the same judgement — see scripts/adsb/carriers.py.
+# so the site can read the same judgement - see scripts/adsb/carriers.py.
 # Cargo is attributed at the OPERATOR level, never the airframe: a
 # passenger-configured 777 and a freighter share a type code.
 CARRIERS_FILE = DATA / "carriers.json"
@@ -65,7 +65,7 @@ CARRIERS_FILE = DATA / "carriers.json"
 
 def load_carriers() -> tuple[dict, dict]:
     if not CARRIERS_FILE.exists():
-        print("[carriers] missing — run scripts/adsb/carriers.py", file=sys.stderr)
+        print("[carriers] missing - run scripts/adsb/carriers.py", file=sys.stderr)
         return {}, {}
     doc = json.loads(CARRIERS_FILE.read_text(encoding="utf-8"))
     return doc.get("carriers", {}), doc.get("kinds", {})
@@ -204,8 +204,8 @@ def main() -> int:
             "partial": hours < 20.0,
         })
 
-    # Every "change" figure on the site — per country, region, operator and
-    # type, and the shift signals built from them — compares the latest
+    # Every "change" figure on the site - per country, region, operator and
+    # type, and the shift signals built from them - compares the latest
     # complete week against the complete week before it. It used to compare
     # the last 24 hours with the 24 before, which on this data is mostly a
     # measure of which weekday each window landed on: a Wednesday against a
@@ -334,10 +334,11 @@ def main() -> int:
     trend = build_trend(daily)
     sky = build_sky(con)
     routes = build_routes(con, countries, compare)
+    trends = build_weekly_trends(con, weeks)
 
     signals = detect_signals(
         con, countries_roll, regions, operators, types, daily,
-        span_days, total, compare, totals, baseline_complete, week, routes,
+        span_days, total, compare, totals, baseline_complete, week, routes, trends,
     )
 
     summary = {
@@ -368,6 +369,7 @@ def main() -> int:
         "trend": trend,
         "sky": sky,
         "routes": routes,
+        "trends": trends,
     }
 
     OUT.write_text(json.dumps(summary, separators=(",", ":")), encoding="utf-8")
@@ -386,7 +388,7 @@ def weekly_compare(daily) -> dict | None:
     """
     The two windows every change figure is measured across: the newest seven
     consecutive complete days, and the seven consecutive complete days before
-    them. Returns None unless both exist in full — a partial baseline is what
+    them. Returns None unless both exist in full - a partial baseline is what
     turns "the receiver was switched on" into a 200% increase.
     """
     have = {d["day"] for d in daily if not d["partial"]}
@@ -409,7 +411,7 @@ def build_routes(con, countries_meta: dict, compare: dict | None) -> dict | None
     when the aircraft was observed heading toward that destination. Everything
     here counts those flights: the airports they touch, the city-pairs they
     join, the countries at each end, and the compass direction of travel for
-    every positioned flight — routed or not. Coverage is reported so the page
+    every positioned flight - routed or not. Coverage is reported so the page
     can say what share of the sky this describes.
     """
     cols = {r[0] for r in con.execute("DESCRIBE fx").fetchall()}
@@ -440,7 +442,7 @@ def build_routes(con, countries_meta: dict, compare: dict | None) -> dict | None
         ch = pct_change(cur, prev) if compare else None
         return round(ch, 1) if ch is not None else None
 
-    # Airports, by flights touching them. A Copenhagen–Aalborg flight counts
+    # Airports, by flights touching them. A Copenhagen-Aalborg flight counts
     # once for each end, so these are touches, not a partition of the record.
     airports, index = [], {}
     for k, n, dep, arr, cur, prev, name, city, cc, lat, lng in con.execute(f"""
@@ -454,7 +456,7 @@ def build_routes(con, countries_meta: dict, compare: dict | None) -> dict | None
                a.name, a.city, a.cc, a.lat, a.lng
         FROM t LEFT JOIN ap a ON a.ident = t.k
         GROUP BY ALL ORDER BY 2 DESC""").fetchall():
-        # OurAirports municipalities carry qualifiers — "Oslo (Gardermoen)",
+        # OurAirports municipalities carry qualifiers - "Oslo (Gardermoen)",
         # "Paris (Roissy-en-France, Val-d'Oise)". The airport name already
         # says which airport; the city should just be the city.
         city = re.split(r"[,(]", city or "", 1)[0].strip()
@@ -477,7 +479,7 @@ def build_routes(con, countries_meta: dict, compare: dict | None) -> dict | None
         return round(2 * 6371 * math.asin(math.sqrt(
             math.sin((f2 - f1) / 2) ** 2 + math.cos(f1) * math.cos(f2) * math.sin(dl / 2) ** 2)))
 
-    # City-pairs are unordered — Copenhagen–Oslo is one corridor — with each
+    # City-pairs are unordered - Copenhagen-Oslo is one corridor - with each
     # direction kept so the page can show the balance.
     pairs = []
     for a, b, n, ab, cur, prev in con.execute(f"""
@@ -496,9 +498,9 @@ def build_routes(con, countries_meta: dict, compare: dict | None) -> dict | None
             "local": a.startswith("EK") or b.startswith("EK"),
         })
 
-    # Countries at either end of a route — where the flying is actually
+    # Countries at either end of a route - where the flying is actually
     # between, as opposed to where the aircraft is registered.
-    # A flight touching the same country at both ends (Copenhagen–Aalborg)
+    # A flight touching the same country at both ends (Copenhagen-Aalborg)
     # counts once for it, so these are flights, not touches.
     countries = []
     for cc, n, dep, arr, cur, prev in con.execute(f"""
@@ -570,7 +572,10 @@ def build_sky(con, origin=(56.16, 10.20), sample=1200, sectors=72) -> dict | Non
     kms = sorted(p[0] for p in pts)
     p50 = kms[len(kms) // 2]
     p95 = kms[min(len(kms) - 1, int(0.95 * len(kms)))]
-    scale = math.ceil(max(p95 * 1.25, 120) / 50) * 50
+    p99 = kms[min(len(kms) - 1, int(0.99 * len(kms)))]
+    # Scale of the disc: the 99th-percentile reach with a small margin, so
+    # 99% of contacts sit inside the frame and the 1% beyond are still visible.
+    scale = math.ceil(max(p99 * 1.05, 200) / 50) * 50
 
     buckets: list[list[float]] = [[] for _ in range(sectors)]
     for km, brg in pts:
@@ -579,7 +584,8 @@ def build_sky(con, origin=(56.16, 10.20), sample=1200, sectors=72) -> dict | Non
 
     keep = pts if len(pts) <= sample else random.Random(1090).sample(pts, sample)
     return {
-        "n": len(pts), "scale": scale, "p50": round(p50), "p95": round(p95),
+        "n": len(pts), "scale": scale,
+        "p50": round(p50), "p95": round(p95), "p99": round(p99),
         "far": round(kms[-1]), "beyond": sum(1 for k in kms if k > scale),
         "env": [round(v) if v is not None else None for v in env],
         "pts": [[round(km), round(brg, 3)] for km, brg in keep],
@@ -680,6 +686,142 @@ def build_trend(daily) -> dict:
     }
 
 
+def _fit_trend(series: list[int]) -> dict:
+    """Ordinary least squares over a weekly series in chronological order.
+
+    Returns the slope in flights per week, the same slope as a share of the
+    mean, R squared, the length of the monotonic run at the tail of the
+    series (the "3 weeks running" streak), and the fraction of consecutive
+    week to week moves that went the trend's way.
+    """
+    n = len(series)
+    mean = sum(series) / n
+    xm = (n - 1) / 2
+    num = sum((i - xm) * (y - mean) for i, y in enumerate(series))
+    den = sum((i - xm) ** 2 for i in range(n))
+    slope = num / den if den else 0.0
+    slope_pct = slope / mean * 100 if mean else 0.0
+    ss_tot = sum((y - mean) ** 2 for y in series)
+    ss_res = sum((y - (mean + slope * (i - xm))) ** 2 for i, y in enumerate(series))
+    r2 = 1 - ss_res / ss_tot if ss_tot else 0.0
+
+    diffs = [b - a for a, b in zip(series, series[1:])]
+    sign = 1 if slope > 0 else -1 if slope < 0 else 0
+    streak = 0
+    for d in reversed(diffs):
+        if sign and ((d > 0 and sign > 0) or (d < 0 and sign < 0)):
+            streak += 1
+        else:
+            break
+    same = sum(1 for d in diffs if sign and ((d > 0 and sign > 0) or (d < 0 and sign < 0)))
+    return {
+        "slope": round(slope, 2), "slope_pct": round(slope_pct, 1),
+        "r2": round(r2, 3), "mean": round(mean, 1),
+        "streak": streak, "consistency": round(same / len(diffs), 2) if diffs else 0.0,
+    }
+
+
+def build_weekly_trends(con, weeks) -> dict | None:
+    """
+    Multi-week trends across entities the site cares about.
+
+    For each of a small set of dimensions (route country, city pair, kind of
+    carrier, all-vs-overflight, wide-body share) we compute a weekly series
+    over every complete stepped week on record, then fit an OLS line and
+    measure the tail streak. Nothing here calls anything a trend that does
+    not sustain across the record; that judgement is deferred to the signal
+    detector, which knows the confidence tiers.
+
+    Weeks arrive newest first; we reverse them here so the series reads
+    left to right in calendar order, which is what the site's sparklines
+    and the copy both assume.
+    """
+    if len(weeks) < 3:
+        return None
+    ordered = list(reversed(weeks))
+    labels = [w["from"][5:] for w in ordered]
+    values = ",".join(f"({i}, '{w['from']}', '{w['to']}')" for i, w in enumerate(ordered))
+    wt = f"(VALUES {values}) AS wk(idx, lo, hi)"
+
+    def rows(sql: str) -> dict[str, list[int]]:
+        out: dict[str, list[int]] = {}
+        for k, i, n in con.execute(sql).fetchall():
+            if k is None:
+                continue
+            out.setdefault(k, [0] * len(ordered))
+            out[k][int(i)] = int(n)
+        return out
+
+    def analyse(name: str, key: str, series: list[int], meta: dict) -> dict | None:
+        if any(v == 0 for v in series):    # a week with zero flights collapses the fit
+            return None
+        f = _fit_trend(series)
+        return {"dim": name, "key": key, "series": series, "labels": labels,
+                **meta, **f}
+
+    # Route country: flights touching a country at either end, no double count
+    # when both ends are the same.
+    r_cc = rows(f"""
+        WITH t AS (
+            SELECT origin_cc AS cc, day FROM fx WHERE origin_cc IS NOT NULL
+            UNION ALL
+            SELECT destination_cc, day FROM fx
+            WHERE destination_cc IS NOT NULL AND destination_cc <> origin_cc)
+        SELECT t.cc, wk.idx, COUNT(*)
+        FROM t JOIN {wt} ON t.day BETWEEN wk.lo AND wk.hi
+        GROUP BY 1, 2""")
+
+    # City pair: unordered.
+    r_pair = rows(f"""
+        SELECT pair, wk.idx, COUNT(*)
+        FROM fx JOIN {wt} ON fx.day BETWEEN wk.lo AND wk.hi
+        WHERE pair IS NOT NULL
+        GROUP BY 1, 2""")
+
+    # Kind of flying, and cargo split by continent of the far end.
+    r_kind = rows(f"""
+        SELECT carrier_kind, wk.idx, COUNT(*)
+        FROM fx JOIN {wt} ON fx.day BETWEEN wk.lo AND wk.hi
+        WHERE carrier_kind IS NOT NULL
+        GROUP BY 1, 2""")
+
+    # A handful of composition series the analyst will look for by name.
+    r_flow = rows(f"""
+        SELECT k, wk.idx, COUNT(*) FROM (
+            SELECT CASE WHEN origin IS NULL THEN NULL
+                        WHEN is_overflight THEN 'overflight'
+                        ELSE 'to-or-from-Denmark' END AS k, day FROM fx
+            UNION ALL
+            SELECT 'total', day FROM fx
+            UNION ALL
+            SELECT 'widebody', day FROM fx WHERE body = 'widebody'
+        ) t JOIN {wt} ON t.day BETWEEN wk.lo AND wk.hi
+        WHERE k IS NOT NULL
+        GROUP BY 1, 2""")
+
+    trends: list[dict] = []
+    for cc, s in r_cc.items():
+        if sum(s) < 60:                   # 15 a week average, min honest bar
+            continue
+        t = analyse("country", cc, s, {})
+        if t: trends.append(t)
+    for pk, s in r_pair.items():
+        if sum(s) < 80:                   # pairs are noisier; higher floor
+            continue
+        t = analyse("pair", pk, s, {})
+        if t: trends.append(t)
+    for kk, s in r_kind.items():
+        if sum(s) < 100 or kk == "unclassified":
+            continue
+        t = analyse("kind", kk, s, {})
+        if t: trends.append(t)
+    for k, s in r_flow.items():
+        t = analyse("flow", k, s, {})
+        if t: trends.append(t)
+
+    return {"weeks": len(ordered), "labels": labels, "trends": trends}
+
+
 def build_weeks(con, daily, kind_meta) -> list[dict]:
     """
     Every complete week the record holds, newest first.
@@ -687,7 +829,7 @@ def build_weeks(con, daily, kind_meta) -> list[dict]:
     The windows are *stepped*, not rolling: seven days, then the seven before
     that, and so on back from the most recent complete day. A rolling window
     would give a new "week" every day, but consecutive ones would share six of
-    their seven days — a week-over-week change computed across them is mostly
+    their seven days - a week-over-week change computed across them is mostly
     the same flights compared against themselves. Stepping keeps each week an
     independent sample, which is the only version of the comparison worth
     publishing.
@@ -818,7 +960,7 @@ def build_week_for(con, days: list[str], kind_meta) -> dict:
 # ── signal detection ─────────────────────────────────────────────────────────
 def detect_signals(con, countries, regions, operators, types, daily,
                    span_days, total, compare, totals,
-                   baseline_complete, week=None, routes=None) -> list[dict]:
+                   baseline_complete, week=None, routes=None, trends=None) -> list[dict]:
     """
     Turn the rollups into a ranked list of claims.
 
@@ -828,7 +970,7 @@ def detect_signals(con, countries, regions, operators, types, daily,
     phrased as a possibility, never a conclusion.
 
     The `sql` field runs in the reader's browser, against the `flights` view
-    index.html builds over the Parquet — not against the local `fx` view used
+    index.html builds over the Parquet - not against the local `fx` view used
     here. Two consequences:
 
       * refer to the browser's column names (`reg_country`, `body`, `is_cargo`);
@@ -841,7 +983,7 @@ def detect_signals(con, countries, regions, operators, types, daily,
 
     def add(**kw):
         kw.setdefault("confidence", "observed")
-        # A `reading` has a direction — something moved, or runs one way. A
+        # A `reading` has a direction - something moved, or runs one way. A
         # `profile` describes what the record is: a share, a count, a rarity.
         # An analyst wants the first kind first, and should not have to work
         # out which is which from the wording.
@@ -887,7 +1029,7 @@ def detect_signals(con, countries, regions, operators, types, daily,
             add(
                 kind="composition", scope="all", category="reading",
                 series=week_series(),
-                title="The working week barely changes how much flies — "
+                title="The working week barely changes how much flies - "
                       "it changes what",
                 metric=f"{wt['lift_pct']:+d}%", metric_label="weekday vs weekend traffic",
                 comparison=f"{wt['weekday_per_day']:,.0f} flights a weekday vs "
@@ -902,7 +1044,7 @@ def detect_signals(con, countries, regions, operators, types, daily,
                     "reports nothing. The composition is the signal; the count is not."
                 ),
                 caveat="One week. This describes the shape of a week, not a change in "
-                       "it — that needs a second week to compare against.",
+                       "it - that needs a second week to compare against.",
                 confidence="observed",
                 sql=("SELECT daytype, carrier_kind, COUNT(*) AS flights\n"
                      "FROM flights\n"
@@ -950,7 +1092,7 @@ def detect_signals(con, countries, regions, operators, types, daily,
                            f"{charter['weekday_per_day']} on a weekday",
                 where=span,
                 interpretation=(
-                    "Tour-operator flying is the purest leisure demand in the record — "
+                    "Tour-operator flying is the purest leisure demand in the record - "
                     "it exists because somebody booked a holiday. It runs opposite to "
                     "freight, which is why the two cancel in the headline count."
                 ),
@@ -965,7 +1107,7 @@ def detect_signals(con, countries, regions, operators, types, daily,
             )
 
     # 0) State of the record. When there is not yet enough history to compare
-    #    periods, that IS the headline — publishing invented trends instead
+    #    periods, that IS the headline - publishing invented trends instead
     #    would be the single fastest way to make this product untrustworthy.
     if not baseline_complete:
         need = max(0, 14 - len(full_days))
@@ -978,7 +1120,7 @@ def detect_signals(con, countries, regions, operators, types, daily,
             comparison=f"{need} more complete day{'s' if need != 1 else ''} needed",
             where=None,
             interpretation="Every change figure here is one complete week against the "
-                           "complete week before it — one of every weekday on each side, "
+                           "complete week before it - one of every weekday on each side, "
                            "so day-of-week cancels out. That needs fourteen complete days. "
                            "Until then, no change is reported anywhere on the site, "
                            "rather than a day-on-day figure that mostly measures which "
@@ -992,7 +1134,7 @@ def detect_signals(con, countries, regions, operators, types, daily,
                  "FROM flights GROUP BY 1 ORDER BY 1;"),
         )
 
-    # 1) Busiest day on record — complete days only.
+    # 1) Busiest day on record - complete days only.
     if len(full_days) >= 2:
         peak = max(full_days, key=lambda d: d["flights"])
         others = [d["flights"] for d in full_days if d["day"] != peak["day"]]
@@ -1031,11 +1173,11 @@ def detect_signals(con, countries, regions, operators, types, daily,
             interpretation="Aarhus sits under the routings between Scandinavia and the "
                            "Continent, and between Northern Europe and the rest of the "
                            "world. Most of what the antenna hears is that corridor, not "
-                           "Danish demand — which is what makes the count usable as a "
+                           "Danish demand - which is what makes the count usable as a "
                            "signal about the wider network rather than one region.",
             caveat=f"Only the {rc['routed_share']:.0f}% of flights with a verified or "
                    "unverified route are counted here. Flights with no callsign, or "
-                   "a callsign not in the route tables, are not — and they are not "
+                   "a callsign not in the route tables, are not - and they are not "
                    "assumed to be either kind.",
             confidence="observed",
             sql=("SELECT is_overflight, COUNT(*) AS flights\n"
@@ -1056,7 +1198,7 @@ def detect_signals(con, countries, regions, operators, types, daily,
                                "most precisely. Week on week, this is the pair to watch "
                                "for schedule changes first.",
                 caveat="A pair counts both directions. The balance between them is "
-                       "schedule shape, not demand asymmetry — a rotation is a rotation.",
+                       "schedule shape, not demand asymmetry - a rotation is a rotation.",
                 confidence="observed",
                 sql=(f"SELECT origin, destination, COUNT(*) AS flights\n"
                      f"FROM flights WHERE pair = '{top['key']}'\n"
@@ -1092,12 +1234,12 @@ def detect_signals(con, countries, regions, operators, types, daily,
             kind="corridor", scope="all", lead=True,
             series=routes["directions"],
             title="Traffic overhead runs north-east to south-west",
-            metric=f"{axis / allp * 100:.0f}%", metric_label="of flights on the NE–SW axis",
+            metric=f"{axis / allp * 100:.0f}%", metric_label="of flights on the NE-SW axis",
             comparison=f"{d.get('NE', 0):,} heading NE · {d.get('SW', 0):,} heading SW",
             where=None,
             interpretation="That axis is Scandinavia to the Continent. Direction is "
                            "measured from the aircraft's own track, so it holds for "
-                           "every positioned flight — including the ones with no route.",
+                           "every positioned flight - including the ones with no route.",
             caveat="Eight compass sectors, from first to last position in range. A "
                    "flight seen only briefly can land in the wrong sector.",
             confidence="observed",
@@ -1105,7 +1247,101 @@ def detect_signals(con, countries, regions, operators, types, daily,
                  "FROM flights WHERE direction IS NOT NULL GROUP BY 1 ORDER BY 2 DESC;"),
         )
 
-        # Pair movers, week on week — the route-level counterpart of the
+        # Multi-week trends. A week-over-week move is a snapshot; a slope
+        # across three or more stepped weeks is closer to what a forecaster
+        # actually reads off the record. Only surface trends that are big
+        # enough to be economically interesting AND consistent enough to be
+        # more than a random walk: a slope of at least 8% per week either
+        # with an unbroken run at the tail or with two thirds of consecutive
+        # moves in the same direction.
+        if trends and trends["trends"]:
+            NAMES = {c["key"]: c["name"] for c in (routes.get("countries") or [])}
+            KIND_LBL = {k["key"]: k["label"] for k in ((week or {}).get("kinds") or [])}
+            IDX = routes.get("index") or {}
+            def pair_pretty(key: str) -> str:
+                a, _, b = key.partition("-")
+                ac = IDX.get(a, [a, a])[1] or a
+                bc = IDX.get(b, [b, b])[1] or b
+                return f"{ac} – {bc}"      # en dash is the pair connector
+            FLOW_LBL = {"overflight": "Overflight traffic",
+                        "to-or-from-Denmark": "Flights touching Denmark",
+                        "total": "Total flights overhead",
+                        "widebody": "Wide-body traffic"}
+            weeks_n = trends["weeks"]
+            picks = []
+            for t in trends["trends"]:
+                if abs(t["slope_pct"]) < 8: continue
+                # The trend must actually be running: the last week's move
+                # goes the trend's way (streak >= 1). A series with a strong
+                # OLS slope but a reversed last week is a broken trend, not
+                # an active one; it belongs in a "watchlist", not a headline.
+                if t["streak"] < 1: continue
+                # And it needs enough consistency across the whole series to
+                # be more than a lucky pair of consecutive moves.
+                if not (t["streak"] >= weeks_n - 1 or t["consistency"] >= 0.67): continue
+                picks.append(t)
+            picks.sort(key=lambda t: (-t["r2"], -abs(t["slope_pct"])))
+
+            for t in picks[:4]:
+                up = t["slope"] > 0
+                first, last = t["series"][0], t["series"][-1]
+                total_pct = round((last / first - 1) * 100) if first else 0
+                if t["dim"] == "country":
+                    name = NAMES.get(t["key"], t["key"])
+                    subject = f"Flights to or from {name}"
+                    sql = (f"SELECT day, COUNT(*) AS flights\nFROM flights\n"
+                           f"WHERE origin_cc = '{t['key']}' OR destination_cc = '{t['key']}'\n"
+                           f"GROUP BY 1 ORDER BY 1;")
+                elif t["dim"] == "pair":
+                    subject = pair_pretty(t["key"])
+                    sql = (f"SELECT day, COUNT(*) AS flights\nFROM flights\n"
+                           f"WHERE pair = '{t['key']}'\nGROUP BY 1 ORDER BY 1;")
+                elif t["dim"] == "kind":
+                    subject = KIND_LBL.get(t["key"], t["key"].title()) + " overhead"
+                    sql = (f"SELECT day, COUNT(*) AS flights\nFROM flights\n"
+                           f"WHERE carrier_kind = '{t['key']}'\nGROUP BY 1 ORDER BY 1;")
+                else:                                       # flow
+                    subject = FLOW_LBL.get(t["key"], t["key"].title())
+                    where = {"overflight": "is_overflight",
+                             "to-or-from-Denmark": "origin IS NOT NULL AND NOT is_overflight",
+                             "widebody": "body = 'widebody'",
+                             "total": "TRUE"}[t["key"]]
+                    sql = (f"SELECT day, COUNT(*) AS flights\nFROM flights\n"
+                           f"WHERE {where}\nGROUP BY 1 ORDER BY 1;")
+
+                verb = "rising" if up else "falling"
+                every = t["streak"] == weeks_n - 1
+                n_run = t["streak"] + 1                    # weeks in the run
+                run = (f"every week on record ({weeks_n} weeks)" if every
+                       else f"{n_run} week{'s' if n_run != 1 else ''} running")
+
+                add(
+                    kind="trend", scope=t["dim"], entity=t["key"],
+                    category="reading", lead=True,
+                    series=[{"k": lbl, "v": v} for lbl, v in zip(t["labels"], t["series"])],
+                    title=f"{subject} {verb}, {run}",
+                    metric=f"{t['slope_pct']:+.0f}%/wk",
+                    metric_label=f"slope across {weeks_n} weeks",
+                    comparison=" -> ".join(str(v) for v in t["series"]) + f" ({total_pct:+d}% overall)",
+                    where=None,
+                    interpretation=(
+                        f"A straight line fits the {weeks_n} weekly counts closely "
+                        f"(R squared {t['r2']:.2f}), and " +
+                        (f"every week has moved the same way" if every else
+                         f"{t['streak'] + 1} of the last {weeks_n - 1} moves went "
+                         f"the same way") + ". That is the profile of a schedule "
+                        "or demand shift rather than random variation."
+                    ),
+                    caveat=(f"{weeks_n} weeks is a short baseline. A trend at this "
+                            "length can still be a rotation change, a summer schedule "
+                            "unwinding, or an airline swapping equipment onto the route. "
+                            "Watch whether it holds as more weeks land."),
+                    confidence=("moderate" if t["r2"] >= 0.7 and weeks_n >= 4
+                                else "observed"),
+                    sql=sql,
+                )
+
+        # Pair movers, week on week - the route-level counterpart of the
         # country shifts, and the reading an analyst actually wants.
         movers = [p for p in routes["pairs"]
                   if p["change_pct"] is not None and p["prev"] >= 20 and p["cur"] >= 20]
@@ -1132,7 +1368,7 @@ def detect_signals(con, countries, regions, operators, types, daily,
             )
 
     # 3) Largest movers, country level. Requires presence in both windows.
-    # 3) Country movers, week on week — by where the flights are between, not
+    # 3) Country movers, week on week - by where the flights are between, not
     #    where the airframe is registered. Thirty flights a week on each side
     #    is the floor: below it a 20% move is six aircraft, one rotation.
     rcountries = routes["countries"] if routes else []
@@ -1155,7 +1391,7 @@ def detect_signals(con, countries, regions, operators, types, daily,
             interpretation=(
                 f"A week against a week removes the weekday cycle, so this is close "
                 f"to a real change in the flying between {c['name']} and the places "
-                "the corridor over Aarhus connects it to — though a schedule change "
+                "the corridor over Aarhus connects it to - though a schedule change "
                 "or a rerouted flow can each produce it."
             ),
             caveat="Two weeks is the shortest baseline that makes this comparison "
@@ -1166,7 +1402,7 @@ def detect_signals(con, countries, regions, operators, types, daily,
                  f"GROUP BY 1 ORDER BY 1;"),
         )
 
-    # 4) The far end of the long-haul overhead — the alternative-data hook,
+    # 4) The far end of the long-haul overhead - the alternative-data hook,
     #    now by destination: flights that begin or end outside Europe.
     shown = 0
     for c in rcountries:
@@ -1181,9 +1417,9 @@ def detect_signals(con, countries, regions, operators, types, daily,
             comparison=f"{c['arr']:,} bound for {c['name']} · {c['dep']:,} leaving it",
             where=c.get("region"),
             interpretation=(
-                f"None of these land in Denmark. They are the Europe–{c['name']} "
+                f"None of these land in Denmark. They are the Europe-{c['name']} "
                 "great circles that happen to cross this antenna's range, so the "
-                "count is a reading on that corridor — and the split between the two "
+                "count is a reading on that corridor - and the split between the two "
                 "directions is the same flow seen from both ends."
             ),
             caveat="Corridor routings shift with winds, airspace closures and slot "
@@ -1198,7 +1434,7 @@ def detect_signals(con, countries, regions, operators, types, daily,
         if shown >= 2:
             break
 
-    # 5) Wide-body share — a capacity signal distinct from a flight count.
+    # 5) Wide-body share - a capacity signal distinct from a flight count.
     wb = totals["widebody"]
     if total and wb:
         add(
@@ -1220,7 +1456,7 @@ def detect_signals(con, countries, regions, operators, types, daily,
                  "GROUP BY 1,2 ORDER BY 3 DESC;"),
         )
 
-    # 6) All-cargo operators. Small sample — say so plainly.
+    # 6) All-cargo operators. Small sample - say so plainly.
     cargo_ops = [o for o in operators if o.get("cargo_operator")]
     cg = sum(o["flights"] for o in cargo_ops)
     if cg:
@@ -1243,7 +1479,7 @@ def detect_signals(con, countries, regions, operators, types, daily,
                  "GROUP BY 1 ORDER BY 2 DESC;"),
         )
 
-    # 7) Rare airframes — a genuinely interesting "look at this" observation.
+    # 7) Rare airframes - a genuinely interesting "look at this" observation.
     rare = [t for t in types if t["flights"] == 1 and t.get("widebody_type")]
     if rare:
         names = ", ".join(f"{t['key']}" for t in rare[:5])

@@ -3,7 +3,7 @@ Snapshots -> flights.
 
 An aircraft observed across a sequence of snapshots is one "session" in view.
 Split sessions when we lose the aircraft for more than SESSION_GAP_SEC (default
-30 min) — that gap almost always means it left the antenna's line-of-sight or
+30 min) - that gap almost always means it left the antenna's line-of-sight or
 landed and later re-took-off.
 
 Per session we record: first_seen, last_seen, first_pos, last_pos, first_alt,
@@ -63,7 +63,7 @@ def build_flights(con, day_filter: str | None) -> int:
     """Return count of flights written."""
     # Register views
     if not any((WAREHOUSE / "adsb" / "snapshots").glob("*.parquet")):
-        print("[reconstruct] no snapshots yet — nothing to do.")
+        print("[reconstruct] no snapshots yet - nothing to do.")
         return 0
     con.execute(f"""
         CREATE OR REPLACE VIEW snap AS
@@ -148,7 +148,7 @@ def build_flights(con, day_filter: str | None) -> int:
     # (routes.py). A route is only believed when the aircraft was observed
     # heading toward its destination: the bearing from the aircraft's own
     # first position to the destination airport, within 45° of the observed
-    # heading. Not from the origin — a San Francisco→Copenhagen flight leaves
+    # heading. Not from the origin - a San Francisco→Copenhagen flight leaves
     # heading north-east and passes Aarhus heading south-east, and only the
     # second is what the antenna can see. A route that fails the check is
     # kept in route_conflict for the record and cleared from origin and

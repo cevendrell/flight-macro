@@ -3,26 +3,26 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>OvrHead — an observatory over Aarhus</title>
-<meta name="description" content="One antenna over Aarhus, Denmark. We turn a continuous record of aircraft passing overhead into signals about connectivity, capacity and trade — with the evidence attached.">
+<title>OvrHead - an observatory over Aarhus</title>
+<meta name="description" content="One antenna over Aarhus, Denmark. We turn a continuous record of aircraft passing overhead into signals about connectivity, capacity and trade - with the evidence attached.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2305164D'/%3E%3Ccircle cx='16' cy='16' r='2.6' fill='%238A5A33'/%3E%3Ccircle cx='16' cy='16' r='7.5' fill='none' stroke='%2382A5D6' stroke-width='1.1' opacity='.75'/%3E%3Ccircle cx='16' cy='16' r='12.5' fill='none' stroke='%2382A5D6' stroke-width='1.1' opacity='.35'/%3E%3C/svg%3E">
 <link rel="canonical" href="https://cevendrell.github.io/flight-macro/">
 <meta name="author" content="Carlos Ebrahim Vendrell">
 <meta name="color-scheme" content="light dark">
 <!-- The bar is pinned navy in both themes, so the browser chrome should match
-     it in both — one value, no media query. -->
+     it in both - one value, no media query. -->
 <meta name="theme-color" content="#05164d">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="OvrHead">
 <meta property="og:url" content="https://cevendrell.github.io/flight-macro/">
-<meta property="og:title" content="OvrHead — an observatory over Aarhus">
-<meta property="og:description" content="One antenna over Aarhus, Denmark. A continuous record of every aircraft passing overhead, turned into signals about connectivity, capacity and trade — with the evidence attached.">
+<meta property="og:title" content="OvrHead - an observatory over Aarhus">
+<meta property="og:description" content="One antenna over Aarhus, Denmark. A continuous record of every aircraft passing overhead, turned into signals about connectivity, capacity and trade - with the evidence attached.">
 <meta property="og:image" content="https://cevendrell.github.io/flight-macro/assets/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="OvrHead — an observatory over Aarhus, Denmark.">
+<meta property="og:image:alt" content="OvrHead - an observatory over Aarhus, Denmark.">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="OvrHead — an observatory over Aarhus">
+<meta name="twitter:title" content="OvrHead - an observatory over Aarhus">
 <meta name="twitter:description" content="One antenna. Every aircraft overhead. The whole record queryable in your browser.">
 <meta name="twitter:image" content="https://cevendrell.github.io/flight-macro/assets/og.png">
 <link rel="apple-touch-icon" href="assets/icon-180.png">
@@ -50,27 +50,27 @@
    Where OvrHead departs is the night theme. LayOvr is a light-only app; here
    the dark theme is built by promoting navy from accent to ground and letting
    LayOvr's own on-navy pair (#EEF1F8 / #82A5D6) carry the text. Same family,
-   its own room — an observatory after dark.
+   its own room - an observatory after dark.
    ───────────────────────────────────────────────────────────────────────── */
 :root {
-  --bg:        #f5f3f0;   /* LayOvr ink — warm off-white */
+  --bg:        #f5f3f0;   /* LayOvr ink - warm off-white */
   --surface:   #ffffff;   /* LayOvr surface */
   --sunken:    #efece7;
-  --ink:       #05164d;   /* LayOvr navy — also textPrimary */
-  --ink-2:     #777586;   /* LayOvr textSecondary — muted purple-grey */
+  --ink:       #05164d;   /* LayOvr navy - also textPrimary */
+  --ink-2:     #777586;   /* LayOvr textSecondary - muted purple-grey */
   --mute:      #8e8b9e;   /* LayOvr textTertiary */
   --faint:     #aca9bb;
-  --rule:      #e2dfe9;   /* LayOvr hairline — lavender-grey */
+  --rule:      #e2dfe9;   /* LayOvr hairline - lavender-grey */
   --rule-2:    #cdc8da;
-  --accent:    #8a5a33;   /* LayOvr amber — action / CTA */
+  --accent:    #8a5a33;   /* LayOvr amber - action / CTA */
   --accent-bg: rgba(138,90,51,.09);
   --navy:      #05164d;
   --navy-deep: #05164d;
-  --topbar:    #05164d;   /* pinned — nav bar is always this, both themes */
+  --topbar:    #05164d;   /* pinned - nav bar is always this, both themes */
   --on-navy:   #eef1f8;   /* LayOvr onNavy */
-  --on-navy-2: #82a5d6;   /* LayOvr onNavySub — periwinkle */
+  --on-navy-2: #82a5d6;   /* LayOvr onNavySub - periwinkle */
   --rise:      #2e875e;   /* LayOvr success */
-  --fall:      #7d2b2d;   /* LayOvr burgundy — danger / critical ONLY */
+  --fall:      #7d2b2d;   /* LayOvr burgundy - danger / critical ONLY */
   --rise-bg:   rgba(46,135,94,.10);
   --fall-bg:   rgba(125,43,45,.09);
   /* LayOvr reserves its darkest value for the pivotal CTAs. On the warm
@@ -78,15 +78,15 @@
   --cta-bg:       #05164d;
   --cta-fg:       #eef1f8;
   --cta-hover-fg: #ffffff;
-  --bar:          #6b76a0;   /* muted navy — chart bars on the warm ground */
+  --bar:          #6b76a0;   /* muted navy - chart bars on the warm ground */
 
-  /* One sans, weight does the work — the same logic as LayOvr's BrandFont.
+  /* One sans, weight does the work - the same logic as LayOvr's BrandFont.
      Archivo is squarer and a touch narrower than a default grotesque, which
      keeps dense tables legible and gives headlines some spine. */
   --sans:  'Archivo', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --mono:  'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 
-  /* Two radii only, per LayOvr — but pulled in from 10/16, which made every
+  /* Two radii only, per LayOvr - but pulled in from 10/16, which made every
      list read as an app card rather than a record. */
   --r-control: 7px;
   --r-card:    11px;
@@ -97,11 +97,11 @@
   color-scheme: light;   /* native controls follow the theme */
 }
 
-/* Night: page goes near-black — navy stays only in the pinned top bar. */
+/* Night: page goes near-black - navy stays only in the pinned top bar. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg:        #0c0c0e;   /* near-black, no blue cast */
-    --surface:   #191919;   /* card surface — dark grey, not navy */
+    --surface:   #191919;   /* card surface - dark grey, not navy */
     --sunken:    #060606;
     --ink:       #eef1f8;
     --ink-2:     #aab2c8;
@@ -176,10 +176,10 @@ button, input, textarea, select { font:inherit; color:inherit; }
 #nav a { font-size:.85rem; color:var(--on-navy-2); text-decoration:none;
          padding:7px 12px; border-radius:var(--r-control); white-space:nowrap; }
 #nav a:hover { color:var(--on-navy); background:rgba(238,241,248,.09); }
-/* The active background is drawn by #nav-pill, which slides — see Motion. */
+/* The active background is drawn by #nav-pill, which slides - see Motion. */
 #nav a.on { color:var(--navy); font-weight:600; }
 
-/* Freshness is a permanent fixture of the chrome, not a footnote — every page
+/* Freshness is a permanent fixture of the chrome, not a footnote - every page
    should say how current the record is without the reader going looking. */
 .freshness { margin-left:auto; font-family:var(--mono); font-size:.68rem;
              color:var(--on-navy-2); text-decoration:none; white-space:nowrap;
@@ -239,7 +239,7 @@ h1 .q { color:var(--accent); }
 /* ── Hero: the instrument ─────────────────────────────────────────────────
    The front door is the receiver's own footprint, live, beside the words.
    Copy and readouts on the left; on the right the disc sweeps once as the
-   record arrives and then keeps a slow, faint sweep going — an instrument
+   record arrives and then keeps a slow, faint sweep going - an instrument
    that is on, not a chart that is finished. */
 .hero { display:grid; grid-template-columns:minmax(0,1fr) clamp(280px, 34vw, 440px);
         gap:clamp(24px, 4vw, 60px); align-items:center;
@@ -298,7 +298,7 @@ section { margin-bottom:48px; }
 .ro-s { font-size:.67rem; color:var(--mute); font-family:var(--mono); margin-top:3px; }
 
 /* ── Signal rows (the insight grammar) ─────────────────────────────────── */
-/* Flat, hairline-separated rows — a record to scan, not a stack of cards.
+/* Flat, hairline-separated rows - a record to scan, not a stack of cards.
    The open state gets a tint and an accent edge instead of card chrome. */
 .signals { border-top:1px solid var(--rule-2); }
 .sig { border-bottom:1px solid var(--rule); border-left:2px solid transparent; }
@@ -329,7 +329,7 @@ section { margin-bottom:48px; }
         transition:transform .16s ease; }
 .sig[open] .chev, .sig.open .chev { transform:rotate(90deg); }
 
-/* Open/closed state lives in the Motion section at the foot of this sheet —
+/* Open/closed state lives in the Motion section at the foot of this sheet -
    the panel animates its height, so it cannot be display:none. */
 .sig-grid { display:grid; grid-template-columns:128px minmax(0,1fr); gap:18px; }
 @media (max-width:680px){ .sig-grid{ grid-template-columns:1fr } }
@@ -424,8 +424,11 @@ td a:hover { color:var(--accent); border-bottom-color:var(--accent); }
                   background:var(--accent); margin-right:6px; vertical-align:middle; }
 .globe-legend i.home { background:var(--fall); }
 .globe-legend i.dot  { width:5px; height:5px; }
-.globe-legend i.env  { width:16px; height:2px; border-radius:0; background:var(--ink); }
-.globe-legend i.coast { width:16px; height:1px; border-radius:0; background:var(--rule-2); }
+/* Envelope is the faint dashed hairline; coast is the bright reference line. */
+.globe-legend i.env  { width:16px; height:1px; border-radius:0;
+                       background-image:linear-gradient(to right, var(--rule-2) 66%, transparent 0);
+                       background-size:5px 1px; background-repeat:repeat-x; }
+.globe-legend i.coast { width:16px; height:2px; border-radius:0; background:var(--ink); }
 
 /* ── Period navigation (week / month, and stepping back through weeks) ─── */
 .wknav { display:flex; align-items:center; justify-content:space-between;
@@ -572,7 +575,7 @@ textarea.sql-box:focus { border-color:var(--accent); }
 /* ── The week ──────────────────────────────────────────────────────────── */
 /* Two neutral colours, because weekday-heavy and weekend-heavy are two kinds
    of activity and neither is the good one. Amber is the working week, muted
-   navy is the weekend — the same pair the charts already use. */
+   navy is the weekend - the same pair the charts already use. */
 .wk { --wkday:var(--accent); --wkend:var(--bar); }
 
 .dbars { border-top:1px solid var(--ink); }
@@ -612,7 +615,7 @@ textarea.sql-box:focus { border-color:var(--accent); }
   .dbar-ends { font-size:.55rem; }
 }
 
-/* Seven days, one row per kind — enough to see freight climb through a week. */
+/* Seven days, one row per kind - enough to see freight climb through a week. */
 .spark { display:flex; gap:2px; align-items:flex-end; height:44px;
          border-bottom:1px solid var(--rule-2); }
 .spark i { flex:1; background:var(--bar); border-radius:1px 1px 0 0; min-height:1px;
@@ -621,7 +624,7 @@ textarea.sql-box:focus { border-color:var(--accent); }
            transform-origin: bottom; }
 .spark i.we { background:var(--rule-2); }
 .spark i.hi { background:var(--accent); }
-/* Same for the hourly chart in the React week — the vanilla chart() sets a
+/* Same for the hourly chart in the React week - the vanilla chart() sets a
    height % and does not need scaling. */
 .hchart .cbar i { transform-origin: bottom; }
 .wk-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
@@ -630,7 +633,7 @@ textarea.sql-box:focus { border-color:var(--accent); }
 .wk-dow span { flex:1; font-family:var(--mono); font-size:.58rem; color:var(--mute);
                text-align:center; }
 .kind-note { font-size:.79rem; color:var(--ink-2); line-height:1.6; margin-top:3px; }
-/* A quiet label, not a badge — the operator's name is the thing being read. */
+/* A quiet label, not a badge - the operator's name is the thing being read. */
 .kind-tag { font-family:var(--mono); font-size:.6rem; letter-spacing:.06em;
             text-transform:uppercase; color:var(--mute); border:1px solid var(--rule-2);
             border-radius:4px; padding:1px 5px; white-space:nowrap; margin-left:5px; }
@@ -714,7 +717,7 @@ th.sortable:focus-visible { outline:2px solid var(--accent); outline-offset:-2px
    MOTION
 
    No animation library. Every effect below is a CSS transition, a
-   scroll-driven reveal, or the Web Animations API — the same primitives the
+   scroll-driven reveal, or the Web Animations API - the same primitives the
    React motion kits are built on, without the 40 KB of runtime.
 
    The rule this page holds itself to: motion has to carry information.
@@ -739,7 +742,7 @@ th.sortable:focus-visible { outline:2px solid var(--accent); outline-offset:-2px
 /* ── View transitions ───────────────────────────────────────────────────
    Route changes cross-fade rather than snapping. The chrome is pulled out of
    the snapshot by name so the bar and footer stay put while the page beneath
-   them changes — otherwise the whole window blinks. */
+   them changes - otherwise the whole window blinks. */
 @media (prefers-reduced-motion: no-preference) {
   html.route-vt::view-transition-old(root) { animation: vt-out .16s ease-in both; }
   html.route-vt::view-transition-new(root) { animation: vt-in var(--t-base) var(--ease-out) both; }
@@ -748,7 +751,7 @@ th.sortable:focus-visible { outline:2px solid var(--accent); outline-offset:-2px
   /* The bar and the footer are the same on every page, so they must take no
      part in the crossfade. A named group still runs the browser's default
      old→new fade, which blends two opaque snapshots with plus-lighter and
-     brightens the bar mid-transition — read as the nav blinking on every
+     brightens the bar mid-transition - read as the nav blinking on every
      click. Show the new snapshot at once and animate nothing. The pill is
      captured live inside the bar's snapshot, so its own CSS slide still
      shows; it no longer needs a group of its own, which was making it fade
@@ -798,8 +801,8 @@ html.theme-vt::view-transition-new(root) { z-index:2; }
              background:var(--accent); opacity:.85; pointer-events:none; }
 
 /* ── Disclosure ─────────────────────────────────────────────────────────
-   The panel animates between 0 and its measured height. The tidier CSS trick —
-   transitioning a grid track from 0fr to 1fr — resolves the track to zero here
+   The panel animates between 0 and its measured height. The tidier CSS trick -
+   transitioning a grid track from 0fr to 1fr - resolves the track to zero here
    however the child is sized, so the height is measured in script instead and
    handed to the Web Animations API. CSS still owns the resting states, so the
    panel is correct even if the animation never runs.
@@ -817,7 +820,7 @@ html.theme-vt::view-transition-new(root) { z-index:2; }
    skeleton of a table that is loading, and over the boot line. */
 @keyframes shimmer { to { background-position:-200% 0; } }
 
-/* Off-screen but read aloud — a shimmering rectangle says "loading" to a
+/* Off-screen but read aloud - a shimmering rectangle says "loading" to a
    sighted reader and nothing at all to a screen reader. */
 .sr { position:absolute; width:1px; height:1px; overflow:hidden;
       clip-path:inset(50%); white-space:nowrap; }
@@ -842,7 +845,7 @@ html.theme-vt::view-transition-new(root) { z-index:2; }
    A light running the perimeter of the one operation on this site that takes
    real time. The determinate bar inside says how far along it is; the trail
    only says that it has not stalled. */
-/* Sized to its contents, with a faint resting edge under the moving light —
+/* Sized to its contents, with a faint resting edge under the moving light -
    a trail on an invisible border reads as a tick floating in space. */
 .engine { position:relative; padding:12px 14px; border-radius:var(--r-control);
           max-width:min(100%, 400px);
@@ -858,7 +861,7 @@ html.theme-vt::view-transition-new(root) { z-index:2; }
   animation:trail 2.6s linear infinite;
 }
 @keyframes trail { to { --trail-angle:360deg; } }
-/* Where @property is unsupported the gradient simply sits still — a plain
+/* Where @property is unsupported the gradient simply sits still - a plain
    accent-tinted edge, which is a fine resting state. */
 
 /* ── Charts grow in ─────────────────────────────────────────────────────
@@ -871,7 +874,7 @@ html.theme-vt::view-transition-new(root) { z-index:2; }
 
 /* ── Search results ─────────────────────────────────────────────────────
    `allow-discrete` plus @starting-style animates a box that is display:none
-   between states — no wrapper element, no script. */
+   between states - no wrapper element, no script. */
 #results { opacity:0; transform:translateY(-5px) scale(.99); transform-origin:100% 0;
            transition: opacity var(--t-fast) var(--ease-out),
                        transform var(--t-fast) var(--ease-out),
@@ -913,7 +916,7 @@ th.sortable .dir { display:inline-block; transition: transform var(--t-base) var
   <div class="noscript">
     <h1 style="margin-bottom:14px">OvrHead</h1>
     <p>This page reads a Parquet record and runs its queries in your browser, so it
-    needs JavaScript. The data itself does not — every figure on the site comes from
+    needs JavaScript. The data itself does not - every figure on the site comes from
     static files you can take and query yourself:</p>
     <p style="margin-top:14px"><a href="data/adsb/summary.json">summary.json</a> ·
     <a href="data/adsb/manifest.json">manifest.json</a> ·
@@ -959,7 +962,7 @@ th.sortable .dir { display:inline-block; transition: transform var(--t-base) var
   <main id="main" tabindex="-1"><div class="wrap">
     <div id="view"></div>
     <footer id="foot">
-      <span>OvrHead — one antenna over Aarhus, Denmark.</span>
+      <span>OvrHead - one antenna over Aarhus, Denmark.</span>
       <a href="#/method">Method</a>
       <a href="https://github.com/cevendrell/flight-macro" rel="noopener">Source</a>
       <span class="sep" id="foot-stamp"></span>
@@ -982,14 +985,14 @@ const el = document.getElementById.bind(document);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
   ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const n = v => Number(v ?? 0).toLocaleString('en-US');
-/* Small changes keep a decimal — rounding 0.4% to "+0%" reads as "no change",
+/* Small changes keep a decimal - rounding 0.4% to "+0%" reads as "no change",
    which is a different claim from the one the data is making. */
 const pct = v => (v > 0 ? '+' : '') + Number(v).toFixed(Math.abs(v) < 10 ? 1 : 0) + '%';
 
 /** Arrow hands timestamps back as epoch milliseconds, Dates, or strings
  *  depending on the column. Normalise all three to "YYYY-MM-DD HH:MM". */
 function ts(v) {
-  if (v == null) return '—';
+  if (v == null) return '-';
   let d;
   if (v instanceof Date) d = v;
   else if (typeof v === 'number' || typeof v === 'bigint') {
@@ -999,7 +1002,7 @@ function ts(v) {
     d = new Date(String(v));
     if (isNaN(d)) return String(v).slice(0, 16);
   }
-  return isNaN(d) ? '—' : d.toISOString().slice(0, 16).replace('T', ' ');
+  return isNaN(d) ? '-' : d.toISOString().slice(0, 16).replace('T', ' ');
 }
 const looksLikeTime = c => /(_at|_seen|^ts$|time|date|day)$/i.test(c);
 const boot = t => { const b = el('boot-t'); if (b) b.textContent = t; };
@@ -1037,7 +1040,7 @@ function withTransition(cls, mutate) {
   vtDepth[cls] = (vtDepth[cls] || 0) + 1;
   root.classList.add(cls);
   const t = document.startViewTransition(mutate);
-  // A transition is skipped — and all three of its promises reject — whenever
+  // A transition is skipped - and all three of its promises reject - whenever
   // the tab is hidden or a second one starts on top of it. That is ordinary,
   // not an error, so every promise gets a handler and none of them reach the
   // console as an unhandled rejection.
@@ -1052,15 +1055,15 @@ function withTransition(cls, mutate) {
 /**
  * Entrance choreography for a freshly painted subtree.
  *
- *   mode 'route'  — the page just changed, and the view transition has already
+ *   mode 'route'  - the page just changed, and the view transition has already
  *                   carried everything the reader can see. Only what is still
  *                   below the fold is staged, so nothing animates twice.
- *   mode 'insert' — rows arrived inside a page the reader is already looking
+ *   mode 'insert' - rows arrived inside a page the reader is already looking
  *                   at. Those should announce themselves wherever they are.
  *
  * Figures count up either way: a number ticking to its value is a different
  * channel from a fade, and it is the one piece of motion here that says
- * something the static page does not — that this was counted, not asserted.
+ * something the static page does not - that this was counted, not asserted.
  */
 let revealObs = null;
 function animateIn(root, mode = 'insert') {
@@ -1109,8 +1112,8 @@ function animateIn(root, mode = 'insert') {
   });
 
   // Staged elements start invisible, so anything that never gets its callback
-  // would stay that way. Observers do go quiet — a backgrounded tab is the
-  // common case — so after a moment, show whatever is on screen regardless.
+  // would stay that way. Observers do go quiet - a backgrounded tab is the
+  // common case - so after a moment, show whatever is on screen regardless.
   // Content below the fold is left alone: it still has a reveal coming.
   setTimeout(() => {
     for (const el of staged) {
@@ -1213,8 +1216,8 @@ function wireScrollProgress() {
 
 /**
  * Open or close a signal, animating between zero and the panel's real height.
- * scrollHeight reports the content height in both states — the panel is
- * overflow-hidden — so one measurement before the class flips serves both
+ * scrollHeight reports the content height in both states - the panel is
+ * overflow-hidden - so one measurement before the class flips serves both
  * directions. The animation does not fill: when it ends the element falls back
  * to whatever CSS says for the state it is now in.
  */
@@ -1245,7 +1248,7 @@ function skeleton(rows = 7) {
 }
 
 /* ── Engine progress ─────────────────────────────────────────────────────
-   Standing up DuckDB is the one slow thing on the site — several megabytes of
+   Standing up DuckDB is the one slow thing on the site - several megabytes of
    WebAssembly on a cold cache. A spinner would be a lie about how long that
    takes, so the pages that trigger it say what is happening instead. */
 const engineWatchers = new Set();
@@ -1293,16 +1296,16 @@ async function getDeep() {
     const total = man.flights.reduce((a, f) => a + (f.bytes || 0), 0) || 1;
     let got = 0;
     for (const f of man.flights) {
-      engineSay(`Loading the flight record — ${(got / 1024).toFixed(0)} of ${
+      engineSay(`Loading the flight record - ${(got / 1024).toFixed(0)} of ${
         (total / 1024).toFixed(0)} KB`, .6 + .3 * (got / total));
       // The month's Parquet keeps its name while it grows, so a browser that
-      // cached it last week will happily serve that copy today — and the Ask
+      // cached it last week will happily serve that copy today - and the Ask
       // page then disagrees with Explore about how many flights Sweden has.
       // The manifest's byte count changes with every rebuild; use it as the
       // version so the URL, and therefore the cache key, moves with the file.
       const buf = await fetch(BASE + f.path.replace(/^data\/adsb\//, '')
                               + '?v=' + (f.bytes || 0)).then(r => {
-        if (!r.ok) throw new Error(`${f.name} — ${r.status}`);
+        if (!r.ok) throw new Error(`${f.name} - ${r.status}`);
         return r.arrayBuffer();
       });
       await db.registerFileBuffer(f.name, new Uint8Array(buf));
@@ -1313,7 +1316,7 @@ async function getDeep() {
 
     // Country attribution as a pure range join. ICAO addresses are always six
     // lowercase hex digits, so comparing them as strings is equivalent to
-    // comparing the integers — no casting needed. Narrowest block wins, which
+    // comparing the integers - no casting needed. Narrowest block wins, which
     // is how sub-allocations (Iceland inside Ireland's range) resolve.
     const blocks = TAX.blocks.map(b =>
       `('${b.lo_hex}','${b.hi_hex}','${b.cc}',${b.width})`).join(',');
@@ -1347,7 +1350,7 @@ async function getDeep() {
              -- Where the flight is between. origin/destination arrive from the
              -- pipeline already checked against the observed heading; these
              -- only add names, the unordered pair, and the local/overflight
-             -- split — the same definitions build_summary.py uses.
+             -- split - the same definitions build_summary.py uses.
              ao.name AS origin_name,      ao.city AS origin_city,      ao.cc AS origin_cc,
              ad.name AS destination_name, ad.city AS destination_city, ad.cc AS destination_cc,
              CASE WHEN r.origin IS NOT NULL AND r.destination IS NOT NULL
@@ -1371,7 +1374,7 @@ async function getDeep() {
              car.kind AS carrier_kind,
              COALESCE(car.op_name, r.airline) AS operator,
              -- A naive UTC timestamp, not TIMESTAMPTZ. duckdb-wasm ships
-             -- without ICU, so strftime() cannot bind against a zoned value —
+             -- without ICU, so strftime() cannot bind against a zoned value -
              -- which quietly broke every by-day and by-hour query on the site.
              -- make_timestamp() takes microseconds since the epoch, so this is
              -- the same instant with the zone stripped, already in UTC.
@@ -1427,7 +1430,7 @@ function chart(data, { key, val, partial, labelEvery = 1 } = {}) {
   const bars = data.map((d, i) => {
     const isP = partial && d[partial];
     return `<div class="cbar ${d === peak ? 'hi' : ''} ${isP ? 'partial' : ''}"
-      title="${esc(d[key])} — ${n(d[val])}${isP ? ' (partial coverage)' : ''}">
+      title="${esc(d[key])} - ${n(d[val])}${isP ? ' (partial coverage)' : ''}">
       <i style="height:${(+d[val] / max * 100).toFixed(1)}%;--i:${i}"></i></div>`;
   }).join('');
   // Dates read best trimmed to MM-DD, but anything else has to keep its start
@@ -1449,14 +1452,14 @@ function chart(data, { key, val, partial, labelEvery = 1 } = {}) {
 }
 
 /* ── Tables ──────────────────────────────────────────────────────────────
-   A table owns its own state — sort, filter, how many rows are showing — and
+   A table owns its own state - sort, filter, how many rows are showing - and
    repaints itself in place. Routing a column sort back through the router
    would also scroll the reader to the top of the page and re-run whatever
    query filled the table, which is the wrong amount of machinery for a sort. */
 const TABLES = new Map();
 const tblState = {};
 
-/** dir: 1 ascending, -1 descending — and the header arrow always says which.
+/** dir: 1 ascending, -1 descending - and the header arrow always says which.
  *  Blanks sort last in both directions; a missing value is not a small one. */
 const comparator = (key, dir) => (a, b) => {
   // Arrow hands timestamps back as epoch numbers on some columns and Dates on
@@ -1473,11 +1476,11 @@ const comparator = (key, dir) => (a, b) => {
 
 /**
  * A sortable, filterable, drillable entity table.
- *   cols     — { k, h, num?, bar?, render?, csvValue? } per column
- *   sortKey  — column sorted on first paint
- *   sortDir  — 1 ascending, -1 descending
- *   filter   — placeholder text; presence enables the filter box
- *   csv      — false to suppress the export button
+ *   cols     - { k, h, num?, bar?, render?, csvValue? } per column
+ *   sortKey  - column sorted on first paint
+ *   sortDir  - 1 ascending, -1 descending
+ *   filter   - placeholder text; presence enables the filter box
+ *   csv      - false to suppress the export button
  */
 function table(rows, cols, opts = {}) {
   const id = opts.id || 't';
@@ -1506,17 +1509,17 @@ function tableInner(id) {
 
   const head = cols.map(c => {
     const on = st.key === c.k;
-    const next = on ? -st.dir : (c.num ? -1 : 1);   // numbers open big-first, words A–Z
+    const next = on ? -st.dir : (c.num ? -1 : 1);   // numbers open big-first, words A-Z
     return `<th class="${c.num ? 'num ' : ''}sortable" data-t="${esc(id)}" data-k="${esc(c.k)}"
         tabindex="0" aria-sort="${on ? (st.dir > 0 ? 'ascending' : 'descending') : 'none'}"
-        title="Sort by ${esc(c.h)} — ${next > 0 ? 'ascending' : 'descending'}"
+        title="Sort by ${esc(c.h)} - ${next > 0 ? 'ascending' : 'descending'}"
       >${esc(c.h)}${on ? `<span class="dir" aria-hidden="true"> ${st.dir > 0 ? '↑' : '↓'}</span>` : ''}</th>`;
   }).join('');
 
   const keyOf = cols[0].k;
   const body = sorted.slice(0, st.max).map(r =>
     `<tr data-key="${esc(String(r[keyOf] ?? ''))}">${cols.map(c => {
-    const v = c.render ? c.render(r) : esc(r[c.k] ?? '—');
+    const v = c.render ? c.render(r) : esc(r[c.k] ?? '-');
     if (c.bar) return `<td class="num barcell">
         <div class="fill" style="width:${(+r[c.k] / top * 100).toFixed(1)}%"></div>
         <span>${v}</span></td>`;
@@ -1613,7 +1616,7 @@ function download(name, text, type = 'text/csv;charset=utf-8') {
 }
 
 function changeCell(v) {
-  if (v == null) return `<span class="faint" title="Week over week — begins once 14 complete days are on record">—</span>`;
+  if (v == null) return `<span class="faint" title="Week over week - begins once 14 complete days are on record">-</span>`;
   return `<span style="color:var(--${v >= 0 ? 'rise' : 'fall'})">${pct(v)}</span>`;
 }
 const countryName = cc => TAX?.countries?.[cc]?.name || cc;
@@ -1668,7 +1671,7 @@ function viewSignals(openId) {
         <h1>Read the world from the sky above <span class="q">Aarhus</span>.</h1>
         <p class="lede">One antenna records every aircraft that passes overhead${S.routes
           ? ', and matches each to where it began and where it is going, checked against the direction it was travelling'
-          : ''}. These are the signals we can honestly draw from it — evidence and limits attached.</p>
+          : ''}. These are the signals we can honestly draw from it - evidence and limits attached.</p>
       </header>
       ${readout(S.routes ? [
         { v: fig(t.flights), l: 'Flights recorded', s: `over ${w.days_observed} days` },
@@ -1689,7 +1692,7 @@ function viewSignals(openId) {
     ${S.sky ? `<div class="hero-sky">
       <canvas id="hero-canvas" role="img"
         aria-label="Every first contact on record, plotted by bearing and distance from the receiver"></canvas>
-      <div class="hero-cap">${n(S.sky.n)} first contacts · 95% within ${n(S.sky.p95)} km<br>
+      <div class="hero-cap">${n(S.sky.n)} first contacts · 99% within ${n(S.sky.p99 || S.sky.p95)} km<br>
         <a href="#/method">How the antenna hears →</a></div>
     </div>` : ''}
   </section>
@@ -1702,8 +1705,8 @@ function viewSignals(openId) {
     </div>
     <p class="sec-note" style="margin:-6px 0 14px;max-width:var(--measure)">
       Anything with a direction. ${cmp
-        ? `Change is the week of ${niceDate(cmp.cur_from)}–${niceDate(cmp.cur_to)} against
-           the week before it — one of every weekday on each side.`
+        ? `Change is the week of ${niceDate(cmp.cur_from)}-${niceDate(cmp.cur_to)} against
+           the week before it - one of every weekday on each side.`
         : `Week-over-week change arrives at 14 complete days; until then the readings
            are the shape of the week, and no day-on-day figure is shown anywhere.`}
       Open one for what it might mean, and what it doesn't.</p>
@@ -1729,7 +1732,7 @@ const AIRPORT_COLS = [
   { k: 'city', h: 'Airport', render: r =>
       `<a href="#/airport/${esc(r.key)}">${esc(r.city || r.name)}</a> <span class="code">${esc(r.key)}</span>` },
   { k: 'name', h: 'Name', render: r => `<span class="dim">${esc(r.name)}</span>` },
-  { k: 'cc', h: 'Country', render: r => esc(TAX?.countries?.[r.cc]?.name || r.cc || '—') },
+  { k: 'cc', h: 'Country', render: r => esc(TAX?.countries?.[r.cc]?.name || r.cc || '-') },
   { k: 'flights', h: 'Flights', num: true, bar: true, render: r => n(r.flights) },
   { k: 'dep', h: 'From here', num: true, render: r => n(r.dep) },
   { k: 'arr', h: 'To here', num: true, render: r => n(r.arr) },
@@ -1744,14 +1747,14 @@ const PAIR_COLS = [
       `${n(r.ab)} <span class="faint">${esc(r.a)}→${esc(r.b)}</span>` },
   { k: 'ba', h: 'Return', num: true, render: r =>
       `${n(r.ba)} <span class="faint">${esc(r.b)}→${esc(r.a)}</span>` },
-  { k: 'km', h: 'km', num: true, render: r => r.km ? n(r.km) : '—' },
+  { k: 'km', h: 'km', num: true, render: r => r.km ? n(r.km) : '-' },
   { k: 'change_pct', h: 'Δ week', num: true, render: r => changeCell(r.change_pct) },
 ];
 const COUNTRY_COLS = [
   { k: 'name', h: 'Country', render: r =>
       `<a href="#/place/${esc(r.key)}">${esc(r.name)}</a>` },
   { k: 'region', h: 'Region', render: r =>
-      r.region ? `<a href="#/region/${encodeURIComponent(r.region)}" class="dim">${esc(r.region)}</a>` : '—' },
+      r.region ? `<a href="#/region/${encodeURIComponent(r.region)}" class="dim">${esc(r.region)}</a>` : '-' },
   { k: 'flights', h: 'Flights', num: true, bar: true, render: r => n(r.flights) },
   { k: 'aircraft', h: 'Aircraft', num: true, render: r => n(r.aircraft) },
   { k: 'widebody', h: 'Wide-body', num: true, render: r =>
@@ -1776,8 +1779,8 @@ function viewExplore() {
     <p class="lede">${S.routes
       ? `${S.routes.coverage.routed_share.toFixed(0)}% of flights overhead are matched to the
          airports they fly between, each checked against the direction the aircraft was
-         actually travelling. The rest of the record — who flies, what, and where it is
-         registered — is below.`
+         actually travelling. The rest of the record - who flies, what, and where it is
+         registered - is below.`
       : `Every aircraft broadcasts an address allocated to a state, so we can tell where
          99% of them are registered. Start anywhere and drill down.`}</p>
   </header>
@@ -1786,7 +1789,7 @@ function viewExplore() {
   <section>
     <div class="sec-head"><div><div class="eyebrow">Airports</div>
       <h2>Where the flights begin and end</h2></div>
-      <p class="sec-note">A flight counts once for each end. Copenhagen–Aalborg is one
+      <p class="sec-note">A flight counts once for each end. Copenhagen-Aalborg is one
         flight and two touches.</p></div>
     ${table(S.routes.airports, AIRPORT_COLS, { id: 'exp-a', max: 30,
       sortKey: 'flights', sortDir: -1, filter: 'Filter airports…', csvName: 'ovrhead-airports' })}
@@ -1839,7 +1842,7 @@ function viewExplore() {
     <div class="sec-head"><div><div class="eyebrow">Fleet</div><h2>Aircraft types</h2></div></div>
     ${table(S.types, [
       { k: 'key', h: 'Type', render: r => `<a href="#/type/${esc(r.key)}" class="code">${esc(r.key)}</a>` },
-      { k: 'desc', h: 'Aircraft', render: r => esc(r.desc || '—') },
+      { k: 'desc', h: 'Aircraft', render: r => esc(r.desc || '-') },
       { k: 'flights', h: 'Flights', num: true, bar: true, render: r => n(r.flights) },
       { k: 'aircraft', h: 'Airframes', num: true, render: r => n(r.aircraft) },
       { k: 'widebody_type', h: 'Class', render: r =>
@@ -1885,7 +1888,7 @@ function initSky(id, { margin = 12 } = {}) {
   if (COAST === null) grab('coast.json', false).then(c => { COAST = c || false; })
                                               .catch(() => { COAST = false; });
 
-  function draw(rev, idle, now = 0) {
+  function draw() {
     const w = cv.clientWidth, h = cv.clientHeight;
     if (w < 2 || h < 2) return;
     const dpr = Math.min(devicePixelRatio || 1, 2);
@@ -1909,9 +1912,13 @@ function initSky(id, { margin = 12 } = {}) {
       ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(x, y); ctx.stroke();
     }
 
+    // Coastline. It is the reference frame the reader recognises, so it should
+    // be the first thing that reads; the reception envelope is a subtle
+    // annotation over it. Draw the coast in ink at full weight; the envelope
+    // gets a hairline further down.
     if (COAST) {
       ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, R, 0, TAU); ctx.clip();
-      ctx.strokeStyle = tok('--rule-2'); ctx.lineWidth = 1; ctx.globalAlpha = .9; ctx.beginPath();
+      ctx.strokeStyle = tok('--ink'); ctx.lineWidth = 1.4; ctx.beginPath();
       for (const line of COAST.lines) {
         let started = false;
         for (const [lng, lat] of line) {
@@ -1921,66 +1928,45 @@ function initSky(id, { margin = 12 } = {}) {
           started ? ctx.lineTo(x, y) : (ctx.moveTo(x, y), started = true);
         }
       }
-      ctx.stroke(); ctx.globalAlpha = 1; ctx.restore();
+      ctx.stroke(); ctx.restore();
     }
 
-    // The arriving sweep reveals contacts and envelope one bearing at a time,
-    // the way the receiver found them.
-    const swept = rev * TAU;
-    const reached = brg => rev >= 1 || brg <= swept;
-
+    // Contacts. Every first-contact position from the sampled sky.
     ctx.fillStyle = tok('--accent'); ctx.globalAlpha = .4;
     for (const [km, brg] of sky.pts) {
-      if (km > scale || !reached(brg)) continue;
+      if (km > scale) continue;
       const [x, y] = xy(km, brg);
       ctx.fillRect(x - 1, y - 1, 2, 2);
     }
     ctx.globalAlpha = 1;
 
+    // Reception envelope. Hairline dashed so it reads as an annotation on the
+    // coast rather than competing with it. The coast is the geography; this
+    // line is only how far the antenna hears in each direction.
     const N = sky.env.length;
     ctx.beginPath(); let started = false;
     for (let i = 0; i <= N; i++) {
       const v = sky.env[i % N], a = (i % N) / N * TAU;
-      if (v == null || !reached(a)) { started = false; continue; }
+      if (v == null) { started = false; continue; }
       const [x, y] = xy(Math.min(v, scale), a);
       started ? ctx.lineTo(x, y) : (ctx.moveTo(x, y), started = true);
     }
-    ctx.strokeStyle = tok('--ink'); ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.strokeStyle = tok('--rule-2'); ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
+    ctx.stroke(); ctx.setLineDash([]);
 
-    const ang = rev < 1 ? swept : idle;
-    if (ang != null) {
-      const trail = rev < 1 ? Math.PI / 3 : Math.PI / 2.2;
-      ctx.beginPath(); ctx.moveTo(cx, cy);
-      ctx.arc(cx, cy, R, ang - trail - Math.PI / 2, ang - Math.PI / 2); ctx.closePath();
-      ctx.fillStyle = tok('--accent'); ctx.globalAlpha = rev < 1 ? .09 : .05; ctx.fill();
-      const [ex, ey] = xy(scale, ang);
-      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(ex, ey);
-      ctx.strokeStyle = tok('--accent'); ctx.lineWidth = 1;
-      ctx.globalAlpha = rev < 1 ? .6 : .32; ctx.stroke(); ctx.globalAlpha = 1;
-    }
-
-    // The receiver breathes: a ring that leaves the dot every 2.4 s and fades
-    // as it goes. It is the one thing on the disc that says "listening".
-    if (now) {
-      const ph = (now / 2400) % 1;
-      ctx.beginPath(); ctx.arc(cx, cy, 4 + 9 * ph, 0, TAU);
-      ctx.strokeStyle = tok('--fall'); ctx.lineWidth = 1.2;
-      ctx.globalAlpha = (1 - ph) * .55; ctx.stroke(); ctx.globalAlpha = 1;
-    }
     ctx.beginPath(); ctx.arc(cx, cy, 3.5, 0, TAU);
     ctx.fillStyle = tok('--fall'); ctx.fill();
   }
 
-  // Static. It is a figure of the record, not a radar screen: it draws once,
-  // again on resize, and nothing on it moves.
-  const ro = new ResizeObserver(() => draw(1, null));
+  // Static: it is a figure of the record, not a screen. Draws once and on resize.
+  const ro = new ResizeObserver(draw);
   ro.observe(cv);
-  draw(1, null);
+  draw();
   skyStops.push(() => ro.disconnect());
 }
 
 /** The globe's points: airports when routes exist, registration countries
- *  otherwise. Same shape either way — key, name, flights, lat, lng — so the
+ *  otherwise. Same shape either way - key, name, flights, lat, lng - so the
  *  drawing code does not care which it was given. */
 function globePoints() {
   if (S.routes?.airports?.length) {
@@ -2018,7 +2004,7 @@ function viewGlobe() {
         <div id="globe-overlay"></div>
       </div>
       <div class="globe-legend">
-        <span><i class="home"></i>Aarhus — the antenna</span>
+        <span><i class="home"></i>Aarhus - the antenna</span>
         <span><i></i>${routed ? 'Airport, sized by flights' : 'Registration country, sized by flights'}</span>
         ${routed ? '<span><i class="env" style="background:var(--accent)"></i>City-pair, weighted by flights</span>' : ''}
       </div>
@@ -2074,7 +2060,7 @@ async function initGlobe() {
   // without pushing the southern hemisphere off the back entirely.
   let rotL = -HOME.lng, rotP = 38, spin = true, hot = null;
   // Arc draw-in progress: the corridors grow from each country toward the
-  // antenna over the first frames — the direction the aircraft came.
+  // antenna over the first frames - the direction the aircraft came.
   let intro = matchMedia('(prefers-reduced-motion: reduce)').matches ? 1 : 0;
   const easeOut = t => 1 - Math.pow(1 - t, 3);
   let dragging = false, lastX = 0, lastY = 0;
@@ -2088,8 +2074,8 @@ async function initGlobe() {
   function resize() {
     const dpr = Math.min(devicePixelRatio || 1, 2);
     const w = cv.clientWidth, h = cv.clientHeight;
-    // A canvas that is still laid out at zero — first paint, or the page hidden
-    // behind a view transition — would give a negative radius, and ctx.arc
+    // A canvas that is still laid out at zero - first paint, or the page hidden
+    // behind a view transition - would give a negative radius, and ctx.arc
     // throws on that. Keep the last good geometry until there is a real box.
     if (w < 2 || h < 2) return;
     cv.width = w * dpr; cv.height = h * dpr;
@@ -2182,7 +2168,7 @@ async function initGlobe() {
     /* Land.
        A ring that straddles the horizon used to be drawn by skipping the points
        facing away and closing what was left, which joins the last visible point
-       straight back to the first — a chord clean across the disc. On anything
+       straight back to the first - a chord clean across the disc. On anything
        the size of Eurasia that is a wedge, and it swings around as the globe
        turns. Instead every point is projected: the ones behind the horizon are
        pushed out onto the limb, so the polygon stays continuous and closes
@@ -2192,7 +2178,7 @@ async function initGlobe() {
     ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.clip();
     ctx.fillStyle = tok('--sunken'); ctx.strokeStyle = tok('--rule-2'); ctx.lineWidth = .7;
     for (const ring of LAND) {
-      // Skip rings with nothing on this face at all — most of the world, most
+      // Skip rings with nothing on this face at all - most of the world, most
       // of the time, and it keeps the per-frame cost down.
       let visible = false;
       for (const [lng, lat] of ring) { if (project(lat, lng)) { visible = true; break; } }
@@ -2275,7 +2261,7 @@ async function initGlobe() {
   /* Label boxes are measured once and cached. Reading offsetWidth inside the
      animation loop forces a synchronous layout on every frame, and since the
      next statement writes style.left straight back, that is a read/write
-     thrash sixty times a second — which is what made dragging the globe feel
+     thrash sixty times a second - which is what made dragging the globe feel
      like it was catching. Sizes only change when the text or the font does,
      so re-measure on resize instead. */
   const labelBox = new Map();
@@ -2336,8 +2322,11 @@ async function initGlobe() {
   });
   cv.addEventListener('pointermove', e => {
     if (!dragging) return;
+    // Both axes follow the finger: drag right, globe moves right (rotL up);
+    // drag down, globe moves down (rotP up, since rotP is the latitude at
+    // the centre and moving the centre north pushes the visible surface down).
     rotL += (e.clientX - lastX) * 0.32;
-    rotP = Math.max(-80, Math.min(80, rotP - (e.clientY - lastY) * 0.32));
+    rotP = Math.max(-80, Math.min(80, rotP + (e.clientY - lastY) * 0.32));
     lastX = e.clientX; lastY = e.clientY;
   });
   const endDrag = () => { dragging = false; cv.classList.remove('dragging');
@@ -2386,7 +2375,7 @@ function viewPlace(cc) {
   const share = (c.flights / S.totals.flights * 100).toFixed(1);
   const wbShare = c.flights ? (c.widebody / c.flights * 100).toFixed(0) : 0;
   const isFar = c.continent && c.continent !== 'Europe';
-  // Rank among its region's countries — the one fact the old sibling table
+  // Rank among its region's countries - the one fact the old sibling table
   // added that the region page (one crumb away) does not already carry.
   const sibs = S.countries.filter(x => x.region === c.region);
   const rank = sibs.findIndex(x => x.key === cc) + 1;
@@ -2405,7 +2394,7 @@ function viewPlace(cc) {
         s: `${share}% of all traffic${rank && c.region ? ` · #${rank} of ${sibs.length} in ${c.region}` : ''}` },
       { v: fig(c.aircraft), l: 'Distinct aircraft' },
       { v: fig(c.widebody), l: 'Wide-body', s: `${wbShare}% of its traffic` },
-      { v: c.change_pct == null ? '—' : pct(c.change_pct), l: 'Change, week on week',
+      { v: c.change_pct == null ? '-' : pct(c.change_pct), l: 'Change, week on week',
         s: c.change_pct == null ? 'from 14 complete days' : null },
     ]),
     body: evidence('place', cc, `Every ${esc(c.name)} flight on record`,
@@ -2415,7 +2404,7 @@ function viewPlace(cc) {
 }
 
 /** The evidence half of an entity page. All three entity pages get the same
- *  two sections — a shape, then the rows it was computed from — so they can't
+ *  two sections - a shape, then the rows it was computed from - so they can't
  *  drift apart, and both are filled by one trip to DuckDB. */
 function evidence(kind, arg, heading, sql, csvName) {
   return `
@@ -2450,7 +2439,7 @@ function viewGroup(kind, name) {
       { v: fig(g.flights), l: 'Flights', s: `${g.share}% of all traffic` },
       { v: fig(kids.length), l: 'Countries' },
       { v: fig(g.aircraft), l: 'Distinct aircraft' },
-      { v: g.change_pct == null ? '—' : pct(g.change_pct), l: 'Change, week on week',
+      { v: g.change_pct == null ? '-' : pct(g.change_pct), l: 'Change, week on week',
         s: g.change_pct == null ? 'from 14 complete days' : `${n(g.widebody)} wide-body` },
     ]),
     body: `<section>
@@ -2511,7 +2500,7 @@ function viewOperator(code) {
     lede: o.name
       ? `ICAO code ${esc(code)}.${o.kind
           ? ` Classified as <a href="#/kind/${esc(o.kind)}">${
-              esc((CAR?.kinds?.[o.kind]?.label || o.kind).toLowerCase())}</a> — ${
+              esc((CAR?.kinds?.[o.kind]?.label || o.kind).toLowerCase())}</a> - ${
               esc(CAR?.kinds?.[o.kind]?.reads || '')}`
           : ''}`
       : `We see the ICAO prefix ${esc(code)} on these flights but it is not in our carrier
@@ -2521,7 +2510,7 @@ function viewOperator(code) {
       { v: fig(o.flights), l: 'Flights', s: `${o.share}% of all traffic` },
       { v: fig(o.aircraft), l: 'Distinct aircraft' },
       { v: fig(o.widebody), l: 'Wide-body' },
-      { v: o.change_pct == null ? '—' : pct(o.change_pct), l: 'Change, week on week' },
+      { v: o.change_pct == null ? '-' : pct(o.change_pct), l: 'Change, week on week' },
     ]),
     body: evidence('operator', code, 'Flights recorded',
       `SELECT callsign, ac_type, reg, reg_country_name, seen_at\nFROM flights\nWHERE airline_prefix = '${code}'\nORDER BY first_seen DESC;`,
@@ -2542,12 +2531,12 @@ function viewAirport(icao) {
     crumbs: `<a href="#/explore">Explore</a> <em>/</em> Airports <em>/</em> ${esc(icao)}`,
     title: `${esc(a.city || a.name)} <span class="q">${esc(icao)}</span>`,
     lede: `${esc(a.name)}, ${esc(cname)}. Flights recorded over Aarhus that began or ended here${
-      a.local ? '' : ' — none of them landed in Denmark on the way'}.`,
+      a.local ? '' : ' - none of them landed in Denmark on the way'}.`,
     stats: readout([
       { v: fig(a.flights), l: 'Flights', s: a.share != null ? `${a.share}% of routed traffic` : null },
       { v: fig(a.dep), l: 'Departing from here' },
       { v: fig(a.arr), l: 'Arriving here' },
-      { v: a.change_pct == null ? '—' : pct(a.change_pct), l: 'Change, week on week',
+      { v: a.change_pct == null ? '-' : pct(a.change_pct), l: 'Change, week on week',
         s: a.change_pct == null ? 'from 14 complete days' : null },
     ]),
     body: (pairs.length ? `<section>
@@ -2574,7 +2563,7 @@ function viewPair(key) {
       { v: fig(p.flights), l: 'Flights on this pair' },
       { v: fig(p.ab), l: `${p.a} → ${p.b}` },
       { v: fig(p.ba), l: `${p.b} → ${p.a}` },
-      { v: p.change_pct == null ? '—' : pct(p.change_pct), l: 'Change, week on week',
+      { v: p.change_pct == null ? '-' : pct(p.change_pct), l: 'Change, week on week',
         s: p.change_pct == null ? 'from 14 complete days' : null },
     ]),
     body: evidence('pair', key, `Every flight between ${esc(p.a)} and ${esc(p.b)}`,
@@ -2594,7 +2583,7 @@ function viewType(code) {
     stats: readout([
       { v: fig(t.flights), l: 'Flights', s: `${t.share}% of all traffic` },
       { v: fig(t.aircraft), l: 'Distinct airframes' },
-      { v: t.change_pct == null ? '—' : pct(t.change_pct), l: 'Change, week on week' },
+      { v: t.change_pct == null ? '-' : pct(t.change_pct), l: 'Change, week on week' },
     ]),
     body: evidence('type', code, 'Flights recorded',
       `SELECT callsign, reg, reg_country_name, airline, seen_at\nFROM flights\nWHERE ac_type = '${code}'\nORDER BY first_seen DESC;`,
@@ -2656,7 +2645,7 @@ async function fillLazy() {
       shape.innerHTML = `<div class="rhythm">
         <div><div class="rhythm-t">By day</div>
           ${chart(days, { key: 'day', val: 'flights', partial: 'partial' })}</div>
-        <div><div class="rhythm-t">By hour, UTC — all days combined</div>
+        <div><div class="rhythm-t">By hour, UTC - all days combined</div>
           ${chart(hours, { key: 'hour', val: 'flights', labelEvery: 3 })}</div>
       </div>`;
       animateIn(shape);
@@ -2683,7 +2672,7 @@ const FLIGHT_COLS = [
   { k: 'ac_desc', h: 'Aircraft', render: r => r.ac_desc
       ? `${esc(r.ac_desc)} <a href="#/type/${esc(r.ac_type)}" class="code">${esc(r.ac_type)}</a>`
       : `<span class="unknown">Unidentified airframe</span>` },
-  { k: 'reg', h: 'Registration', render: r => r.reg ? `<span class="mono">${esc(r.reg)}</span>` : '—' },
+  { k: 'reg', h: 'Registration', render: r => r.reg ? `<span class="mono">${esc(r.reg)}</span>` : '-' },
   { k: 'reg_country_name', h: 'Registered in', render: r => r.reg_country_name
       ? esc(r.reg_country_name) : `<span class="unknown">Unallocated block</span>` },
   { k: 'operator', h: 'Operator', render: r => r.operator
@@ -2692,11 +2681,11 @@ const FLIGHT_COLS = [
               esc(CAR?.kinds?.[r.carrier_kind]?.label || r.carrier_kind)}</span>` : ''}`
       : (r.airline_prefix ? `<span class="code">${esc(r.airline_prefix)}</span>`
                           : `<span class="unknown">Unknown</span>`) },
-  // Exported as the same string the table shows — a raw epoch in a CSV column
+  // Exported as the same string the table shows - a raw epoch in a CSV column
   // called "Seen (UTC)" is technically the value and practically useless.
   { k: 'seen_at', h: 'Seen (UTC)', csvValue: r => ts(r.seen_at),
     render: r => `<span class="mono">${esc(ts(r.seen_at))}</span>` },
-  { k: 'mins', h: 'In range', num: true, render: r => r.mins ? `${n(r.mins)} min` : '—' },
+  { k: 'mins', h: 'In range', num: true, render: r => r.mins ? `${n(r.mins)} min` : '-' },
 ];
 
 /* ── Ask ─────────────────────────────────────────────────────────────── */
@@ -2771,7 +2760,7 @@ const PRESETS = [
   ['What kind of flying is this?',                 { m:'flights',  d:'kind',      f:'',        w:'' }],
   ['Does freight keep office hours?',              { m:'flights',  d:'dow',       f:'cargo',   w:'' }],
   ['When do the holiday charters go?',             { m:'flights',  d:'dow',       f:'leisure', w:'' }],
-  ['Weekday or weekend — who flies more?',         { m:'flights',  d:'daytype',   f:'',        w:'' }],
+  ['Weekday or weekend - who flies more?',         { m:'flights',  d:'daytype',   f:'',        w:'' }],
   ['Which countries send the most aircraft?',      { m:'flights',  d:'country',   f:'',        w:'' }],
   ['Who is flying in from outside Europe?',        { m:'flights',  d:'country',   f:'nonEU',   w:'' }],
   ['What does a normal day look like?',            { m:'flights',  d:'hour',      f:'',        w:'' }],
@@ -2887,7 +2876,7 @@ function wireAsk() {
     catch { flash(el('copy-sql'), 'Select and copy', 'Copy SQL'); }
   };
   el('link-sql').onclick = async () => {
-    // Any query is a shareable address — that is how a signal hands its
+    // Any query is a shareable address - that is how a signal hands its
     // evidence over, and it should work the other way too.
     const url = new URL(location.href);
     url.hash = '#/ask?sql=' + encodeURIComponent(ta.value.trim());
@@ -2927,7 +2916,7 @@ function renderResult(rows, cols) {
     csvValue: r => (r[c] != null && isTime(c, r[c])) ? ts(r[c]) : r[c],
     render: r => {
       const v = r[c];
-      if (v == null) return `<span class="faint">—</span>`;
+      if (v == null) return `<span class="faint">-</span>`;
       if (isTime(c, v)) return `<span class="mono">${esc(ts(v))}</span>`;
       return (typeof v === 'number' || typeof v === 'bigint')
         ? n(v) : esc(String(v).slice(0, 80));
@@ -2954,32 +2943,32 @@ const COLUMN_REF = [
   ['first_seen',         'integer',   'raw',     'Unix seconds at first contact.'],
   ['last_seen',          'integer',   'raw',     'Unix seconds at last contact.'],
   ['seen_at',            'timestamp', 'derived', 'first_seen as a UTC timestamp. Use this for strftime().'],
-  ['duration_sec',       'integer',   'raw',     'Seconds the aircraft stayed in range — not flight time.'],
+  ['duration_sec',       'integer',   'raw',     'Seconds the aircraft stayed in range - not flight time.'],
   ['n_obs',              'integer',   'raw',     'Number of 15-second snapshots the session was built from.'],
   ['first_lat, first_lon', 'double',  'raw',     'Position at first contact. Missing on ~13% of rows.'],
   ['last_lat, last_lon', 'double',    'raw',     'Position at last contact.'],
-  ['min_alt, max_alt',   'integer',   'raw',     'Always NULL so far — the collector read the wrong field names.'],
+  ['min_alt, max_alt',   'integer',   'raw',     'Always NULL so far - the collector read the wrong field names.'],
   ['max_gs',             'double',    'raw',     'Ground speed. Also NULL for the same reason.'],
   ['near_first_airport', 'text',      'raw',     'Nearest airport to first contact. At cruise this describes us, not the flight.'],
   ['near_last_airport',  'text',      'raw',     'Nearest airport to last contact. Same caveat.'],
   ['reg',                'text',      'raw',     'Civil registration, from the aircraft database.'],
   ['ac_type',            'text',      'raw',     'ICAO type code, e.g. B78X.'],
   ['ac_desc',            'text',      'raw',     'Human-readable type, e.g. BOEING 787-10.'],
-  ['airline_prefix',     'text',      'raw',     'First three letters of the callsign — the operator’s ICAO code.'],
+  ['airline_prefix',     'text',      'raw',     'First three letters of the callsign - the operator’s ICAO code.'],
   ['airline',            'text',      'raw',     'Operator name as baked into the flight row when it was built.'],
   ['operator',           'text',      'derived', 'Operator name, preferring the curated carrier table. Use this one.'],
   ['carrier_kind',       'text',      'derived', "What kind of flying: cargo, bizjet, network, lowcost, leisure, regional, state. NULL where we cannot say."],
   ['day',                'text',      'derived', 'Calendar day, UTC.'],
-  ['dow',                'text',      'derived', 'Mon–Sun.'],
+  ['dow',                'text',      'derived', 'Mon-Sun.'],
   ['daytype',            'text',      'derived', "'weekday' or 'weekend'."],
   ['reg_country',        'text',      'derived', 'ISO code of the state that allocated the transponder address.'],
-  ['reg_country_name',   'text',      'derived', 'That state’s name. Where it is registered — not where it flew from.'],
+  ['reg_country_name',   'text',      'derived', 'That state’s name. Where it is registered - not where it flew from.'],
   ['reg_region',         'text',      'derived', 'Economic region, e.g. Nordics, DACH, East Asia.'],
   ['reg_continent',      'text',      'derived', 'Continent of registration.'],
   ['body',               'text',      'derived', "'widebody' or 'narrowbody', inferred from the type code."],
   ['is_cargo',           'boolean',   'derived', "True when carrier_kind is 'cargo'. Attributed by operator, never by airframe."],
   ['origin, destination', 'text',     'raw',     'ICAO codes of the scheduled route for this callsign, kept only when the observed heading agrees (or could not be judged). NULL otherwise.'],
-  ['route_check',        'text',      'raw',     "'verified' (heading agrees with the route), 'unverified' (aircraft moved under 15 km in range), or 'conflict' (heading disagrees — origin/destination cleared)."],
+  ['route_check',        'text',      'raw',     "'verified' (heading agrees with the route), 'unverified' (aircraft moved under 15 km in range), or 'conflict' (heading disagrees - origin/destination cleared)."],
   ['route_conflict',     'text',      'raw',     'The route the table gave when it was rejected, so the rejection can be audited.'],
   ['heading',            'double',    'raw',     'Observed track in degrees, first position to last.'],
   ['moved_km',           'double',    'raw',     'Ground distance between first and last position in range.'],
@@ -2991,8 +2980,8 @@ const COLUMN_REF = [
 ];
 
 /* The files and the column reference used to be a page of their own. They are
-   the same argument the Method page is making — here is exactly what we did, go
-   and check — so they now sit at the end of it rather than behind a tab a
+   the same argument the Method page is making - here is exactly what we did, go
+   and check - so they now sit at the end of it rather than behind a tab a
    reader had to be suspicious enough to click in the first place. */
 function sectionFiles() {
   const man = S._manifest || {};
@@ -3007,7 +2996,7 @@ function sectionFiles() {
   return `
   <section id="files">
     <div class="sec-head">
-      <div><div class="eyebrow">The files</div><h2>Don't trust us — take them</h2></div>
+      <div><div class="eyebrow">The files</div><h2>Don't trust us - take them</h2></div>
       <p class="sec-note">Every number on this site comes from these. Plain Parquet,
         served as static assets, ${bytes(total)} in total.</p>
     </div>
@@ -3075,20 +3064,20 @@ function viewMethod() {
 
   <section class="prose">
     <p>OvrHead is a small observatory in Aarhus, Denmark. It listens to the transponders
-    of passing aircraft, keeps every observation, and publishes the whole record — not a
+    of passing aircraft, keeps every observation, and publishes the whole record - not a
     summary of it. Aviation statistics arrive late, aggregated and already interpreted; a
     receiver on a roof arrives instantly, ungrouped and interpreted by nobody. That is a
     worse dataset in almost every way except the one that matters here: you can check it.</p>
-    <p>It is not a flight tracker, not a news source, and not a measure of the economy —
+    <p>It is not a flight tracker, not a news source, and not a measure of the economy -
     aircraft counts are an input to that kind of question, never the answer. Built by
     <a href="https://cevendrell.com" rel="noopener">Carlos Ebrahim Vendrell</a>; the source,
     the pipeline and the whole record live at
     <a href="https://github.com/cevendrell/flight-macro" rel="noopener">github.com/cevendrell/flight-macro</a>.
-    No backend, no account, no analytics — nothing you do here is recorded anywhere.</p>
+    No backend, no account, no analytics - nothing you do here is recorded anywhere.</p>
 
     <h3>How it is collected</h3>
-    <p>One antenna in Aarhus (56.16°N, 10.20°E) receives ADS-B on 1090 MHz — line-of-sight,
-    roughly 250–400 km for aircraft at cruise. We sample every 15 seconds; a gap of more than
+    <p>One antenna in Aarhus (56.16°N, 10.20°E) receives ADS-B on 1090 MHz - line-of-sight,
+    roughly 250-400 km for aircraft at cruise. We sample every 15 seconds; a gap of more than
     30 minutes starts a new flight.</p>
 
     <h3>How we know the country</h3>
@@ -3096,12 +3085,12 @@ function viewMethod() {
     against that table, falling back to the registration prefix. The two methods agree on
     <b>100%</b> of flights where both are readable and together cover
     <b>${(100 - t.unresolved_country / t.flights * 100).toFixed(1)}%</b> of the record.</p>
-    <p>This is where an aircraft is <em>registered</em> — not where it departed or is headed.
+    <p>This is where an aircraft is <em>registered</em> - not where it departed or is headed.
     A Ryanair jet is Irish-registered wherever it is flying.</p>
 
     <h3>How we know the route</h3>
     <p>An airline flies the same flight number on the same route day after day, and the
-    callsign an aircraft broadcasts is its airline code plus that number — Ryanair uses
+    callsign an aircraft broadcasts is its airline code plus that number - Ryanair uses
     fixed operational codes like <span class="code">RYR9SE</span> instead of the commercial
     number, but they are just as stable per rotation. The open
     <a href="https://github.com/vradarserver/standing-data" rel="noopener">VRS standing-data</a>
@@ -3112,8 +3101,8 @@ function viewMethod() {
     we compare that with the bearing from the aircraft's own position to the route's
     destination. Within 45°, the route is <b>verified</b>. If the aircraft moved less than
     15 km in range there is no heading to judge by, and the route is kept as
-    <b>unverified</b>. If the heading disagrees — a callsign reassigned to another route,
-    a charter code reused, the wrong leg of a multi-stop rotation — the route is a
+    <b>unverified</b>. If the heading disagrees - a callsign reassigned to another route,
+    a charter code reused, the wrong leg of a multi-stop rotation - the route is a
     <b>conflict</b>: it is cleared, and nothing on the site counts it.
     ${S.routes ? `Right now that is <b>${n(S.routes.coverage.verified)}</b> verified,
     <b>${n(S.routes.coverage.unverified)}</b> unverified and
@@ -3124,7 +3113,7 @@ function viewMethod() {
     <h3>What we don't claim</h3>
     <ul>
       <li><b>The path flown.</b> A route is where a flight was scheduled between, checked
-      against its heading — not the track it took to get there, and not whether it was on
+      against its heading - not the track it took to get there, and not whether it was on
       time. The nearest-airport columns describe where our range edge is, not the flight.</li>
       <li><b>Routes for the unrouted.</b> Roughly a fifth of flights carry no callsign or a
       callsign no table knows. They stay unrouted. They are not assumed to be like the rest.</li>
@@ -3136,26 +3125,26 @@ function viewMethod() {
 
     <h3>Current gaps</h3>
     <ul>
-      <li><b>Altitude and speed are missing</b> — the receiver returns them under field names
+      <li><b>Altitude and speed are missing</b> - the receiver returns them under field names
       the collector didn't read. Fixed going forward; the existing rows stay empty.</li>
       <li><b>${n(t.no_callsign)} flights carry no callsign</b>
-      (${(t.no_callsign / t.flights * 100).toFixed(0)}%) — military, state and some private
+      (${(t.no_callsign / t.flights * 100).toFixed(0)}%) - military, state and some private
       aircraft suppress it. Registration and type still come through.</li>
       <li><b>${n(t.unresolved_country)} flights sit outside any allocated address block.</b></li>
       <li><b>The record is ${w.days_observed} days long</b>, ${w.complete_days} of them
-      complete — which is why nothing here is presented as a trend yet.</li>
+      complete - which is why nothing here is presented as a trend yet.</li>
     </ul>
 
     <h3>Confidence</h3>
     <ul>
-      <li><b>Observed</b> — a direct count, no inference.</li>
-      <li><b>Early</b> — real, but too short a record to separate from noise.</li>
-      <li><b>Moderate</b> — enough history and volume to be worth attention.</li>
-      <li><b>Strong</b> — large, consistent, well sampled. Nothing qualifies yet.</li>
+      <li><b>Observed</b> - a direct count, no inference.</li>
+      <li><b>Early</b> - real, but too short a record to separate from noise.</li>
+      <li><b>Moderate</b> - enough history and volume to be worth attention.</li>
+      <li><b>Strong</b> - large, consistent, well sampled. Nothing qualifies yet.</li>
     </ul>
 
     <h3>What we're blind to</h3>
-    <p>We see one point in Jutland. Scandinavia–Europe and Europe–Asia routings are
+    <p>We see one point in Jutland. Scandinavia-Europe and Europe-Asia routings are
     over-represented; anything routed around Denmark is invisible. Absence here is not
     absence in the sky. Rather than ask you to take that on trust, the figure below is
     the receiver's actual footprint, drawn from where each aircraft was standing when
@@ -3185,18 +3174,18 @@ function viewMethod() {
     <div class="globe-legend">
       <span><i class="home"></i>The receiver</span>
       <span><i class="dot"></i>First contact with an aircraft</span>
-      <span><i class="env"></i>Reception envelope — 95th percentile range per bearing</span>
+      <span><i class="env"></i>Reception envelope - 95th percentile range per bearing</span>
       <span><i class="coast"></i>Coastline</span>
     </div>
     <p class="sec-note" id="cov-note" style="margin:16px auto 0;max-width:var(--measure)">
       ${S.sky?.beyond ? `The frame stops at ${S.sky.scale} km, which leaves ${n(S.sky.beyond)}
-        more distant contact${S.sky.beyond === 1 ? '' : 's'} outside it — the furthest at
+        more distant contact${S.sky.beyond === 1 ? '' : 's'} outside it - the furthest at
         ${n(S.sky.far)} km. ` : ''}The dots are a sample of ${n(S.sky?.pts?.length || 0)}
       contacts; the envelope is computed from all ${n(S.sky?.n || 0)}.
       The shape is set by terrain, antenna siting and how high the aircraft was flying,
       not by where the traffic is. A direction that reaches less far here is a direction
-      we are deaf in — not a quiet one. Coastline is drawn to the same scale from
-      Natural Earth's 50m land layer, thinned to 3 km — close enough to place the
+      we are deaf in - not a quiet one. Coastline is drawn to the same scale from
+      Natural Earth's 50m land layer, thinned to 3 km - close enough to place the
       envelope against real geography, not to navigate by.</p>
   </section>
 
@@ -3216,7 +3205,7 @@ const DOWS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const niceDate = d => new Date(d + 'T00:00:00Z')
   .toLocaleDateString('en-GB', { day: 'numeric', month: 'long', timeZone: 'UTC' });
 
-/** A row-sized series with no axes — the shape of a thing, not its figures.
+/** A row-sized series with no axes - the shape of a thing, not its figures.
  *  Peak in accent; each bar carries its value in the title and the whole
  *  series is read out for assistive tech. */
 function sparkline(series) {
@@ -3224,7 +3213,7 @@ function sparkline(series) {
   const peak = Math.max(...series.map(d => d.v));
   return `<div class="sl" role="img" aria-label="${esc(series.map(d => `${d.k} ${n(d.v)}`).join(', '))}">${
     series.map((d, i) => `<i class="${d.v === peak ? 'hi' : ''}" style="height:${
-      (d.v / max * 100).toFixed(1)}%;--i:${i}" title="${esc(d.k)} — ${n(d.v)}"></i>`).join('')}</div>`;
+      (d.v / max * 100).toFixed(1)}%;--i:${i}" title="${esc(d.k)} - ${n(d.v)}"></i>`).join('')}</div>`;
 }
 
 /** Seven bars, weekend shaded differently, peak in accent. */
@@ -3234,12 +3223,12 @@ function spark(values, dows) {
   return `<div class="spark">${values.map((v, i) => `
     <i class="${dows[i] === 'Sat' || dows[i] === 'Sun' ? 'we' : ''} ${
       v === peak ? 'hi' : ''}" style="height:${(v / max * 100).toFixed(1)}%"
-      title="${esc(dows[i])} — ${n(v)}"></i>`).join('')}</div>
+      title="${esc(dows[i])} - ${n(v)}"></i>`).join('')}</div>
     <div class="wk-dow">${dows.map(d => `<span>${esc(d[0])}</span>`).join('')}</div>`;
 }
 
 /* ── The week: Framer Motion island ──────────────────────────────────────
-   /week is the one page where the motion actually says something — the
+   /week is the one page where the motion actually says something - the
    diverging bars are a comparison, the counters are numbers being computed,
    the day-by-day rows step through a week in order. It is the right place to
    spend a React runtime.
@@ -3249,7 +3238,7 @@ function spark(values, dows) {
    pay the reader nothing. The libraries are lazy-loaded from esm.sh the first
    time /week is opened; the DuckDB payload is already an order of magnitude
    larger, so this is not the site's biggest bet on a CDN. If the load fails
-   for any reason — offline, blocked, CDN outage — the fallback below paints
+   for any reason - offline, blocked, CDN outage - the fallback below paints
    the same content in the same layout, without the motion.
 
    Cache tips this at ~120 KB gzip on first hit, zero on subsequent visits. */
@@ -3278,7 +3267,7 @@ function periodNav(w) {
     </div>
     <div class="wknav-move">
       ${btn(older, 'Earlier', 'prev')}
-      <span class="wknav-at">${niceDate(w.from)} – ${niceDate(w.to)}${
+      <span class="wknav-at">${niceDate(w.from)} - ${niceDate(w.to)}${
         all.length > 1 ? `<b>${w.index === 0 ? 'Latest' : `${w.index} week${w.index > 1 ? 's' : ''} back`}</b>` : ''}</span>
       ${btn(newer, 'Later', 'next')}
     </div>
@@ -3300,7 +3289,7 @@ function viewWeek(from) {
   }
   // The mount slot is empty on first paint; the fallback fills it if React
   // never arrives. We copy the whole static view into #week-fallback so it
-  // sits behind the React tree — React's root.render replaces its content
+  // sits behind the React tree - React's root.render replaces its content
   // entirely once it mounts, so the fallback never double-renders.
   // The period nav sits outside the React mount so it survives the island
   // failing to load, and so navigating weeks never depends on the CDN.
@@ -3309,7 +3298,7 @@ function viewWeek(from) {
     <div id="week-fallback" hidden>${viewWeekStatic(w)}</div>`;
 }
 
-/** The static view. Everything the React app renders, in plain HTML — the
+/** The static view. Everything the React app renders, in plain HTML - the
  *  reader who has JavaScript blocked, or is offline, gets this. */
 function viewWeekStatic(w) {
   const t = w.totals;
@@ -3337,7 +3326,7 @@ function viewWeekStatic(w) {
   <header class="page-head">
     <div class="crumbs"><a href="#/">Signals</a> <em>/</em> Week</div>
     <h1>One week, and what it <span class="q">actually shows</span></h1>
-    <p class="lede">${niceDate(w.from)} to ${niceDate(w.to)} — seven consecutive complete
+    <p class="lede">${niceDate(w.from)} to ${niceDate(w.to)} - seven consecutive complete
       days, one of every weekday. Enough to describe the shape of a week.
       ${w.wow
         ? `The week before it is on record too, so this one can be measured against it.`
@@ -3348,12 +3337,12 @@ function viewWeekStatic(w) {
   <section class="wk">
     <div class="sec-head"><div><div class="eyebrow">Against the week before</div>
       <h2>Week over week</h2></div>
-      <p class="sec-note">${niceDate(w.wow.prev_from)} – ${niceDate(w.wow.prev_to)},
+      <p class="sec-note">${niceDate(w.wow.prev_from)} - ${niceDate(w.wow.prev_to)},
         the seven days immediately before this one. No days are shared between them.</p></div>
     ${readout([
       { v: fig(w.totals.flights), l: 'Flights this week' },
       { v: fig(w.wow.prev_flights), l: 'The week before' },
-      { v: w.wow.change_pct == null ? '—'
+      { v: w.wow.change_pct == null ? '-'
            : `${w.wow.change_pct > 0 ? '+' : ''}${w.wow.change_pct}%`,
         l: 'Change', s: 'one week against one week' },
     ])}
@@ -3383,7 +3372,7 @@ function viewWeekStatic(w) {
     <div class="dbars">${kinds.map(dbar).join('')}</div>
     <p class="sec-note" style="margin-top:16px;max-width:var(--measure)">
       Freight and holidays run in opposite directions, at almost the same size. In a
-      single count of “flights overhead” they cancel, and the week looks flat — which
+      single count of “flights overhead” they cancel, and the week looks flat - which
       is exactly what the ${t.lift_pct > 0 ? '+' : ''}${t.lift_pct}% above is.
       Hatched bars rest on fewer than 200 flights: read their direction, not their size.
       State flying is in the chart for completeness and is not economic demand.
@@ -3489,7 +3478,7 @@ async function loadWeekPkg() {
    says how far off it is rather than drawing a bar out of a fortnight and
    letting the shape imply a month happened. In the meantime the honest longer
    view is the daily series with the weekly cycle taken out of it, which is
-   what a forecast would have to work from anyway — so that is what it shows. */
+   what a forecast would have to work from anyway - so that is what it shows. */
 function viewMonth() {
   const M = S.months || { complete: [], progress: [] };
   const T = S.trend || { days: [], dow: [], ready: false };
@@ -3506,7 +3495,7 @@ function viewMonth() {
     <h1>The longer view</h1>
     <p class="lede">${done.length
       ? `${done.length} complete calendar month${done.length > 1 ? 's' : ''} on record.`
-      : `No complete calendar month yet — the record starts mid-month, and a
+      : `No complete calendar month yet - the record starts mid-month, and a
          partial month set beside a full one is a comparison of how long the
          receiver was switched on.`}</p>
   </header>
@@ -3529,7 +3518,7 @@ function viewMonth() {
       { k: 'aircraft', h: 'Aircraft', num: true },
       { k: 'widebody', h: 'Wide-body', num: true },
       { k: 'change_pct', h: 'vs prev', num: true,
-        render: r => r.change_pct == null ? '<span class="dim">—</span>'
+        render: r => r.change_pct == null ? '<span class="dim">-</span>'
           : `<span class="${r.change_pct >= 0 ? 'up' : 'down'}">${
               r.change_pct > 0 ? '+' : ''}${r.change_pct}%</span>` },
     ], { id: 'months', csv: false })}
@@ -3540,7 +3529,7 @@ function viewMonth() {
                    : 'Not enough days yet.'}</b>
       A calendar month appears here once every one of its days is complete.
       ${M.progress.length > 1 ? `${monthName(M.progress[1].month)} has
-        ${M.progress[1].complete_days} complete days and can no longer be finished —
+        ${M.progress[1].complete_days} complete days and can no longer be finished -
         the receiver was not running for the rest of it.` : ''}
     </div>
   </section>`}
@@ -3575,7 +3564,7 @@ function viewMonth() {
     ], { id: 'dow', csv: false })}
     ${T.ready ? '' : `<p class="sec-note" style="margin-top:14px;max-width:var(--measure)">
       Some weekdays have been seen only once. A single observation is not a
-      baseline — it is one number being compared with itself — so the index
+      baseline - it is one number being compared with itself - so the index
       above describes the record, not a norm. It becomes a norm at two
       observations of every weekday, which is fourteen complete days.</p>`}
   </section>
@@ -3770,7 +3759,7 @@ function WeekApp({ R, FM, html }) {
           whileInView=${{ scaleY: 1 }}
           viewport=${{ once: true, margin: '-10% 0px' }}
           transition=${{ type: 'spring', stiffness: 140, damping: 20, delay: i * 0.04 }}
-          title=${`${dows[i]} — ${fmt(v)}`} />`;
+          title=${`${dows[i]} - ${fmt(v)}`} />`;
       })}
     </div>
     <div class="wk-dow">${dows.map(d => html`<span>${d[0]}</span>`)}</div>`;
@@ -3796,7 +3785,7 @@ function WeekApp({ R, FM, html }) {
     const peak = data.reduce((a, b) => (b[val] > a[val] ? b : a));
     return html`<div class="chart hchart">
       ${data.map((d, i) => html`<${motion.div} class=${'cbar ' + (d === peak ? 'hi' : '')}
-        title=${`${d.hour} — ${fmt(d[val])}`}>
+        title=${`${d.hour} - ${fmt(d[val])}`}>
         <${motion.i}
           style=${{ height: (d[val] / max * 100).toFixed(1) + '%' }}
           initial=${{ scaleY: 0 }}
@@ -3822,14 +3811,14 @@ function WeekApp({ R, FM, html }) {
     const hourly = w.hourly.map(h => ({ hour: String(h.hour).padStart(2, '0'),
                                         weekday: h.weekday, weekend: h.weekend }));
 
-    // The evidence table and static caveats stay vanilla — no motion needed
+    // The evidence table and static caveats stay vanilla - no motion needed
     // and they use table() and download() from the outer module. React just
     // hydrates them into a plain HTML slot via dangerouslySetInnerHTML.
     const tail = staticWeekTail(w, base);
 
     // Reduced motion turns every spring into an instant snap, but the layout,
     // hover targets and structure are identical. Framer honours the user's OS
-    // setting through the MotionConfig — nothing here needs to check by hand.
+    // setting through the MotionConfig - nothing here needs to check by hand.
     return html`<${MotionConfig} reducedMotion="user">
       <${motion.header} class="page-head"
         initial=${{ opacity: 0, y: 8 }}
@@ -3837,7 +3826,7 @@ function WeekApp({ R, FM, html }) {
         transition=${{ type: 'spring', stiffness: 180, damping: 22 }}>
         <div class="crumbs"><a href="#/">Signals</a> <em>/</em> Week</div>
         <h1>One week, and what it <span class="q">actually shows</span></h1>
-        <p class="lede">${niceDate(w.from)} to ${niceDate(w.to)} — seven consecutive
+        <p class="lede">${niceDate(w.from)} to ${niceDate(w.to)} - seven consecutive
           complete days, one of every weekday. Enough to describe the shape of a week.
           ${w.wow
             ? ' The week before it is on record too, so this one can be measured against it.'
@@ -3850,7 +3839,7 @@ function WeekApp({ R, FM, html }) {
         <div class="sec-head">
           <div><div class="eyebrow">Against the week before</div>
             <h2>Week over week</h2></div>
-          <p class="sec-note">${niceDate(w.wow.prev_from)} – ${niceDate(w.wow.prev_to)},
+          <p class="sec-note">${niceDate(w.wow.prev_from)} - ${niceDate(w.wow.prev_to)},
             the seven days immediately before this one. No days are shared between
             them, so this is one week measured against another rather than against
             itself.</p>
@@ -3861,7 +3850,7 @@ function WeekApp({ R, FM, html }) {
           <div class="ro"><div class="ro-v">${n(w.wow.prev_flights)}</div>
             <div class="ro-l">The week before</div></div>
           <div class="ro"><div class="ro-v ${w.wow.change_pct >= 0 ? 'up' : 'down'}">${
-              w.wow.change_pct == null ? '—'
+              w.wow.change_pct == null ? '-'
                 : `${w.wow.change_pct > 0 ? '+' : ''}${w.wow.change_pct}%`}</div>
             <div class="ro-l">Change</div>
             <div class="ro-s">one week against one week</div></div>
@@ -3884,7 +3873,7 @@ function WeekApp({ R, FM, html }) {
         <p class="sec-note" style=${{ marginTop: 16, maxWidth: 'var(--measure)' }}>
           Freight and holidays run in opposite directions, at almost the same size.
           In a single count of "flights overhead" they cancel, and the week looks flat
-          — which is exactly what the ${pct(t.lift_pct)} above is. Hatched bars rest on
+          - which is exactly what the ${pct(t.lift_pct)} above is. Hatched bars rest on
           fewer than 200 flights: read their direction, not their size. State flying is
           in the chart for completeness and is not economic demand.
           ${un ? ` A further ${fmt(un.flights)} flights are from operators we cannot
@@ -3925,7 +3914,7 @@ function WeekApp({ R, FM, html }) {
   };
 }
 
-/** The evidence table + caveats — vanilla HTML, so they keep participating in
+/** The evidence table + caveats - vanilla HTML, so they keep participating in
  *  the site's sort/filter/CSV wiring rather than being re-implemented in the
  *  React island. Injected via dangerouslySetInnerHTML from WeekApp. */
 function staticWeekTail(w, base) {
@@ -4106,8 +4095,8 @@ function wireTheme() {
 }
 
 /* ── Router ────────────────────────────────────────────────────────────
-   `nav` is bumped on every navigation. Anything that awaits — the query
-   engine, a fetch — compares against it afterwards so a slow page cannot
+   `nav` is bumped on every navigation. Anything that awaits - the query
+   engine, a fetch - compares against it afterwards so a slow page cannot
    paint over the one the reader has already moved on to. */
 let nav = 0;
 let paintScroll = () => {};
@@ -4166,7 +4155,7 @@ function staleNotice() {
     <b>The record stops ${how} ago.</b> Collection has not run since
     ${new Date(S.window.last_ts * 1000).toISOString().slice(0, 10)}, so nothing
     below reflects the last ${how}. The figures are unchanged and still true of
-    the period they cover — they are just not current.</div>`;
+    the period they cover - they are just not current.</div>`;
 }
 
 function route() {
@@ -4197,17 +4186,17 @@ function route() {
 
   // The whole page swap happens in one pass so the View Transition captures a
   // settled layout: content, title, nav, scroll position and staging together.
-  // Anything measured after this — the fold test in animateIn, the pill's new
-  // rect — would be measuring the old page if it ran outside.
+  // Anything measured after this - the fold test in animateIn, the pill's new
+  // rect - would be measuring the old page if it ran outside.
   withTransition('route-vt', () => {
     // A record that has stopped advancing still renders perfectly well, and
-    // every figure on it is still true — of a week ago. On the pages that are
+    // every figure on it is still true - of a week ago. On the pages that are
     // about change, that distinction is the whole thing, so say it in the page
     // rather than only in the stamp up in the corner.
     const stale = staleNotice();
     view.innerHTML = (stale && ['', 'week', 'month', 's'].includes(p[0] || '')
                       ? stale : '') + r.html;
-    document.title = r.title ? `${r.title} · OvrHead` : 'OvrHead — an observatory over Aarhus';
+    document.title = r.title ? `${r.title} · OvrHead` : 'OvrHead - an observatory over Aarhus';
 
     // /s/… is a permalinked signal, so it belongs to Signals; /data is a legacy
     // link into Method; /month is the Week tab's other period.
@@ -4247,12 +4236,12 @@ function route() {
 
 /* ── Boot ────────────────────────────────────────────────────────────── */
 /* `no-cache` revalidates against the server's ETag rather than trusting the
-   browser's copy — GitHub Pages answers a 304 in a few milliseconds, and it
+   browser's copy - GitHub Pages answers a 304 in a few milliseconds, and it
    is what stops a returning reader seeing last week's summary under a stamp
    that says "updated today". */
 const grab = (name, required = true) =>
   fetch(BASE + name, { cache: 'no-cache' }).then(r => {
-    if (!r.ok) throw new Error(`${name} — ${r.status} ${r.statusText}`);
+    if (!r.ok) throw new Error(`${name} - ${r.status} ${r.statusText}`);
     return r.json();
   }).catch(e => { if (required) throw e; return null; });
 
@@ -4272,7 +4261,7 @@ const grab = (name, required = true) =>
                   'continents', 'operators', 'types', 'daily', 'hourly'];
     const missing = NEED.filter(k => !(k in (summary || {})));
     if (missing.length) throw Object.assign(new Error(
-      `summary.json is incomplete — it has no ${missing.join(', ')}. This is what a ` +
+      `summary.json is incomplete - it has no ${missing.join(', ')}. This is what a ` +
       `hand-merged copy looks like: rerun scripts/adsb/build_summary.py and push it.`),
       { shape: true });   // not a network problem, so don't suggest it is
 
@@ -4281,7 +4270,7 @@ const grab = (name, required = true) =>
 
     /* Freshness is about the record, not about the build.
        These two diverge the moment the summary is rebuilt without new flights
-       arriving — a stalled poller, a laptop that slept — and it is exactly then
+       arriving - a stalled poller, a laptop that slept - and it is exactly then
        that the difference matters. Reporting build time would have this page
        saying "updated just now" over a record whose newest flight is days old,
        which is the one claim a site like this cannot make. So the stamp counts
@@ -4313,7 +4302,7 @@ const grab = (name, required = true) =>
     wireSearch(buildIndex());
     paintScroll = wireScrollProgress();
     // The nav wraps to a second row on a phone, so the pill has to be told
-    // where its link went whenever the bar reflows — and once more when the
+    // where its link went whenever the bar reflows - and once more when the
     // web font lands and every link changes width.
     new ResizeObserver(movePill).observe(el('nav'));
     document.fonts?.ready.then(movePill).catch(() => {});

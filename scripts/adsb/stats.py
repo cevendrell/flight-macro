@@ -37,7 +37,7 @@ def main() -> int:
     print(f"warehouse: {WAREHOUSE}")
     print(f"snapshot files: {len(files)}  ({fmt_bytes(size_of(files))})")
     if not files:
-        print("no data yet — start the poller: python scripts/adsb/poller.py")
+        print("no data yet - start the poller: python scripts/adsb/poller.py")
         return 0
     for f in files[-5:]:
         print(f"  {f.name}  ({fmt_bytes(f.stat().st_size)})")

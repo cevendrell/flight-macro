@@ -1,5 +1,5 @@
 """
-ADS-B poller — pulls aircraft.json from a local tar1090/readsb instance
+ADS-B poller - pulls aircraft.json from a local tar1090/readsb instance
 every N seconds and appends observations to a daily Parquet file.
 
 Runs forever. Designed to be launched at Windows startup by Task Scheduler
@@ -58,7 +58,7 @@ WAREHOUSE = Path(os.environ.get("OVRHEAD_WAREHOUSE", str(DEFAULT_WAREHOUSE)))
 OUT_DIR   = WAREHOUSE / "adsb" / "snapshots"
 LOG_FILE  = WAREHOUSE / "adsb" / "adsb.log"
 
-# Columns kept per aircraft observation — keep it minimal so files stay small.
+# Columns kept per aircraft observation - keep it minimal so files stay small.
 COLUMNS = [
     "ts",           # snapshot epoch (int, seconds UTC)
     "hex",          # ICAO24 hex id (aircraft-unique)
@@ -181,7 +181,7 @@ class DailyWriter:
         return self.out_dir / f"snapshots_{day}.parquet"
 
     def add(self, rows: list[dict]) -> None:
-        # Day rollover — flush what we have to the previous day, then reset
+        # Day rollover - flush what we have to the previous day, then reset
         today = self._today()
         if today != self.current_day and self.buf:
             self._flush_to(self.current_day)
@@ -241,7 +241,7 @@ def main() -> int:
 
     writer = DailyWriter(OUT_DIR)
 
-    # Graceful shutdown — flush buffer on SIGINT/SIGTERM
+    # Graceful shutdown - flush buffer on SIGINT/SIGTERM
     def _shutdown(_signum, _frame):
         log("[stop] shutdown signal, flushing buffer")
         writer.flush()

@@ -3,7 +3,7 @@ Sync ADS-B parquet files from the local warehouse into the git repo.
 
 The repo publishes a rolling window of raw parquet under data/adsb/, which
 GitHub Pages serves to the website. DuckDB-Wasm in the browser queries them
-directly over HTTP range requests — no backend needed.
+directly over HTTP range requests - no backend needed.
 
 Layout inside the repo:
     data/adsb/
@@ -18,7 +18,7 @@ Layout inside the repo:
         manifest.json                    files + sizes + updated_at (for the site)
 
 Older snapshots in the repo are deleted so the working tree stays under ~120 MB.
-Everything in the warehouse is preserved — this only prunes the repo copy.
+Everything in the warehouse is preserved - this only prunes the repo copy.
 
 Run:
     python scripts/adsb/sync_to_repo.py
