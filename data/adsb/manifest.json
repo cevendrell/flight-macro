@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-30T03:00:43+00:00",
+  "generated_at": "2026-10-01T03:00:53+00:00",
   "origin": {
     "name": "Aarhus, Denmark",
     "lat": 56.16,
@@ -7,11 +7,6 @@
     "note": "One antenna. One sky. Everything that flies overhead."
   },
   "snapshots": [
-    {
-      "name": "snapshots_2026-09-01.parquet",
-      "path": "data/adsb/snapshots/snapshots_2026-09-01.parquet",
-      "bytes": 522754
-    },
     {
       "name": "snapshots_2026-09-02.parquet",
       "path": "data/adsb/snapshots/snapshots_2026-09-02.parquet",
@@ -155,19 +150,29 @@
     {
       "name": "snapshots_2026-09-30.parquet",
       "path": "data/adsb/snapshots/snapshots_2026-09-30.parquet",
-      "bytes": 7547
+      "bytes": 545464
+    },
+    {
+      "name": "snapshots_2026-10-01.parquet",
+      "path": "data/adsb/snapshots/snapshots_2026-10-01.parquet",
+      "bytes": 8990
     }
   ],
   "flights": [
     {
       "name": "flights_2026-08.parquet",
       "path": "data/adsb/flights/flights_2026-08.parquet",
-      "bytes": 208462
+      "bytes": 208553
     },
     {
       "name": "flights_2026-09.parquet",
       "path": "data/adsb/flights/flights_2026-09.parquet",
-      "bytes": 1707660
+      "bytes": 1757826
+    },
+    {
+      "name": "flights_2026-10.parquet",
+      "path": "data/adsb/flights/flights_2026-10.parquet",
+      "bytes": 6214
     }
   ],
   "enrichment": [
@@ -189,7 +194,7 @@
     {
       "name": "routes.parquet",
       "path": "data/adsb/enrichment/routes.parquet",
-      "bytes": 30859
+      "bytes": 30963
     }
   ]
 }
