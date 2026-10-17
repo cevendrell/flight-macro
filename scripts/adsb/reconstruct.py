@@ -92,7 +92,7 @@ def build_flights(con, day_filter: str | None) -> int:
 
     # 1) sessionize per hex using a big gap threshold via window function
     con.execute(f"""
-        CREATE OR REPLACE TEMP VIEW sessioned AS
+        CREATE OR REPLACE TABLE sessioned AS
         WITH ordered AS (
             SELECT *,
                    ts - LAG(ts) OVER (PARTITION BY hex ORDER BY ts) AS gap
@@ -118,7 +118,7 @@ def build_flights(con, day_filter: str | None) -> int:
     airline_select= ", al.name AS airline, al.country AS airline_country" if have_airlines else ""
 
     con.execute(f"""
-        CREATE OR REPLACE TEMP VIEW flights_agg AS
+        CREATE OR REPLACE TABLE flights_agg AS
         SELECT
             hex,
             session_idx,
@@ -128,10 +128,10 @@ def build_flights(con, day_filter: str | None) -> int:
             COUNT(*) AS n_obs,
             MODE(flight) AS callsign,
             UPPER(SUBSTR(MODE(flight), 1, 3)) AS airline_prefix,
-            (ARRAY_AGG(lat ORDER BY ts) FILTER (WHERE lat IS NOT NULL))[1] AS first_lat,
-            (ARRAY_AGG(lon ORDER BY ts) FILTER (WHERE lon IS NOT NULL))[1] AS first_lon,
-            (ARRAY_AGG(lat ORDER BY ts DESC) FILTER (WHERE lat IS NOT NULL))[1] AS last_lat,
-            (ARRAY_AGG(lon ORDER BY ts DESC) FILTER (WHERE lon IS NOT NULL))[1] AS last_lon,
+            arg_min(lat, ts) FILTER (WHERE lat IS NOT NULL) AS first_lat,
+            arg_min(lon, ts) FILTER (WHERE lon IS NOT NULL) AS first_lon,
+            arg_max(lat, ts) FILTER (WHERE lat IS NOT NULL) AS last_lat,
+            arg_max(lon, ts) FILTER (WHERE lon IS NOT NULL) AS last_lon,
             MIN(alt_baro) AS min_alt,
             MAX(alt_baro) AS max_alt,
             MAX(gs) AS max_gs
@@ -167,7 +167,7 @@ def build_flights(con, day_filter: str | None) -> int:
                   "NULL AS dlat, NULL AS dlon")
     dest_join = "LEFT JOIN airports ad ON ad.ident = r.destination" if have_routes else ""
     con.execute(f"""
-        CREATE OR REPLACE TEMP VIEW routed AS
+        CREATE OR REPLACE TABLE routed AS
         WITH g AS (
             SELECT f.hex, f.session_idx, f.first_lat, f.first_lon, f.last_lat, f.last_lon,
                    {route_cols}
@@ -226,26 +226,34 @@ def build_flights(con, day_filter: str | None) -> int:
         {airline_join}
         LEFT JOIN routed rt ON rt.hex = f.hex AND rt.session_idx = f.session_idx
     """
-    con.execute(f"CREATE OR REPLACE TEMP VIEW flights AS {q}")
-    n = con.execute("SELECT COUNT(*) FROM flights").fetchone()[0]
+    # Materialize the full join to a single parquet in one streaming pass. The
+    # join is too wide to hold in RAM and re-executing it per month OOMs, so we
+    # stage once to disk then split per month from the staged file.
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    staged = OUT_DIR / "_flights_all.parquet"
+    con.execute(f"""
+        COPY ({q}) TO '{staged}' (FORMAT 'parquet', COMPRESSION 'zstd')
+    """)
+    n = con.execute(f"SELECT COUNT(*) FROM read_parquet('{staged}')").fetchone()[0]
     if n == 0:
         print("[reconstruct] 0 flights produced (need more snapshot data).")
+        staged.unlink(missing_ok=True)
         return 0
 
-    # 4) write partitioned by month of first_seen
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
-    months = [r[0] for r in con.execute("""
-        SELECT DISTINCT strftime(TO_TIMESTAMP(first_seen), '%Y-%m') AS ym FROM flights ORDER BY 1
+    months = [r[0] for r in con.execute(f"""
+        SELECT DISTINCT strftime(TO_TIMESTAMP(first_seen), '%Y-%m') AS ym
+        FROM read_parquet('{staged}') ORDER BY 1
     """).fetchall()]
     for ym in months:
         out = OUT_DIR / f"flights_{ym}.parquet"
         con.execute(f"""
-            COPY (SELECT * FROM flights
+            COPY (SELECT * FROM read_parquet('{staged}')
                   WHERE strftime(TO_TIMESTAMP(first_seen), '%Y-%m') = '{ym}')
             TO '{out}' (FORMAT 'parquet', COMPRESSION 'zstd')
         """)
         count = con.execute(f"SELECT COUNT(*) FROM read_parquet('{out}')").fetchone()[0]
         print(f"[reconstruct] {ym}: {count:,} flights -> {out.name}")
+    staged.unlink(missing_ok=True)
     return n
 
 
@@ -254,8 +262,23 @@ def main() -> int:
     p.add_argument("--day", help="YYYY-MM-DD (default: all snapshots)")
     args = p.parse_args()
 
-    con = duckdb.connect()
-    n = build_flights(con, args.day)
+    # Use a file-backed DB so the pipeline's intermediate tables (sessioned,
+    # flights_agg, routed) spill to disk instead of forcing peak RAM to hold
+    # the full join at once.
+    db_path = OUT_DIR.parent / ".reconstruct.duckdb"
+    db_path.unlink(missing_ok=True)
+    con = duckdb.connect(str(db_path))
+    con.execute("SET preserve_insertion_order=false")
+    con.execute("SET memory_limit='4GB'")
+    con.execute("SET threads=4")
+    con.execute(f"SET temp_directory='{(OUT_DIR.parent / '.duckdb_tmp').as_posix()}'")
+    try:
+        n = build_flights(con, args.day)
+    finally:
+        con.close()
+        db_path.unlink(missing_ok=True)
+        wal = db_path.with_suffix(".duckdb.wal")
+        wal.unlink(missing_ok=True)
     print(f"\n[reconstruct] total {n:,} flights across {sum(1 for _ in OUT_DIR.glob('*.parquet'))} monthly files")
     return 0
 
