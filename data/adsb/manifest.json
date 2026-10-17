@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-12T03:01:50+00:00",
+  "generated_at": "2026-10-17T19:29:00+00:00",
   "origin": {
     "name": "Aarhus, Denmark",
     "lat": 56.16,
@@ -7,31 +7,6 @@
     "note": "One antenna. One sky. Everything that flies overhead."
   },
   "snapshots": [
-    {
-      "name": "snapshots_2026-09-13.parquet",
-      "path": "data/adsb/snapshots/snapshots_2026-09-13.parquet",
-      "bytes": 626875
-    },
-    {
-      "name": "snapshots_2026-09-14.parquet",
-      "path": "data/adsb/snapshots/snapshots_2026-09-14.parquet",
-      "bytes": 575501
-    },
-    {
-      "name": "snapshots_2026-09-15.parquet",
-      "path": "data/adsb/snapshots/snapshots_2026-09-15.parquet",
-      "bytes": 559673
-    },
-    {
-      "name": "snapshots_2026-09-16.parquet",
-      "path": "data/adsb/snapshots/snapshots_2026-09-16.parquet",
-      "bytes": 597728
-    },
-    {
-      "name": "snapshots_2026-09-17.parquet",
-      "path": "data/adsb/snapshots/snapshots_2026-09-17.parquet",
-      "bytes": 559026
-    },
     {
       "name": "snapshots_2026-09-18.parquet",
       "path": "data/adsb/snapshots/snapshots_2026-09-18.parquet",
@@ -155,24 +130,49 @@
     {
       "name": "snapshots_2026-10-12.parquet",
       "path": "data/adsb/snapshots/snapshots_2026-10-12.parquet",
-      "bytes": 11278
+      "bytes": 491501
+    },
+    {
+      "name": "snapshots_2026-10-13.parquet",
+      "path": "data/adsb/snapshots/snapshots_2026-10-13.parquet",
+      "bytes": 584698
+    },
+    {
+      "name": "snapshots_2026-10-14.parquet",
+      "path": "data/adsb/snapshots/snapshots_2026-10-14.parquet",
+      "bytes": 520114
+    },
+    {
+      "name": "snapshots_2026-10-15.parquet",
+      "path": "data/adsb/snapshots/snapshots_2026-10-15.parquet",
+      "bytes": 553014
+    },
+    {
+      "name": "snapshots_2026-10-16.parquet",
+      "path": "data/adsb/snapshots/snapshots_2026-10-16.parquet",
+      "bytes": 606478
+    },
+    {
+      "name": "snapshots_2026-10-17.parquet",
+      "path": "data/adsb/snapshots/snapshots_2026-10-17.parquet",
+      "bytes": 404819
     }
   ],
   "flights": [
     {
       "name": "flights_2026-08.parquet",
       "path": "data/adsb/flights/flights_2026-08.parquet",
-      "bytes": 209019
+      "bytes": 216502
     },
     {
       "name": "flights_2026-09.parquet",
       "path": "data/adsb/flights/flights_2026-09.parquet",
-      "bytes": 1760028
+      "bytes": 1791140
     },
     {
       "name": "flights_2026-10.parquet",
       "path": "data/adsb/flights/flights_2026-10.parquet",
-      "bytes": 692823
+      "bytes": 1021529
     }
   ],
   "enrichment": [
@@ -194,7 +194,7 @@
     {
       "name": "routes.parquet",
       "path": "data/adsb/enrichment/routes.parquet",
-      "bytes": 32962
+      "bytes": 33805
     }
   ]
 }
