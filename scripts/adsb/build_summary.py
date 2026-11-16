@@ -63,12 +63,23 @@ WIDEBODY_PREFIXES = (
 CARRIERS_FILE = DATA / "carriers.json"
 
 
-def load_carriers() -> tuple[dict, dict]:
+def load_carriers() -> tuple[dict, dict, list]:
     if not CARRIERS_FILE.exists():
         print("[carriers] missing - run scripts/adsb/carriers.py", file=sys.stderr)
-        return {}, {}
+        return {}, {}, []
     doc = json.loads(CARRIERS_FILE.read_text(encoding="utf-8"))
-    return doc.get("carriers", {}), doc.get("kinds", {})
+    return doc.get("carriers", {}), doc.get("kinds", {}), doc.get("bizjet_types", [])
+
+
+# ── how much of the record ships in the summary ──────────────────────────────
+# The summary is the site's first paint, so it has to stay small however long
+# the record gets. Everything that grows with time is cut to a recent window
+# here; the full history stays in the Parquet, one query away in Ask.
+WEEKS_DETAIL = 26        # weeks with a full day/kind/hour breakdown (the Week page)
+DAYS_DETAIL = 120        # days in the daily series and the weekday table
+SPARK_DAYS = 84          # days in the sparkline beside a signal
+MACRO_WEEKS = 26         # weeks in a macro gauge's series
+SKY_DAYS = 365           # the receiver footprint is drawn from the last year
 
 
 # ── confidence model ─────────────────────────────────────────────────────────
@@ -116,7 +127,7 @@ def main() -> int:
 
     # Resolve every flight to a registration country in Python, then push the
     # mapping back into DuckDB as a table we can join against.
-    rows = con.execute("SELECT hex, reg FROM f").fetchall()
+    rows = con.execute("SELECT DISTINCT hex, reg FROM f").fetchall()
     seen: dict[str, str] = {}
     for hx, reg in rows:
         if hx in seen:
@@ -128,11 +139,17 @@ def main() -> int:
     if seen:
         con.executemany("INSERT INTO hex_cc VALUES (?, ?)", list(seen.items()))
 
-    carriers, kind_meta = load_carriers()
-    con.execute("CREATE TABLE carrier (prefix VARCHAR, op_name VARCHAR, kind VARCHAR)")
+    carriers, kind_meta, bizjet_types = load_carriers()
+    con.execute("CREATE TABLE carrier (prefix VARCHAR, op_name VARCHAR, kind VARCHAR, "
+                "country VARCHAR)")
     if carriers:
-        con.executemany("INSERT INTO carrier VALUES (?, ?, ?)",
-                        [(p, v["name"], v["kind"]) for p, v in carriers.items()])
+        con.executemany("INSERT INTO carrier VALUES (?, ?, ?, ?)",
+                        [(p, v["name"], v["kind"], v.get("country"))
+                         for p, v in carriers.items()])
+    con.execute("CREATE TABLE cmeta (cc VARCHAR, region VARCHAR, continent VARCHAR)")
+    con.executemany("INSERT INTO cmeta VALUES (?, ?, ?)",
+                    [(cc, m.get("region"), m.get("continent")) for cc, m in countries.items()])
+    biz_list = ", ".join(f"'{t}'" for t in bizjet_types) or "''"
 
     wb_pred = " OR ".join(f"ac_type LIKE '{p}%'" for p in WIDEBODY_PREFIXES)
 
@@ -158,17 +175,33 @@ def main() -> int:
                     THEN LEAST(f.origin, f.destination) || '-' || GREATEST(f.origin, f.destination)
                END                                                          AS pair,
                ao.cc                                                        AS origin_cc,
-               ad.cc                                                        AS destination_cc,"""
+               ad.cc                                                        AS destination_cc,
+               -- The world region at the far end of a route that leaves
+               -- Europe. NULL for a flight inside Europe, or with no route.
+               CASE WHEN mo.continent <> 'Europe' THEN mo.region
+                    WHEN md.continent <> 'Europe' THEN md.region END        AS far_region,"""
         if have_routes else """
-               NULL AS is_overflight, NULL AS pair, NULL AS origin_cc, NULL AS destination_cc,""")
+               NULL AS is_overflight, NULL AS pair, NULL AS origin_cc, NULL AS destination_cc,
+               NULL AS far_region,""")
     route_joins = ("LEFT JOIN ap ao ON ao.ident = f.origin\n"
-                   "        LEFT JOIN ap ad ON ad.ident = f.destination" if have_routes else "")
+                   "        LEFT JOIN ap ad ON ad.ident = f.destination\n"
+                   "        LEFT JOIN cmeta mo ON mo.cc = ao.cc\n"
+                   "        LEFT JOIN cmeta md ON md.cc = ad.cc" if have_routes else "")
+    # A table, not a view. Every figure below is a query against this, and as
+    # a view each one re-read every Parquet file and re-ran the joins: a few
+    # hundred scans of the whole record per build, growing with every month.
+    # Materialised once it is one scan, and a year of flights is ~100 MB.
     con.execute(f"""
-        CREATE VIEW fx AS
+        CREATE TABLE fx AS
         SELECT f.*,{route_derived}
                h.cc                                              AS reg_cc,
                c.op_name                                         AS carrier_name,
                c.kind                                            AS carrier_kind,
+               c.country                                         AS carrier_country,
+               -- Business aviation is read off the airframe (see carriers.py):
+               -- a state or cargo operator flying one is not business travel.
+               COALESCE(f.ac_type IN ({biz_list})
+                        AND (c.kind IS NULL OR c.kind = 'bizjet'), FALSE) AS is_bizav,
                CASE WHEN {wb_pred} THEN 'widebody' ELSE 'narrowbody' END AS body,
                (c.kind = 'cargo')                                AS is_cargo,
                make_timestamp(f.first_seen * 1000000)            AS seen_at,
@@ -214,7 +247,11 @@ def main() -> int:
     # change. Until two such weeks exist the comparison is withheld entirely,
     # and the site says on what date it will start.
     compare = weekly_compare(daily)
-    baseline_complete = compare is not None
+    # ...unless the two weeks sit either side of a schedule change. Airlines
+    # switch timetables on the last Sunday of March and of October, and a week
+    # of one against a week of the other measures the calendar. The windows
+    # are still published so the page can say why the column is empty.
+    baseline_complete = compare is not None and not compare["schedule_change"]
 
     def scalar(sql: str):
         return con.execute(sql).fetchone()[0]
@@ -234,9 +271,9 @@ def main() -> int:
     # ── entity rollups, each with a current-vs-previous comparison ───────────
     def rollup(dim: str, extra: str = "") -> list[dict]:
         in_cur = (f"day BETWEEN '{compare['cur_from']}' AND '{compare['cur_to']}'"
-                  if compare else "FALSE")
+                  if baseline_complete else "FALSE")
         in_prev = (f"day BETWEEN '{compare['prev_from']}' AND '{compare['prev_to']}'"
-                   if compare else "FALSE")
+                   if baseline_complete else "FALSE")
         q = f"""
             SELECT {dim} AS key,
                    COUNT(*)                                                    AS flights,
@@ -333,12 +370,12 @@ def main() -> int:
     months = build_months(con, daily)
     trend = build_trend(daily)
     sky = build_sky(con)
-    routes = build_routes(con, countries, compare)
-    trends = build_weekly_trends(con, weeks)
+    routes = build_routes(con, countries, compare if baseline_complete else None)
+    macro = build_macro(con, daily, routes, carriers)
 
     signals = detect_signals(
         con, countries_roll, regions, operators, types, daily,
-        span_days, total, compare, totals, baseline_complete, week, routes, trends,
+        span_days, total, compare, totals, baseline_complete, week, routes, macro,
     )
 
     summary = {
@@ -361,7 +398,7 @@ def main() -> int:
         "continents": continents,
         "operators": operators[:60],
         "types": types[:60],
-        "daily": daily,
+        "daily": daily[-DAYS_DETAIL:],
         "hourly": hourly,
         "week": week,
         "weeks": weeks,
@@ -369,7 +406,7 @@ def main() -> int:
         "trend": trend,
         "sky": sky,
         "routes": routes,
-        "trends": trends,
+        "macro": macro,
     }
 
     OUT.write_text(json.dumps(summary, separators=(",", ":")), encoding="utf-8")
@@ -398,9 +435,46 @@ def weekly_compare(daily) -> dict | None:
     days = [(newest - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(13, -1, -1)]
     if not all(d in have for d in days):
         return None
+    # A schedule change anywhere inside the fourteen days means the two weeks
+    # are not flown to the same timetable.
+    s0, s1 = season_of(days[0]), season_of(days[13])
     return {"kind": "week",
             "prev_from": days[0], "prev_to": days[6],
-            "cur_from": days[7], "cur_to": days[13]}
+            "cur_from": days[7], "cur_to": days[13],
+            "schedule_change": s1["from"] if s0["code"] != s1["code"] else None}
+
+
+# ── schedule seasons ─────────────────────────────────────────────────────────
+def _last_sunday(year: int, month: int) -> datetime:
+    d = datetime(year + (month == 12), (month % 12) + 1, 1) - timedelta(days=1)
+    return d - timedelta(days=(d.weekday() + 1) % 7)
+
+
+def season_of(day: str) -> dict:
+    """
+    The airline schedule season a day falls in.
+
+    Airlines worldwide publish two timetables a year and switch between them
+    on the same two dates: the summer schedule starts on the last Sunday of
+    March, the winter schedule on the last Sunday of October. Across either
+    date thousands of routes start or stop at once. That step is the calendar,
+    not the economy, and it is by far the largest move in this record - so
+    every comparison on the site is made inside one season, or against the
+    same weeks a year earlier, and never across the switch.
+    """
+    d = datetime.fromisoformat(day)
+    summer, winter = _last_sunday(d.year, 3), _last_sunday(d.year, 10)
+    if summer <= d < winter:
+        lo, hi, code = summer, winter, f"S{d.year % 100:02d}"
+        label = f"summer {d.year} schedule"
+    elif d >= winter:
+        lo, hi, code = winter, _last_sunday(d.year + 1, 3), f"W{d.year % 100:02d}"
+        label = f"winter {d.year}/{(d.year + 1) % 100:02d} schedule"
+    else:
+        lo, hi, code = _last_sunday(d.year - 1, 10), summer, f"W{(d.year - 1) % 100:02d}"
+        label = f"winter {d.year - 1}/{d.year % 100:02d} schedule"
+    return {"code": code, "label": label, "from": lo.strftime("%Y-%m-%d"),
+            "to": (hi - timedelta(days=1)).strftime("%Y-%m-%d")}
 
 
 def build_routes(con, countries_meta: dict, compare: dict | None) -> dict | None:
@@ -552,9 +626,12 @@ def build_sky(con, origin=(56.16, 10.20), sample=1200, sectors=72) -> dict | Non
     it is a seeded sample of the points and the envelope, a few kilobytes, so
     the instrument is on screen before anything heavier has loaded.
     """
+    # The last year only: the footprint is a property of the antenna as it is
+    # now, and reading every position ever recorded grows without limit.
     rows = con.execute(
         "SELECT first_lat, first_lon FROM fx "
-        "WHERE first_lat IS NOT NULL AND first_lon IS NOT NULL"
+        "WHERE first_lat IS NOT NULL AND first_lon IS NOT NULL "
+        f"AND first_seen >= (SELECT MAX(first_seen) FROM fx) - {SKY_DAYS} * 86400"
     ).fetchall()
     if not rows:
         return None
@@ -584,6 +661,11 @@ def build_sky(con, origin=(56.16, 10.20), sample=1200, sectors=72) -> dict | Non
 
     keep = pts if len(pts) <= sample else random.Random(1090).sample(pts, sample)
     return {
+        # Flights in the same window, with or without a position, so the page
+        # can say what share report one.
+        "of": con.execute(
+            "SELECT COUNT(*) FROM fx WHERE first_seen >= "
+            f"(SELECT MAX(first_seen) FROM fx) - {SKY_DAYS} * 86400").fetchone()[0],
         "n": len(pts), "scale": scale,
         "p50": round(p50), "p95": round(p95), "p99": round(p99),
         "far": round(kms[-1]), "beyond": sum(1 for k in kms if k > scale),
@@ -676,7 +758,7 @@ def build_trend(daily) -> dict:
         for k, v in sorted(hist.items(), key=lambda kv: DOW_ORDER.index(kv[0]))
     ]
     return {
-        "days": days,
+        "days": days[-DAYS_DETAIL:],
         "dow": dow_profile,
         "mean_per_day": round(mean, 1),
         "complete_days": len(full),
@@ -686,141 +768,346 @@ def build_trend(daily) -> dict:
     }
 
 
-def _fit_trend(series: list[int]) -> dict:
-    """Ordinary least squares over a weekly series in chronological order.
+# ── the macro board ──────────────────────────────────────────────────────────
+# What the record is for. A count of aircraft says nothing about the economy;
+# a count of *freighters*, or of business jets, or of flights to one end of a
+# trade lane, does - provided it is compared against something that is not
+# simply a different time of year. Each gauge below is one such line, defined
+# by a predicate that runs unchanged here and in the browser's `flights` view.
+GAUGES = [
+    {"id": "freight", "label": "Air freight", "group": "Trade",
+     "where": "is_cargo",
+     "reads": "All-cargo operators. Freighters fly when there are goods to move, "
+              "not when a timetable says so - the closest thing overhead to a "
+              "trade figure."},
+    {"id": "freight_cn", "label": "China-Europe freighters", "group": "Trade",
+     "where": "is_cargo AND carrier_country = 'CN'",
+     "reads": "Freighters flown by Chinese cargo airlines between China and "
+              "European hubs: e-commerce parcels one way, machinery and luxury "
+              "goods the other. A direct reading on one trade lane."},
+    {"id": "freight_west", "label": "Express and Western freighters", "group": "Trade",
+     "where": "is_cargo AND carrier_country <> 'CN'",
+     "reads": "DHL, UPS, FedEx and the European overnight parcel network, plus "
+              "Western heavy freighters. Tracks parcel volumes and business-to-"
+              "business shipping inside Europe."},
+    {"id": "bizav", "label": "Business aviation", "group": "Business",
+     "where": "is_bizav",
+     "reads": "Business jets, counted by airframe. Corporate and private travel "
+              "at its most discretionary - the first line cut in a downturn and "
+              "the first to return."},
+    {"id": "network", "label": "Full-service scheduled", "group": "Business",
+     "where": "carrier_kind = 'network'",
+     "reads": "Network airlines. Carries business travel and connecting traffic; "
+              "less seasonal than holiday flying, but it follows the timetable."},
+    {"id": "domestic", "label": "Danish domestic", "group": "Business",
+     "where": "origin LIKE 'EK%' AND destination LIKE 'EK%'",
+     "reads": "Copenhagen to Jutland and back: shuttles that exist for the "
+              "working week. Tracks Danish business activity more than tourism."},
+    {"id": "transatlantic", "label": "Transatlantic passenger", "group": "Long-haul",
+     "where": "far_region = 'North America' AND is_cargo IS NOT TRUE",
+     "reads": "Passenger flights between Europe and North America crossing "
+              "overhead. Long-haul capacity is expensive to fly empty, so it "
+              "follows premium and tourist demand across the Atlantic."},
+    {"id": "eastasia", "label": "East Asia passenger", "group": "Long-haul",
+     "where": "far_region = 'East Asia' AND is_cargo IS NOT TRUE",
+     "reads": "Passenger flights between Europe and China, Japan and Korea. "
+              "Business ties and tourism with East Asia, and a reading on how "
+              "open that corridor is."},
+    {"id": "gulf", "label": "Gulf hubs", "group": "Long-haul",
+     "where": "far_region = 'Gulf'",
+     "reads": "Flights to and from Dubai, Doha and the other Gulf hubs - the "
+              "connecting route from Scandinavia to South Asia, Africa and "
+              "Australia."},
+    {"id": "leisure", "label": "Low-cost and charter", "group": "Consumer",
+     "where": "carrier_kind IN ('lowcost', 'leisure')",
+     "reads": "Price-led and holiday flying: household discretionary spending. "
+              "The most seasonal line here, so it only means something year on "
+              "year."},
+    {"id": "total", "label": "All flights", "group": "All",
+     "where": "TRUE",
+     "reads": "Everything the antenna hears. Mostly the passenger timetable; "
+              "shown as the yardstick the other lines are read against."},
+]
 
-    Returns the slope in flights per week, the same slope as a share of the
-    mean, R squared, the length of the monotonic run at the tail of the
-    series (the "3 weeks running" streak), and the fraction of consecutive
-    week to week moves that went the trend's way.
+# How many stepped weeks back "a year ago" is. 52 weeks is 364 days, so the
+# year-ago week holds the same weekdays and sits at the same point in the
+# schedule season. Overridable only so the year-on-year path can be exercised
+# before a year of record exists.
+YOY_WEEKS = int(os.environ.get("OVRHEAD_YOY_WEEKS", "52"))
+
+
+def nice_day(day: str, year: bool = False) -> str:
+    """'9 November' - without %-d, which the collector's Windows Python lacks."""
+    d = datetime.fromisoformat(day)
+    return f"{d.day} {d.strftime('%B')}" + (f" {d.year}" if year else "")
+
+
+def _mean(xs):
+    return sum(xs) / len(xs) if xs else 0.0
+
+
+def _dispersion(vals: list, seasons: list) -> float:
     """
-    n = len(series)
-    mean = sum(series) / n
-    xm = (n - 1) / 2
-    num = sum((i - xm) * (y - mean) for i, y in enumerate(series))
-    den = sum((i - xm) ** 2 for i in range(n))
-    slope = num / den if den else 0.0
-    slope_pct = slope / mean * 100 if mean else 0.0
-    ss_tot = sum((y - mean) ** 2 for y in series)
-    ss_res = sum((y - (mean + slope * (i - xm))) ** 2 for i, y in enumerate(series))
-    r2 = 1 - ss_res / ss_tot if ss_tot else 0.0
+    How much noisier than pure chance a weekly count is.
 
-    diffs = [b - a for a, b in zip(series, series[1:])]
-    sign = 1 if slope > 0 else -1 if slope < 0 else 0
-    streak = 0
-    for d in reversed(diffs):
-        if sign and ((d > 0 and sign > 0) or (d < 0 and sign < 0)):
-            streak += 1
-        else:
+    A count of independent flights would vary week to week like a Poisson
+    variable, with variance equal to its mean. Real traffic varies more: a
+    rotation is several flights that come and go together. This estimates the
+    ratio from successive weeks inside one schedule season, using the median
+    so a genuine trend or one odd week does not inflate it.
+    """
+    r = []
+    for i in range(len(vals) - 1):
+        a, b = vals[i], vals[i + 1]
+        if a is None or b is None or not seasons[i] or seasons[i] != seasons[i + 1]:
+            continue
+        if a + b > 0:
+            r.append((a - b) ** 2 / (a + b))
+    if len(r) < 3:
+        return 2.0
+    r.sort()
+    return max(1.0, r[len(r) // 2])
+
+
+def _versus(recent: list, base: list, phi: float) -> dict | None:
+    """Mean of one set of weeks against another, with how sure the gap is."""
+    if not recent or not base:
+        return None
+    a, b = _mean(recent), _mean(base)
+    if b <= 0:
+        return None
+    se = math.sqrt(phi * a / len(recent) + phi * b / len(base))
+    return {"pct": round((a / b - 1) * 100, 1), "recent": round(a, 1), "base": round(b, 1),
+            "n_recent": len(recent), "n_base": len(base),
+            "z": round((a - b) / se, 2) if se else 0.0}
+
+
+def stepped_weeks(daily) -> list[dict]:
+    """
+    Every seven-day window back from the newest complete day to the start of
+    the record, newest first. Unlike build_weeks this does not stop at the
+    first gap: a day the receiver was down makes that one week unusable
+    (`ok` False) and the series carries on behind it, which is what lets a
+    year-on-year comparison survive an outage in between.
+    """
+    have = {d["day"] for d in daily if not d["partial"]}
+    if not have:
+        return []
+    newest, first = datetime.fromisoformat(max(have)), datetime.fromisoformat(min(have))
+    out, i = [], 0
+    while True:
+        end = newest - timedelta(days=7 * i)
+        if end - timedelta(days=6) < first:
             break
-    same = sum(1 for d in diffs if sign and ((d > 0 and sign > 0) or (d < 0 and sign < 0)))
+        days = [(end - timedelta(days=j)).strftime("%Y-%m-%d") for j in range(6, -1, -1)]
+        a, b = season_of(days[0]), season_of(days[-1])
+        out.append({"from": days[0], "to": days[-1], "days": days,
+                    "ok": all(d in have for d in days),
+                    # None for the week the timetable changed in: it belongs
+                    # to neither season and is compared with nothing.
+                    "season": a["code"] if a["code"] == b["code"] else None})
+        i += 1
+    return out
+
+
+def build_macro(con, daily, routes, carriers) -> dict | None:
+    """
+    The macro board: a handful of economically meaningful lines, each compared
+    only against something comparable.
+
+    The ladder, best first, chosen per gauge from what the record holds:
+
+      yoy     the latest four weeks against the same four weeks a year earlier
+              (52 weeks back, so weekdays and schedule season both line up).
+              The only comparison with the time of year fully taken out.
+      season  the latest k weeks against the k before them, all inside the
+              current schedule season (k = 2 at four weeks in, up to 4). The
+              timetable switch is excluded by construction; the time of year
+              is not, and the output says so.
+      none    too early in the season for either. The level is published and
+              the change is withheld, with the date it resumes.
+
+    Alongside, `step` records what each line did across the last timetable
+    switch. It is published precisely because it is not a signal: it shows how
+    much of each line is the calendar, which is the context every other figure
+    needs.
+
+    Cost is one grouped scan for the gauges and one per dimension for the
+    movers, each over a fixed window, so it does not grow with the record. The
+    output is capped at MACRO_WEEKS of series per gauge.
+    """
+    weeks = stepped_weeks(daily)
+    usable = [w for w in weeks if w["ok"]]
+    if not usable:
+        return None
+
+    cols = ", ".join(f"SUM(CASE WHEN {g['where']} THEN 1 ELSE 0 END)" for g in GAUGES)
+    by_day = {r[0]: r[1:] for r in con.execute(
+        f"SELECT day, {cols} FROM fx GROUP BY 1").fetchall()}
+    zero = (0,) * len(GAUGES)
+
+    newest = weeks[0]["to"]
+    cur = season_of(newest)
+    prev = season_of((datetime.fromisoformat(cur["from"]) - timedelta(days=1))
+                     .strftime("%Y-%m-%d"))
+    seasons = [w["season"] for w in weeks]
+
+    # The run of complete weeks inside the current season, newest first.
+    run = []
+    for i, w in enumerate(weeks):
+        if w["season"] != cur["code"]:
+            break
+        if w["ok"]:
+            run.append(i)
+    k = min(4, len(run) // 2)
+    recent_ix, base_ix = run[:k], run[k:2 * k]
+
+    yoy_cur = [i for i in range(4) if i < len(weeks) and weeks[i]["ok"]]
+    yoy_prev = [i for i in range(YOY_WEEKS, YOY_WEEKS + 4)
+                if i < len(weeks) and weeks[i]["ok"]]
+    yoy_ready = len(yoy_cur) >= 3 and len(yoy_prev) >= 3
+
+    # Either side of the last timetable switch: the first complete weeks of
+    # this season against the last complete weeks of the one before.
+    post_ix = [i for i in reversed(range(len(weeks)))
+               if weeks[i]["season"] == cur["code"] and weeks[i]["ok"]][:4]
+    pre_ix = [i for i in range(len(weeks))
+              if weeks[i]["season"] == prev["code"] and weeks[i]["ok"]][:4]
+    step_ready = len(post_ix) >= 2 and len(pre_ix) >= 2
+    if step_ready:                      # same number of weeks on each side
+        m = min(len(post_ix), len(pre_ix))
+        post_ix, pre_ix = post_ix[:m], pre_ix[:m]
+
+    gauges = []
+    tot_j = next(j for j, g in enumerate(GAUGES) if g["id"] == "total")
+    for j, g in enumerate(GAUGES):
+        vals = [sum(by_day.get(d, zero)[j] for d in w["days"]) if w["ok"] else None
+                for w in weeks]
+        if not any(vals):
+            continue
+        phi = _dispersion(vals, seasons)
+        pick = lambda ix: [vals[i] for i in ix]
+
+        yoy = _versus(pick(yoy_cur), pick(yoy_prev), phi) if yoy_ready else None
+        season = _versus(pick(recent_ix), pick(base_ix), phi) if k >= 2 else None
+        step = _versus(pick(post_ix), pick(pre_ix), phi) if step_ready else None
+        best = yoy or season
+        basis = "yoy" if yoy else "season" if season else None
+
+        # Weekday against weekend, per day, over the latest four usable weeks.
+        wd = we = 0
+        for i in yoy_cur:
+            for d in weeks[i]["days"]:
+                v = by_day.get(d, zero)[j]
+                if datetime.fromisoformat(d).weekday() >= 5:
+                    we += v
+                else:
+                    wd += v
+        lift = round((wd / 5) / (we / 2) * 100 - 100) if we else None
+
+        level = _mean(pick(yoy_cur))
+        level_tot = _mean([sum(by_day.get(d, zero)[tot_j] for d in weeks[i]["days"])
+                           for i in yoy_cur])
+        gauges.append({
+            "id": g["id"], "label": g["label"], "group": g["group"], "reads": g["reads"],
+            "per_week": round(level, 1),
+            "share": round(level / level_tot * 100, 1) if level_tot else None,
+            "weekday_lift_pct": lift,
+            "basis": basis,
+            "change_pct": best["pct"] if best else None,
+            "z": best["z"] if best else None,
+            # Twice the week-to-week noise, and at least five percent: below
+            # that a move is indistinguishable from an ordinary week.
+            "significant": bool(best and abs(best["z"]) >= 2 and abs(best["pct"]) >= 5),
+            "yoy": yoy, "season": season, "step": step,
+            "series": [{"k": weeks[i]["from"][5:], "v": vals[i], "s": weeks[i]["season"]}
+                       for i in reversed(range(min(len(weeks), MACRO_WEEKS)))],
+            "sql": ("SELECT day, COUNT(*) AS flights\nFROM flights\n"
+                    f"WHERE {g['where']}\nGROUP BY 1 ORDER BY 1;"),
+        })
+
+    first_day = min(d["day"] for d in daily if not d["partial"])
+    day_plus = lambda day, n: (datetime.fromisoformat(day) + timedelta(days=n)).strftime("%Y-%m-%d")
     return {
-        "slope": round(slope, 2), "slope_pct": round(slope_pct, 1),
-        "r2": round(r2, 3), "mean": round(mean, 1),
-        "streak": streak, "consistency": round(same / len(diffs), 2) if diffs else 0.0,
+        "season": {**cur, "weeks": len(run)},
+        "prev_season": prev,
+        "weeks": len(usable),
+        "k": k,
+        # Four complete weeks inside the season is the first in-season
+        # comparison (two against two): the day after the 28th day.
+        "season_ready_on": None if k >= 2 else day_plus(cur["from"], 28),
+        "yoy_ready": yoy_ready,
+        # Three of the latest four weeks need a counterpart 52 weeks back.
+        "yoy_from": None if yoy_ready else day_plus(first_day, 7 * YOY_WEEKS + 21),
+        "step_ready": step_ready,
+        "step_weeks": len(post_ix) if step_ready else 0,
+        "gauges": gauges,
+        "movers": build_movers(con, weeks, yoy_cur, yoy_prev, routes, carriers)
+                  if yoy_ready else [],
     }
 
 
-def build_weekly_trends(con, weeks) -> dict | None:
+def build_movers(con, weeks, cur_ix, prev_ix, routes, carriers) -> list[dict]:
     """
-    Multi-week trends across entities the site cares about.
+    Countries, city-pairs and airlines that moved year on year.
 
-    For each of a small set of dimensions (route country, city pair, kind of
-    carrier, all-vs-overflight, wide-body share) we compute a weekly series
-    over every complete stepped week on record, then fit an OLS line and
-    measure the tail streak. Nothing here calls anything a trend that does
-    not sustain across the record; that judgement is deferred to the signal
-    detector, which knows the confidence tiers.
+    Only year on year. A destination moving week on week, or across a season,
+    is the timetable: flights to the Mediterranean fall every October and
+    return every March, and reporting that is reporting the calendar. Against
+    the same four weeks a year earlier the season cancels, and what is left is
+    a route opened or closed, capacity added or withdrawn - a decision somebody
+    made about demand.
 
-    Weeks arrive newest first; we reverse them here so the series reads
-    left to right in calendar order, which is what the site's sparklines
-    and the copy both assume.
+    Each query reads two fixed 28-day windows, however long the record is.
     """
-    if len(weeks) < 3:
-        return None
-    ordered = list(reversed(weeks))
-    labels = [w["from"][5:] for w in ordered]
-    values = ",".join(f"({i}, '{w['from']}', '{w['to']}')" for i, w in enumerate(ordered))
-    wt = f"(VALUES {values}) AS wk(idx, lo, hi)"
+    def in_days(ix):
+        return ", ".join(f"'{d}'" for i in ix for d in weeks[i]["days"])
+    cur_d, prev_d = in_days(cur_ix), in_days(prev_ix)
+    scope = f"day IN ({cur_d}, {prev_d})"
+    agg = (f"SUM(CASE WHEN day IN ({cur_d}) THEN 1 ELSE 0 END), "
+           f"SUM(CASE WHEN day IN ({prev_d}) THEN 1 ELSE 0 END)")
+    nc, npv = len(cur_ix), len(prev_ix)
 
-    def rows(sql: str) -> dict[str, list[int]]:
-        out: dict[str, list[int]] = {}
-        for k, i, n in con.execute(sql).fetchall():
-            if k is None:
+    names = {c["key"]: c["name"] for c in (routes or {}).get("countries", [])}
+    index = (routes or {}).get("index", {})
+
+    def pair_name(key):
+        a, _, b = key.partition("-")
+        return f"{index.get(a, [a, a])[1] or a} – {index.get(b, [b, b])[1] or b}"
+
+    dims = [
+        ("country", f"""
+            WITH t AS (
+                SELECT origin_cc AS k, day FROM fx WHERE origin_cc IS NOT NULL AND {scope}
+                UNION ALL
+                SELECT destination_cc, day FROM fx
+                WHERE destination_cc IS NOT NULL AND destination_cc <> origin_cc AND {scope})
+            SELECT k, {agg} FROM t GROUP BY 1""",
+         lambda key: f"Flights to or from {names.get(key, key)}",
+         lambda key: f"origin_cc = '{key}' OR destination_cc = '{key}'"),
+        ("pair", f"SELECT pair, {agg} FROM fx WHERE pair IS NOT NULL AND {scope} GROUP BY 1",
+         pair_name, lambda key: f"pair = '{key}'"),
+        ("operator", f"SELECT airline_prefix, {agg} FROM fx "
+                     f"WHERE airline_prefix IS NOT NULL AND {scope} GROUP BY 1",
+         lambda key: (carriers.get(key, {}).get("name") or key),
+         lambda key: f"airline_prefix = '{key}'"),
+    ]
+    out = []
+    for dim, sql, label, where in dims:
+        found = []
+        for key, c, p in con.execute(sql).fetchall():
+            a, b = c / nc, p / npv
+            # Ten a week on both sides: below that one rotation is the move.
+            if a < 10 or b < 10:
                 continue
-            out.setdefault(k, [0] * len(ordered))
-            out[k][int(i)] = int(n)
-        return out
-
-    def analyse(name: str, key: str, series: list[int], meta: dict) -> dict | None:
-        if any(v == 0 for v in series):    # a week with zero flights collapses the fit
-            return None
-        f = _fit_trend(series)
-        return {"dim": name, "key": key, "series": series, "labels": labels,
-                **meta, **f}
-
-    # Route country: flights touching a country at either end, no double count
-    # when both ends are the same.
-    r_cc = rows(f"""
-        WITH t AS (
-            SELECT origin_cc AS cc, day FROM fx WHERE origin_cc IS NOT NULL
-            UNION ALL
-            SELECT destination_cc, day FROM fx
-            WHERE destination_cc IS NOT NULL AND destination_cc <> origin_cc)
-        SELECT t.cc, wk.idx, COUNT(*)
-        FROM t JOIN {wt} ON t.day BETWEEN wk.lo AND wk.hi
-        GROUP BY 1, 2""")
-
-    # City pair: unordered.
-    r_pair = rows(f"""
-        SELECT pair, wk.idx, COUNT(*)
-        FROM fx JOIN {wt} ON fx.day BETWEEN wk.lo AND wk.hi
-        WHERE pair IS NOT NULL
-        GROUP BY 1, 2""")
-
-    # Kind of flying, and cargo split by continent of the far end.
-    r_kind = rows(f"""
-        SELECT carrier_kind, wk.idx, COUNT(*)
-        FROM fx JOIN {wt} ON fx.day BETWEEN wk.lo AND wk.hi
-        WHERE carrier_kind IS NOT NULL
-        GROUP BY 1, 2""")
-
-    # A handful of composition series the analyst will look for by name.
-    r_flow = rows(f"""
-        SELECT k, wk.idx, COUNT(*) FROM (
-            SELECT CASE WHEN origin IS NULL THEN NULL
-                        WHEN is_overflight THEN 'overflight'
-                        ELSE 'to-or-from-Denmark' END AS k, day FROM fx
-            UNION ALL
-            SELECT 'total', day FROM fx
-            UNION ALL
-            SELECT 'widebody', day FROM fx WHERE body = 'widebody'
-        ) t JOIN {wt} ON t.day BETWEEN wk.lo AND wk.hi
-        WHERE k IS NOT NULL
-        GROUP BY 1, 2""")
-
-    trends: list[dict] = []
-    for cc, s in r_cc.items():
-        if sum(s) < 60:                   # 15 a week average, min honest bar
-            continue
-        t = analyse("country", cc, s, {})
-        if t: trends.append(t)
-    for pk, s in r_pair.items():
-        if sum(s) < 80:                   # pairs are noisier; higher floor
-            continue
-        t = analyse("pair", pk, s, {})
-        if t: trends.append(t)
-    for kk, s in r_kind.items():
-        if sum(s) < 100 or kk == "unclassified":
-            continue
-        t = analyse("kind", kk, s, {})
-        if t: trends.append(t)
-    for k, s in r_flow.items():
-        t = analyse("flow", k, s, {})
-        if t: trends.append(t)
-
-    return {"weeks": len(ordered), "labels": labels, "trends": trends}
-
+            v = _versus([a] * nc, [b] * npv, 2.0)
+            if not v or abs(v["pct"]) < 20 or abs(v["z"]) < 3:
+                continue
+            found.append({"dim": dim, "key": key, "name": label(key), "where": where(key), **v})
+        found.sort(key=lambda m: -abs(m["z"]))
+        out += found[:3]
+    out.sort(key=lambda m: -abs(m["z"]))
+    return out
 
 def build_weeks(con, daily, kind_meta) -> list[dict]:
     """
@@ -849,7 +1136,7 @@ def build_weeks(con, daily, kind_meta) -> list[dict]:
     while True:
         end = newest - timedelta(days=7 * step)
         days = [(end - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(6, -1, -1)]
-        if not all(d in have for d in days):
+        if not all(d in have for d in days) or step >= WEEKS_DETAIL:
             break                          # ran off the start of the record
         windows.append(days)
         step += 1
@@ -870,6 +1157,11 @@ def build_weeks(con, daily, kind_meta) -> list[dict]:
                 "prev_flights": b,
                 "change_pct": round(ch, 1) if ch is not None else None,
                 "prev_from": prev["from"], "prev_to": prev["to"],
+                # Set when the two weeks are flown to different timetables, so
+                # the page can say the change is mostly the calendar.
+                "schedule_change": (season_of(wk["to"])["from"]
+                                    if season_of(prev["from"])["code"]
+                                    != season_of(wk["to"])["code"] else None),
             }
         else:
             wk["wow"] = None
@@ -960,7 +1252,7 @@ def build_week_for(con, days: list[str], kind_meta) -> dict:
 # ── signal detection ─────────────────────────────────────────────────────────
 def detect_signals(con, countries, regions, operators, types, daily,
                    span_days, total, compare, totals,
-                   baseline_complete, week=None, routes=None, trends=None) -> list[dict]:
+                   baseline_complete, week=None, routes=None, macro=None) -> list[dict]:
     """
     Turn the rollups into a ranked list of claims.
 
@@ -997,7 +1289,10 @@ def detect_signals(con, countries, regions, operators, types, daily,
 
     full_days = [d for d in daily if not d["partial"]]
 
-    days_sql = ", ".join(f"'{d['day']}'" for d in full_days)
+    # The shape beside a signal is the recent record, not all of it: a fixed
+    # window keeps both the query and the file the same size every year.
+    spark_days = full_days[-SPARK_DAYS:]
+    days_sql = ", ".join(f"'{d['day']}'" for d in spark_days)
 
     def series(where: str | None = None) -> list[dict]:
         """One value per complete day, for the sparkline beside a signal.
@@ -1007,12 +1302,181 @@ def detect_signals(con, countries, regions, operators, types, daily,
             return []
         w = f"WHERE day IN ({days_sql})" + (f" AND ({where})" if where else "")
         got = dict(con.execute(f"SELECT day, COUNT(*) FROM fx {w} GROUP BY 1").fetchall())
-        return [{"k": d["day"][5:], "v": int(got.get(d["day"], 0) or 0)} for d in full_days]
+        return [{"k": d["day"][5:], "v": int(got.get(d["day"], 0) or 0)} for d in spark_days]
 
     def week_series(kind: str | None = None) -> list[dict]:
         """The seven days of the week, in order, for one kind or for all."""
         return [{"k": d["dow"], "v": d["kinds"].get(kind, 0) if kind else d["flights"]}
                 for d in week["days"]]
+
+    # ── The macro board ──────────────────────────────────────────────────
+    # The readings the site exists for. Every one is a line with an economic
+    # meaning, compared only against something comparable: the same weeks a
+    # year earlier, or other weeks of the same schedule season. Nothing here
+    # is measured across a timetable switch.
+    if macro:
+        G = {g["id"]: g for g in macro["gauges"]}
+        sea, prev_sea = macro["season"], macro["prev_season"]
+        word = "winter" if sea["code"].startswith("W") else "summer"
+
+        def wk_series(g):
+            return [{"k": p["k"], "v": p["v"] or 0} for p in g["series"]]
+
+        # What the timetable switch did, and to what. Published because it is
+        # NOT a signal: it sizes the calendar effect in each line, and the
+        # lines that ignore it are the ones driven by demand.
+        fr, tot = G.get("freight"), G.get("total")
+        if macro["step_ready"] and fr and tot and fr["step"] and tot["step"]:
+            st, tt = fr["step"]["pct"], tot["step"]["pct"]
+            freight_said = ("Freight held." if abs(st) < 6 else
+                            f"Freight {'rose' if st > 0 else 'fell'} {abs(st):.0f}%.")
+            show = [G[i] for i in ("leisure", "network", "bizav", "transatlantic",
+                                   "eastasia", "total") if i in G and G[i]["step"]]
+            add(
+                kind="season", scope="all", category="reading", lead=True,
+                series=wk_series(fr),
+                title=(f"The {word} timetable {'added' if tt > 0 else 'took'} "
+                       f"{abs(tt):.0f}% {'to' if tt > 0 else 'of'} the flights overhead. "
+                       f"{freight_said}"),
+                metric=f"{st:+.0f}%", metric_label="air freight across the timetable switch",
+                comparison=" · ".join(f"{g['label']} {g['step']['pct']:+.0f}%" for g in show),
+                where=f"{macro['step_weeks']} weeks either side of {nice_day(sea['from'], True)}",
+                interpretation=(
+                    "Airlines publish two timetables a year and switch on the last "
+                    "Sunday of March and of October. The move in passenger flying at "
+                    "that date is the calendar, not the economy, so it is shown once, "
+                    "here, and nothing else on this site is compared across it. A "
+                    "line that holds through the switch is flying because of demand "
+                    "rather than because of the timetable - which is why freight "
+                    "leads the board."
+                ),
+                caveat=("Freight has a season of its own - the build-up to Christmas - "
+                        "so a flat line through late October is not a flat year. Only "
+                        "the same weeks a year earlier can separate that out"
+                        + (f", from {nice_day(macro['yoy_from'], True)}."
+                           if macro["yoy_from"] else ".")),
+                confidence="observed",
+                sql=("SELECT day, carrier_kind, COUNT(*) AS flights\n"
+                     "FROM flights\n"
+                     f"WHERE day BETWEEN '{(datetime.fromisoformat(sea['from']) - timedelta(days=28)).strftime('%Y-%m-%d')}'"
+                     f" AND '{(datetime.fromisoformat(sea['from']) + timedelta(days=27)).strftime('%Y-%m-%d')}'\n"
+                     "GROUP BY 1, 2 ORDER BY 1, 3 DESC;"),
+            )
+
+        # Gauges that moved by more than their own week-to-week noise.
+        moved = [g for g in macro["gauges"] if g["id"] != "total" and g["significant"]]
+        moved.sort(key=lambda g: -abs(g["z"]))
+        for g in moved:
+            yoy = g["basis"] == "yoy"
+            v = g["yoy"] if yoy else g["season"]
+            up = v["pct"] > 0
+            add(
+                kind="macro", scope="gauge", entity=g["id"], category="reading",
+                lead=g["group"] in ("Trade", "Business"),
+                series=wk_series(g),
+                title=(f"{g['label']} {'up' if up else 'down'} {abs(v['pct']):.0f}% "
+                       + ("on a year ago" if yoy else f"inside the {sea['label']}")),
+                metric=f"{v['pct']:+.0f}%",
+                metric_label=("vs the same four weeks a year earlier" if yoy else
+                              f"latest {v['n_recent']} weeks vs the {v['n_base']} before"),
+                comparison=f"{v['recent']:,.0f} flights a week vs {v['base']:,.0f}",
+                where=g["group"],
+                interpretation=(
+                    g["reads"] + " " +
+                    ("Against the same weeks a year earlier the season cancels out, so "
+                     "this is a change in how much is being flown."
+                     if yoy else
+                     "Both windows are flown to the same timetable, so this is not the "
+                     "schedule switch - and it is larger than this line's usual "
+                     "week-to-week variation.")
+                ),
+                caveat=(
+                    "Year on year removes the season but not a one-off: a strike, an "
+                    "airspace closure or a holiday falling in a different week moves "
+                    "it. Flights are capacity offered, not passengers or tonnes carried."
+                    if yoy else
+                    "The time of year is still in this figure: demand drifts inside "
+                    "a season too. It can only be taken out against the same weeks a "
+                    "year earlier"
+                    + (f", which begins {nice_day(macro['yoy_from'], True)}."
+                       if macro["yoy_from"] else ".")
+                ),
+                confidence=("strong" if yoy and abs(v["z"]) >= 3 else
+                            "moderate" if yoy else "early"),
+                sql=g["sql"],
+            )
+
+        # Too early in a season for any comparison: say so, with the date.
+        if not macro["yoy_ready"] and macro["k"] < 2:
+            add(
+                kind="coverage", scope="all", category="reading",
+                series=wk_series(tot) if tot else [],
+                title=f"Comparisons resume {nice_day(macro['season_ready_on'])}",
+                metric=f"{sea['weeks']}", metric_label=f"of 4 weeks into the {sea['label']}",
+                comparison=f"The timetable changed on {nice_day(sea['from'], True)}",
+                where=None,
+                interpretation=(
+                    "A change is only reported between weeks flown to the same "
+                    "timetable. Four complete weeks of the new one are needed before "
+                    "two can be set against two; until then the macro board shows "
+                    "levels, and what each line did across the switch."
+                ),
+                caveat="Comparing the new timetable with the old one would report the "
+                       "calendar as a finding. The site would rather report nothing.",
+                confidence="observed",
+                sql=("SELECT day, COUNT(*) AS flights\nFROM flights\n"
+                     f"WHERE day >= '{sea['from']}'\nGROUP BY 1 ORDER BY 1;"),
+            )
+
+        # Destinations, city-pairs and airlines - year on year only.
+        for m in macro["movers"][:5]:
+            up = m["pct"] > 0
+            add(
+                kind="shift", scope=m["dim"], entity=m["key"], category="reading",
+                series=series(m["where"]),
+                title=f"{m['name']} {'up' if up else 'down'} {abs(m['pct']):.0f}% on a year ago",
+                metric=f"{m['pct']:+.0f}%", metric_label="vs the same four weeks a year earlier",
+                comparison=f"{m['recent']:,.0f} flights a week vs {m['base']:,.0f}",
+                where=None,
+                interpretation=(
+                    "Measured against the same weeks last year, so the season is not "
+                    "in it: this is capacity added or withdrawn - a route opened, "
+                    "closed, or flown more or less often. Airlines move capacity "
+                    "toward demand, with a lag of a schedule season or so."
+                ),
+                caveat="A change of airline on a route, or a callsign the route tables "
+                       "did not know last year, can appear as a move. Flights are "
+                       "capacity, not passengers.",
+                confidence="strong" if abs(m["z"]) >= 5 else "moderate",
+                sql=(f"SELECT day, COUNT(*) AS flights\nFROM flights\n"
+                     f"WHERE {m['where']}\nGROUP BY 1 ORDER BY 1;"),
+            )
+
+        # Business jets keep the working week - the property that makes the
+        # line a reading on business rather than on wealthy leisure.
+        bz = G.get("bizav")
+        if bz and bz["weekday_lift_pct"] is not None and bz["weekday_lift_pct"] >= 15:
+            add(
+                kind="composition", scope="gauge", entity="bizav", category="reading",
+                series=wk_series(bz),
+                title="Business jets keep the working week",
+                metric=f"{bz['weekday_lift_pct']:+d}%",
+                metric_label="business-jet flights, weekday vs weekend",
+                comparison=f"{bz['per_week']:,.0f} business-jet flights a week · "
+                           f"{bz['share']}% of traffic",
+                where="latest four weeks",
+                interpretation=(
+                    "Counted by airframe, not by operator, so privately flown jets "
+                    "are included. The weekday tilt says most of this is work: "
+                    "meetings, site visits, deals. It is the most discretionary "
+                    "travel there is, which is what makes its level worth tracking."
+                ),
+                caveat="A business jet is identified by its type. Who is aboard and "
+                       "why is not observable, and some of this is private leisure.",
+                confidence="observed",
+                sql=("SELECT dow, COUNT(*) AS flights\nFROM flights\n"
+                     "WHERE is_bizav\nGROUP BY 1;"),
+            )
 
     # ── What a full week shows ───────────────────────────────────────────
     # These are the first readings on this site that are about the economy
@@ -1043,8 +1507,8 @@ def detect_signals(con, countries, regions, operators, types, daily,
                     "a Tuesday with a Sunday cancels the two against each other and "
                     "reports nothing. The composition is the signal; the count is not."
                 ),
-                caveat="One week. This describes the shape of a week, not a change in "
-                       "it - that needs a second week to compare against.",
+                caveat="This is the shape of one week, not a change in it. What "
+                       "moved, and against what, is on the macro board.",
                 confidence="observed",
                 sql=("SELECT daytype, carrier_kind, COUNT(*) AS flights\n"
                      "FROM flights\n"
@@ -1081,7 +1545,7 @@ def detect_signals(con, countries, regions, operators, types, daily,
                      "GROUP BY 1;"),
             )
 
-        if charter and charter["lift_pct"] is not None and charter["lift_pct"] < 0:
+        if charter and charter["lift_pct"] is not None and charter["lift_pct"] <= -10:
             add(
                 kind="composition", scope="all", category="reading",
                 series=week_series("leisure"),
@@ -1109,10 +1573,11 @@ def detect_signals(con, countries, regions, operators, types, daily,
     # 0) State of the record. When there is not yet enough history to compare
     #    periods, that IS the headline - publishing invented trends instead
     #    would be the single fastest way to make this product untrustworthy.
-    if not baseline_complete:
+    if compare is None:
         need = max(0, 14 - len(full_days))
-        eta = ((datetime.fromisoformat(full_days[-1]["day"]) + timedelta(days=need + 1))
-               .strftime("%-d %B") if full_days else "later")
+        eta = (nice_day((datetime.fromisoformat(full_days[-1]["day"])
+                         + timedelta(days=need + 1)).strftime("%Y-%m-%d"))
+               if full_days else "later")
         add(
             kind="coverage", scope="all", series=series(),
             title=f"Week-over-week comparisons begin around {eta}",
@@ -1132,28 +1597,6 @@ def detect_signals(con, countries, regions, operators, types, daily,
                  "       COUNT(*) AS flights,\n"
                  "       (MAX(first_seen) - MIN(first_seen)) / 3600.0 AS hours_covered\n"
                  "FROM flights GROUP BY 1 ORDER BY 1;"),
-        )
-
-    # 1) Busiest day on record - complete days only.
-    if len(full_days) >= 2:
-        peak = max(full_days, key=lambda d: d["flights"])
-        others = [d["flights"] for d in full_days if d["day"] != peak["day"]]
-        avg = sum(others) / len(others) if others else 0
-        add(
-            kind="record", scope="all", series=series(),
-            title=f"Busiest full day observed: {peak['day']}",
-            metric=f"{peak['flights']:,}", metric_label="flights",
-            comparison=f"vs {avg:,.0f} average across {len(others)} other "
-                       f"full day{'s' if len(others) != 1 else ''}" if avg else None,
-            where=None,
-            interpretation="Day-to-day variation at this stage reflects weather, "
-                           "receiver uptime and normal schedule variation as much "
-                           "as anything about demand.",
-            caveat="Partial days are excluded from this comparison.",
-            confidence="observed",
-            sql=("SELECT strftime(seen_at, '%Y-%m-%d') AS day,\n"
-                 "       COUNT(*) AS flights\n"
-                 "FROM flights GROUP BY 1 ORDER BY 2 DESC;"),
         )
 
     # 2) Where the flights are actually between. These replace the old
@@ -1213,8 +1656,9 @@ def detect_signals(con, countries, regions, operators, types, daily,
                 series=series(f"pair IN ({far_keys})"),
                 title="Intercontinental routes crossing overhead",
                 metric=f"{far[0]['km']:,}", metric_label="km, the longest route seen",
-                comparison=" · ".join(f"{p['a_city'] or p['a']}–{p['b_city'] or p['b']}"
-                                      for p in far),
+                # Two airports in one city read as the same pair; say it once.
+                comparison=" · ".join(dict.fromkeys(
+                    f"{p['a_city'] or p['a']}–{p['b_city'] or p['b']}" for p in far)),
                 where=None,
                 interpretation="Long-haul flights pass over Denmark on the great circles "
                                "between Central Europe and North America or Asia. Their "
@@ -1247,163 +1691,9 @@ def detect_signals(con, countries, regions, operators, types, daily,
                  "FROM flights WHERE direction IS NOT NULL GROUP BY 1 ORDER BY 2 DESC;"),
         )
 
-        # Multi-week trends. A week-over-week move is a snapshot; a slope
-        # across three or more stepped weeks is closer to what a forecaster
-        # actually reads off the record. Only surface trends that are big
-        # enough to be economically interesting AND consistent enough to be
-        # more than a random walk: a slope of at least 8% per week either
-        # with an unbroken run at the tail or with two thirds of consecutive
-        # moves in the same direction.
-        if trends and trends["trends"]:
-            NAMES = {c["key"]: c["name"] for c in (routes.get("countries") or [])}
-            KIND_LBL = {k["key"]: k["label"] for k in ((week or {}).get("kinds") or [])}
-            IDX = routes.get("index") or {}
-            def pair_pretty(key: str) -> str:
-                a, _, b = key.partition("-")
-                ac = IDX.get(a, [a, a])[1] or a
-                bc = IDX.get(b, [b, b])[1] or b
-                return f"{ac} – {bc}"      # en dash is the pair connector
-            FLOW_LBL = {"overflight": "Overflight traffic",
-                        "to-or-from-Denmark": "Flights touching Denmark",
-                        "total": "Total flights overhead",
-                        "widebody": "Wide-body traffic"}
-            weeks_n = trends["weeks"]
-            picks = []
-            for t in trends["trends"]:
-                if abs(t["slope_pct"]) < 8: continue
-                # The trend must actually be running: the last week's move
-                # goes the trend's way (streak >= 1). A series with a strong
-                # OLS slope but a reversed last week is a broken trend, not
-                # an active one; it belongs in a "watchlist", not a headline.
-                if t["streak"] < 1: continue
-                # And it needs enough consistency across the whole series to
-                # be more than a lucky pair of consecutive moves.
-                if not (t["streak"] >= weeks_n - 1 or t["consistency"] >= 0.67): continue
-                picks.append(t)
-            picks.sort(key=lambda t: (-t["r2"], -abs(t["slope_pct"])))
-
-            for t in picks[:4]:
-                up = t["slope"] > 0
-                first, last = t["series"][0], t["series"][-1]
-                total_pct = round((last / first - 1) * 100) if first else 0
-                if t["dim"] == "country":
-                    name = NAMES.get(t["key"], t["key"])
-                    subject = f"Flights to or from {name}"
-                    sql = (f"SELECT day, COUNT(*) AS flights\nFROM flights\n"
-                           f"WHERE origin_cc = '{t['key']}' OR destination_cc = '{t['key']}'\n"
-                           f"GROUP BY 1 ORDER BY 1;")
-                elif t["dim"] == "pair":
-                    subject = pair_pretty(t["key"])
-                    sql = (f"SELECT day, COUNT(*) AS flights\nFROM flights\n"
-                           f"WHERE pair = '{t['key']}'\nGROUP BY 1 ORDER BY 1;")
-                elif t["dim"] == "kind":
-                    subject = KIND_LBL.get(t["key"], t["key"].title()) + " overhead"
-                    sql = (f"SELECT day, COUNT(*) AS flights\nFROM flights\n"
-                           f"WHERE carrier_kind = '{t['key']}'\nGROUP BY 1 ORDER BY 1;")
-                else:                                       # flow
-                    subject = FLOW_LBL.get(t["key"], t["key"].title())
-                    where = {"overflight": "is_overflight",
-                             "to-or-from-Denmark": "origin IS NOT NULL AND NOT is_overflight",
-                             "widebody": "body = 'widebody'",
-                             "total": "TRUE"}[t["key"]]
-                    sql = (f"SELECT day, COUNT(*) AS flights\nFROM flights\n"
-                           f"WHERE {where}\nGROUP BY 1 ORDER BY 1;")
-
-                verb = "rising" if up else "falling"
-                every = t["streak"] == weeks_n - 1
-                n_run = t["streak"] + 1                    # weeks in the run
-                run = (f"every week on record ({weeks_n} weeks)" if every
-                       else f"{n_run} week{'s' if n_run != 1 else ''} running")
-
-                add(
-                    kind="trend", scope=t["dim"], entity=t["key"],
-                    category="reading", lead=True,
-                    series=[{"k": lbl, "v": v} for lbl, v in zip(t["labels"], t["series"])],
-                    title=f"{subject} {verb}, {run}",
-                    metric=f"{t['slope_pct']:+.0f}%/wk",
-                    metric_label=f"slope across {weeks_n} weeks",
-                    comparison=" -> ".join(str(v) for v in t["series"]) + f" ({total_pct:+d}% overall)",
-                    where=None,
-                    interpretation=(
-                        f"A straight line fits the {weeks_n} weekly counts closely "
-                        f"(R squared {t['r2']:.2f}), and " +
-                        (f"every week has moved the same way" if every else
-                         f"{t['streak'] + 1} of the last {weeks_n - 1} moves went "
-                         f"the same way") + ". That is the profile of a schedule "
-                        "or demand shift rather than random variation."
-                    ),
-                    caveat=(f"{weeks_n} weeks is a short baseline. A trend at this "
-                            "length can still be a rotation change, a summer schedule "
-                            "unwinding, or an airline swapping equipment onto the route. "
-                            "Watch whether it holds as more weeks land."),
-                    confidence=("moderate" if t["r2"] >= 0.7 and weeks_n >= 4
-                                else "observed"),
-                    sql=sql,
-                )
-
-        # Pair movers, week on week - the route-level counterpart of the
-        # country shifts, and the reading an analyst actually wants.
-        movers = [p for p in routes["pairs"]
-                  if p["change_pct"] is not None and p["prev"] >= 20 and p["cur"] >= 20]
-        movers.sort(key=lambda p: -abs(p["change_pct"]))
-        for p in movers[:3]:
-            up = p["change_pct"] > 0
-            add(
-                kind="shift", scope="pair", entity=p["key"], category="reading",
-                series=series(f"pair = '{p['key']}'"),
-                title=f"{p['a_city'] or p['a']} – {p['b_city'] or p['b']} "
-                      f"{'up' if up else 'down'} {abs(p['change_pct']):.0f}% week on week",
-                metric=f"{p['change_pct']:+.0f}%", metric_label="vs the previous week",
-                comparison=f"{p['cur']} flights vs {p['prev']} the week before",
-                where=f"{p['km']:,} km" if p["km"] else None,
-                interpretation="A city-pair moving week on week is the most direct thing "
-                               "this antenna can say about a schedule: capacity was added "
-                               "or withdrawn between two named places.",
-                caveat="Two weeks is the shortest honest baseline. A single rotation "
-                       "added or dropped is a large percentage on a thin pair.",
-                confidence=confidence(p["flights"], span_days, p["change_pct"]),
-                sql=(f"SELECT day, COUNT(*) AS flights\n"
-                     f"FROM flights WHERE pair = '{p['key']}'\n"
-                     "GROUP BY 1 ORDER BY 1;"),
-            )
-
-    # 3) Largest movers, country level. Requires presence in both windows.
-    # 3) Country movers, week on week - by where the flights are between, not
-    #    where the airframe is registered. Thirty flights a week on each side
-    #    is the floor: below it a 20% move is six aircraft, one rotation.
-    rcountries = routes["countries"] if routes else []
-    movers = [
-        c for c in rcountries
-        if c["change_pct"] is not None and c["prev"] >= 30 and c["cur"] >= 30
-    ]
-    movers.sort(key=lambda c: -abs(c["change_pct"]))
-    for c in movers[:3]:
-        up = c["change_pct"] > 0
-        cc = c["key"]
-        add(
-            kind="shift", scope="country", entity=cc, category="reading",
-            series=series(f"origin_cc = '{cc}' OR destination_cc = '{cc}'"),
-            title=f"Flights to or from {c['name']} {'up' if up else 'down'} "
-                  f"{abs(c['change_pct']):.0f}% week on week",
-            metric=f"{c['change_pct']:+.0f}%", metric_label="vs the previous week",
-            comparison=f"{c['cur']} flights vs {c['prev']} the week before",
-            where=c.get("region"),
-            interpretation=(
-                f"A week against a week removes the weekday cycle, so this is close "
-                f"to a real change in the flying between {c['name']} and the places "
-                "the corridor over Aarhus connects it to - though a schedule change "
-                "or a rerouted flow can each produce it."
-            ),
-            caveat="Two weeks is the shortest baseline that makes this comparison "
-                   "honest, not a long one. Watch whether it persists.",
-            confidence=confidence(c["flights"], span_days, c["change_pct"]),
-            sql=(f"SELECT day, COUNT(*) AS flights\n"
-                 f"FROM flights WHERE origin_cc = '{cc}' OR destination_cc = '{cc}'\n"
-                 f"GROUP BY 1 ORDER BY 1;"),
-        )
-
     # 4) The far end of the long-haul overhead - the alternative-data hook,
     #    now by destination: flights that begin or end outside Europe.
+    rcountries = routes["countries"] if routes else []
     shown = 0
     for c in rcountries:
         if c.get("continent") in ("Europe", None) or c["flights"] < 15:
@@ -1456,52 +1746,41 @@ def detect_signals(con, countries, regions, operators, types, daily,
                  "GROUP BY 1,2 ORDER BY 3 DESC;"),
         )
 
-    # 6) All-cargo operators. Small sample - say so plainly.
+    # 6) Who the freighters are. A level, not a move - the moves are on the
+    #    macro board - but it is what makes the freight line readable: more
+    #    than half of it is one trade lane.
     cargo_ops = [o for o in operators if o.get("cargo_operator")]
     cg = sum(o["flights"] for o in cargo_ops)
+    G = {g["id"]: g for g in (macro or {}).get("gauges", [])}
     if cg:
+        cn, fr = G.get("freight_cn"), G.get("freight")
+        cn_share = (cn["per_week"] / fr["per_week"] * 100
+                    if cn and fr and fr["per_week"] else None)
         add(
-            kind="cargo", scope="all", series=series("is_cargo"),
-            title="All-cargo operator movements",
-            metric=f"{cg:,}", metric_label="flights",
-            comparison=f"{len(cargo_ops)} operators · {cg / total * 100:.1f}% of traffic",
-            where=", ".join(o.get("name") or o["key"] for o in cargo_ops[:4]),
-            interpretation="Freighter movements are the observation closest to trade "
-                           "flow. Sustained change in this count would be the most "
-                           "economically meaningful signal this antenna can produce.",
-            caveat=f"Only {cg} flights so far. Far too few to support any claim about "
-                   "trade. Included to establish the baseline, not to draw a conclusion.",
-            confidence="early" if cg < 200 else "moderate",
-            sql=("SELECT airline_prefix, COUNT(*) AS flights\n"
-                 "FROM flights\n"
-                 "WHERE airline_prefix IN "
-                 "('FDX','UPS','GTI','CLX','CKS','ABW','CAO','CKK','GEC','BOX')\n"
-                 "GROUP BY 1 ORDER BY 2 DESC;"),
-        )
-
-    # 7) Rare airframes - a genuinely interesting "look at this" observation.
-    rare = [t for t in types if t["flights"] == 1 and t.get("widebody_type")]
-    if rare:
-        names = ", ".join(f"{t['key']}" for t in rare[:5])
-        add(
-            kind="outlier", scope="all",
-            title=f"{len(rare)} wide-body type{'s' if len(rare) != 1 else ''} "
-                  f"seen exactly once",
-            metric=f"{len(rare)}",
-            metric_label=f"one-off airframe{'s' if len(rare) != 1 else ''}",
-            comparison=names,
-            where=None,
-            interpretation="Single appearances of long-haul airframes are usually "
-                           "charters, repositioning flights, or routings diverted off "
-                           "their usual track.",
-            caveat="One observation is an anecdote. These are listed because they are "
-                   "interesting, not because they mean anything yet.",
+            kind="cargo", scope="all", series=series("is_cargo"), lead=True,
+            title=(f"{cn_share:.0f}% of the freighters overhead are flown by "
+                   "Chinese cargo airlines" if cn_share and cn_share >= 25
+                   else "All-cargo operator movements"),
+            metric=f"{fr['per_week']:,.0f}" if fr else f"{cg:,}",
+            metric_label="freighter flights a week" if fr else "flights",
+            comparison=(f"{cn['per_week']:,.0f} a week on China-Europe rotations · "
+                        f"{len(cargo_ops)} freight operators · {cg / total * 100:.1f}% of all traffic"
+                        if cn else f"{len(cargo_ops)} operators · {cg / total * 100:.1f}% of traffic"),
+            where=", ".join(o.get("name") or o["key"] for o in cargo_ops[:5]),
+            interpretation="Freighters between China and the European cargo hubs - Liège, "
+                           "Brussels, Stansted, Billund - cross Denmark on the great "
+                           "circle, so one antenna in Aarhus hears a large share of that "
+                           "lane: e-commerce parcels westbound, machinery and luxury "
+                           "goods eastbound. The rest is the European overnight express "
+                           "network. Neither follows the passenger timetable.",
+            caveat="Cargo is attributed by operator, so only all-cargo airlines are "
+                   "counted. Freight in the hold of passenger aircraft - roughly half "
+                   "of air cargo worldwide - is invisible here, and a flight is not a "
+                   "tonnage: load factors are not observable.",
             confidence="observed",
-            sql=("SELECT ac_type, ac_desc, callsign, seen_at\n"
-                 "FROM flights\n"
-                 "WHERE ac_type IN (SELECT ac_type FROM flights\n"
-                 "                  GROUP BY 1 HAVING COUNT(*) = 1)\n"
-                 "ORDER BY first_seen DESC;"),
+            sql=("SELECT operator, carrier_country, COUNT(*) AS flights\n"
+                 "FROM flights WHERE is_cargo\n"
+                 "GROUP BY 1, 2 ORDER BY 3 DESC;"),
         )
 
     # Readings before profile, then by confidence, then by the size of the

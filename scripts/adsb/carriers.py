@@ -69,7 +69,15 @@ CARRIERS: dict[str, tuple[str, str, str]] = {
     "ABW": ("AirBridgeCargo",             "cargo", "RU"),
     "SQC": ("Singapore Airlines Cargo",   "cargo", "SG"),
     "MPH": ("Martinair",                  "cargo", "NL"),
-    "ICV": ("Silk Way West Airlines",     "cargo", "AZ"),
+    "ICV": ("Cargolux Italia",            "cargo", "IT"),
+    "AZG": ("Silk Way West Airlines",     "cargo", "AZ"),
+    "CSG": ("China Southern Cargo",       "cargo", "CN"),
+    "CYZ": ("China Postal Airlines",      "cargo", "CN"),
+    "CSS": ("SF Airlines",                "cargo", "CN"),
+    "SRR": ("Maersk Air Cargo",           "cargo", "DK"),   # formerly Star Air
+    "SRN": ("SprintAir",                  "cargo", "PL"),
+    "SWT": ("Swiftair",                   "cargo", "ES"),
+    "ABR": ("ASL Airlines Ireland",       "cargo", "IE"),
     "RCF": ("Aerotranscargo",             "cargo", "MD"),
 
     # ── Business aviation ────────────────────────────────────────────────
@@ -121,6 +129,13 @@ CARRIERS: dict[str, tuple[str, str, str]] = {
     "AIC": ("Air India",                  "network", "IN"),
     "PIA": ("Pakistan International",     "network", "PK"),
     "AEA": ("Air Europa",                 "network", "ES"),
+    "LHX": ("Lufthansa City Airlines",    "network", "DE"),
+    "ASL": ("Air Serbia",                 "network", "RS"),
+    "CTN": ("Croatia Airlines",           "network", "HR"),
+    "DKH": ("Juneyao Air",                "network", "CN"),
+    "CBJ": ("Capital Airlines",           "network", "CN"),
+    "GCR": ("Tianjin Airlines",           "network", "CN"),
+    "MGL": ("MIAT Mongolian Airlines",    "network", "MN"),
 
     # ── Low-cost ─────────────────────────────────────────────────────────
     "RYR": ("Ryanair",                    "lowcost", "IE"),
@@ -140,6 +155,7 @@ CARRIERS: dict[str, tuple[str, str, str]] = {
     "VLG": ("Vueling",                    "lowcost", "ES"),
     "VOE": ("Volotea",                    "lowcost", "ES"),
     "WJA": ("WestJet",                    "lowcost", "CA"),
+    "RUK": ("Ryanair UK",                 "lowcost", "GB"),
 
     # ── Charter / tour operator ──────────────────────────────────────────
     "VKG": ("Sunclass Airlines",          "leisure", "DK"),
@@ -149,6 +165,14 @@ CARRIERS: dict[str, tuple[str, str, str]] = {
     "ENT": ("Enter Air",                  "leisure", "PL"),
     "WMT": ("Wamos Air",                  "leisure", "ES"),
     "CAI": ("Corendon Dutch Airlines",    "leisure", "NL"),
+    "JTD": ("Jettime",                    "leisure", "DK"),
+    "HLF": ("TUI fly Deutschland",        "leisure", "DE"),
+    "OCN": ("Discover Airlines",          "leisure", "DE"),
+    "SXS": ("SunExpress",                 "leisure", "TR"),
+    "EDW": ("Edelweiss Air",              "leisure", "CH"),
+    "FHY": ("Freebird Airlines",          "leisure", "TR"),
+    "TVS": ("Smartwings",                 "leisure", "CZ"),   # hybrid, mostly holiday flying
+    "TSC": ("Air Transat",                "leisure", "CA"),
 
     # ── Regional / feeder ────────────────────────────────────────────────
     "KLC": ("KLM Cityhopper",             "regional", "NL"),
@@ -156,12 +180,33 @@ CARRIERS: dict[str, tuple[str, str, str]] = {
     "FLI": ("Atlantic Airways",           "regional", "FO"),
     "MMD": ("Alsie Express",              "regional", "DK"),
     "WIF": ("Widerøe",                    "regional", "NO"),
+    "DNU": ("DAT",                        "regional", "DK"),
+    "HOP": ("Air France Hop",             "regional", "FR"),
 
     # ── State, military, medical ─────────────────────────────────────────
     "GAF": ("German Air Force",           "state", "DE"),
     "RRR": ("Royal Air Force",            "state", "GB"),
     "DOC": ("Norwegian Air Ambulance",    "state", "NO"),
 }
+
+# Business jets, by ICAO type designator. Unlike cargo - which is a property of
+# the operator, because a freighter and a passenger 777 share a type code - a
+# business jet is a business jet whoever flies it, and most of them fly under a
+# registration or a small operator's prefix that will never be in CARRIERS.
+# Counting only NetJets and VistaJet saw about a sixth of the business flying
+# overhead. Only unambiguous types are listed: no turboprops (a PC-12 is as
+# often an air ambulance), no airliner-derived types that also fly scheduled.
+BIZJET_TYPES = sorted({
+    "E50P", "E55P", "E545", "E550", "E35L",                          # Embraer
+    "CL30", "CL35", "CL60", "GLEX", "GL5T", "GL7T",                  # Bombardier
+    "C510", "C525", "C25A", "C25B", "C25C", "C25M", "C550", "C55B",  # Cessna
+    "C560", "C56X", "C650", "C680", "C68A", "C700", "C750",
+    "GLF4", "GLF5", "GLF6", "GA5C", "GA6C", "GA7C", "GA8C",          # Gulfstream
+    "G150", "G280", "GALX",
+    "F2TH", "F900", "FA50", "FA6X", "FA7X", "FA8X",                  # Dassault
+    "H25B", "BE40", "PRM1", "LJ35", "LJ45", "LJ60", "LJ75",
+    "PC24", "HDJT", "SF50",
+})
 
 
 def build() -> dict:
@@ -171,6 +216,7 @@ def build() -> dict:
                 "its identity is not in doubt. Unlisted prefixes stay "
                 "unclassified and the site reports how much of the record that is.",
         "kinds": KINDS,
+        "bizjet_types": BIZJET_TYPES,
         "carriers": {p: {"name": n, "kind": k, "country": c}
                      for p, (n, k, c) in sorted(CARRIERS.items())},
     }

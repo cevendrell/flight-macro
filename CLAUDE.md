@@ -50,6 +50,39 @@ The browser builds a `flights` view over the Parquet with derived columns
 The Data page documents all of them — keep `COLUMN_REF` in `index.html` in step
 with the view.
 
+### The macro board — and why nothing is compared across a timetable switch
+`summary.json` carries a `macro` block (`build_macro` in `build_summary.py`): a
+dozen gauges with an economic meaning — air freight, China–Europe freighters,
+business aviation, transatlantic and East Asia passenger, low-cost and charter —
+each a SQL predicate in `GAUGES` that runs unchanged in the browser's `flights`
+view. The front page leads with it.
+
+Airlines switch timetables on the last Sunday of March and of October
+(`season_of`). The step in passenger flying at that date is the calendar, not
+the economy, and it is the largest move in the record. So:
+
+- A gauge's change is **year on year** (latest 4 weeks vs the same 4 weeks 52
+  weeks back) once the record allows; before that, **in season** (latest k weeks
+  vs the k before, all inside one timetable, marked `early`); otherwise withheld
+  with the date it resumes. Never across the switch.
+- A move must clear the line's own noise: |z| ≥ 2 against its measured
+  week-to-week dispersion, and ≥ 5%.
+- Countries, city-pairs and airlines are reported as movers **year on year
+  only**. Week on week, a destination appearing or vanishing is the timetable.
+  Do not reintroduce week-on-week or multi-week trend signals for destinations.
+- The `step` each gauge took at the switch is published as context, not as a
+  signal: it shows which lines ignore the timetable (freight) and which are it.
+
+Everything that grows with time is capped where it enters the summary
+(`WEEKS_DETAIL`, `DAYS_DETAIL`, `SPARK_DAYS`, `MACRO_WEEKS`, `SKY_DAYS`), and
+`fx` is materialised as a table once, so a build stays a few seconds and the
+file a few hundred KB however long the record gets. Keep new blocks inside
+those caps.
+
+Business aviation is the one kind read off the **airframe** (`BIZJET_TYPES` in
+`carriers.py`, shipped as `bizjet_types` in `carriers.json`), because most
+business jets fly under no listed operator. Cargo stays operator-only.
+
 ### Carrier taxonomy — what makes the macro readings possible
 `data/adsb/carriers.json` (written by `scripts/adsb/carriers.py`) maps an ICAO
 callsign prefix to an operator name and a **kind**: `cargo`, `bizjet`, `network`,
