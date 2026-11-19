@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-17T03:00:37+00:00",
+  "generated_at": "2026-11-19T03:00:29+00:00",
   "origin": {
     "name": "Aarhus, Denmark",
     "lat": 56.16,
@@ -7,16 +7,6 @@
     "note": "One antenna. One sky. Everything that flies overhead."
   },
   "snapshots": [
-    {
-      "name": "snapshots_2026-10-19.parquet",
-      "path": "data/adsb/snapshots/snapshots_2026-10-19.parquet",
-      "bytes": 541216
-    },
-    {
-      "name": "snapshots_2026-10-20.parquet",
-      "path": "data/adsb/snapshots/snapshots_2026-10-20.parquet",
-      "bytes": 536421
-    },
     {
       "name": "snapshots_2026-10-21.parquet",
       "path": "data/adsb/snapshots/snapshots_2026-10-21.parquet",
@@ -155,29 +145,39 @@
     {
       "name": "snapshots_2026-11-17.parquet",
       "path": "data/adsb/snapshots/snapshots_2026-11-17.parquet",
-      "bytes": 8223
+      "bytes": 415467
+    },
+    {
+      "name": "snapshots_2026-11-18.parquet",
+      "path": "data/adsb/snapshots/snapshots_2026-11-18.parquet",
+      "bytes": 639951
+    },
+    {
+      "name": "snapshots_2026-11-19.parquet",
+      "path": "data/adsb/snapshots/snapshots_2026-11-19.parquet",
+      "bytes": 6530
     }
   ],
   "flights": [
     {
       "name": "flights_2026-08.parquet",
       "path": "data/adsb/flights/flights_2026-08.parquet",
-      "bytes": 219162
+      "bytes": 220357
     },
     {
       "name": "flights_2026-09.parquet",
       "path": "data/adsb/flights/flights_2026-09.parquet",
-      "bytes": 1806505
+      "bytes": 1807484
     },
     {
       "name": "flights_2026-10.parquet",
       "path": "data/adsb/flights/flights_2026-10.parquet",
-      "bytes": 1787346
+      "bytes": 1788745
     },
     {
       "name": "flights_2026-11.parquet",
       "path": "data/adsb/flights/flights_2026-11.parquet",
-      "bytes": 824297
+      "bytes": 917389
     }
   ],
   "enrichment": [
@@ -199,7 +199,7 @@
     {
       "name": "routes.parquet",
       "path": "data/adsb/enrichment/routes.parquet",
-      "bytes": 43313
+      "bytes": 43388
     }
   ]
 }
